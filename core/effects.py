@@ -819,7 +819,28 @@ class SoundFX:
                     if channels == 2:
                         buf.append(sample)
 
-            return pygame.mixer.Sound(buffer=buf.tobytes())
+            raw_pcm = buf.tobytes()
+            import io
+            import struct
+            byte_rate = sample_rate * channels * 2
+            block_align = channels * 2
+            wav_header = struct.pack(
+                "<4sI4s4sIHHIIHH4sI",
+                b"RIFF",
+                36 + len(raw_pcm),
+                b"WAVE",
+                b"fmt ",
+                16,
+                1,
+                channels,
+                sample_rate,
+                byte_rate,
+                block_align,
+                16,
+                b"data",
+                len(raw_pcm),
+            )
+            return pygame.mixer.Sound(file=io.BytesIO(wav_header + raw_pcm))
         except Exception:
             return None
 

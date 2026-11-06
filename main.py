@@ -1,7 +1,7 @@
 """
 main.py
 '전세계 길거리 음식 포차 타이쿤 (World Street Food Pocha Tycoon)' 메인 진입점.
-- 데스크톱(Windows/macOS/Linux) 및 모바일/PC 웹앱(Pygbag WebAssembly) 겸용 하이브리드 실행 루프 지원
+- 데스크톱(Windows/macOS/Linux) 및 모바일/PC 웹앱(Pygbag WebAssembly) 100% 호환 비동기 메인 루프
 - Pygame 초기화 및 1280x720 윈도우 생성
 - GameManager 싱글톤 세이브 데이터(로컬 JSON + 웹 브라우저 localStorage) 로드
 - SceneManager를 통해 "title" 씬 시작 및 60FPS 메인 루프 실행
@@ -48,8 +48,8 @@ def create_app(initial_scene: str = "title") -> tuple[pygame.Surface, pygame.tim
     return screen, clock, game_mgr, scene_mgr
 
 
-async def main_async(max_frames: int = 0) -> None:
-    """웹앱(Pygbag WebAssembly) 및 비동기 환경 호환 메인 게임 루프."""
+async def main(max_frames: int = 0) -> None:
+    """데스크톱 및 웹앱(Pygbag WebAssembly) 통합 메인 게임 루프."""
     is_duel_client = "--duel-client" in sys.argv
     initial_scene = "duel_lobby" if is_duel_client else "title"
     screen, clock, game_mgr, scene_mgr = create_app(initial_scene=initial_scene)
@@ -75,7 +75,12 @@ async def main_async(max_frames: int = 0) -> None:
                 try:
                     scene_mgr.handle_event(event)
                 except Exception:
-                    pass
+                    if sys.platform != "emscripten":
+                        try:
+                            with open(os.path.join(config.BASE_DIR, "crash_log.txt"), "a", encoding="utf-8") as f:
+                                f.write(traceback.format_exc() + "\n")
+                        except Exception:
+                            pass
 
             try:
                 scene_mgr.update(dt)
@@ -83,7 +88,12 @@ async def main_async(max_frames: int = 0) -> None:
                 scene_mgr.draw(active_surface)
                 pygame.display.flip()
             except Exception:
-                pass
+                if sys.platform != "emscripten":
+                    try:
+                        with open(os.path.join(config.BASE_DIR, "crash_log.txt"), "a", encoding="utf-8") as f:
+                            f.write(traceback.format_exc() + "\n")
+                    except Exception:
+                        pass
 
             await asyncio.sleep(0)
 
@@ -99,65 +109,5 @@ async def main_async(max_frames: int = 0) -> None:
         pygame.quit()
 
 
-def main(max_frames: int = 0) -> None:
-    """데스크톱 표준 동기 메인 게임 루프를 실행한다."""
-    is_duel_client = "--duel-client" in sys.argv
-    initial_scene = "duel_lobby" if is_duel_client else "title"
-    screen, clock, game_mgr, scene_mgr = create_app(initial_scene=initial_scene)
-
-    if is_duel_client:
-        idx = sys.argv.index("--duel-client")
-        target_ip = sys.argv[idx + 1] if (idx + 1) < len(sys.argv) else f"127.0.0.1:{config.DEFAULT_DUEL_PORT}"
-        pygame.display.set_caption(f"{config.WINDOW_TITLE} - [2P 결투 클라이언트]")
-        scene_mgr.change_scene("duel_lobby", auto_join_ip=target_ip)
-
-    running = True
-    frame_count = 0
-
-    try:
-        while running:
-            dt = clock.tick(config.FPS) / 1000.0
-            dt = min(dt, 0.1)  # 프레임 드랍 시 과도한 dt 폭주 방지
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-                    break
-                try:
-                    scene_mgr.handle_event(event)
-                except Exception:
-                    try:
-                        with open(os.path.join(config.BASE_DIR, "crash_log.txt"), "a", encoding="utf-8") as f:
-                            f.write(traceback.format_exc() + "\n")
-                    except Exception:
-                        pass
-
-            try:
-                scene_mgr.update(dt)
-                active_surface = pygame.display.get_surface() or screen
-                scene_mgr.draw(active_surface)
-                pygame.display.flip()
-            except Exception:
-                try:
-                    with open(os.path.join(config.BASE_DIR, "crash_log.txt"), "a", encoding="utf-8") as f:
-                        f.write(traceback.format_exc() + "\n")
-                except Exception:
-                    pass
-
-            frame_count += 1
-            if max_frames > 0 and frame_count >= max_frames:
-                running = False
-    except KeyboardInterrupt:
-        pass
-    finally:
-        duel_network.close()
-        if not is_duel_client:
-            game_mgr.save_game()
-        pygame.quit()
-
-
 if __name__ == "__main__":
-    if sys.platform == "emscripten":
-        asyncio.run(main_async())
-    else:
-        main()
+    asyncio.run(main())

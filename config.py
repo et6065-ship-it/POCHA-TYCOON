@@ -487,6 +487,7 @@ def _find_korean_font_paths() -> Tuple[Optional[str], Optional[str]]:
         return _RESOLVED_FONT_PATH, _RESOLVED_FONT_BOLD_PATH
 
     bundled_fonts_dir = os.path.join(BASE_DIR, "assets", "fonts")
+    rel_fonts_dir = os.path.join("assets", "fonts")
     win_dir = os.environ.get("WINDIR", r"C:\Windows")
     fonts_dir = os.path.join(win_dir, "Fonts")
     local_app_data = os.environ.get("LOCALAPPDATA", "")
@@ -497,21 +498,21 @@ def _find_korean_font_paths() -> Tuple[Optional[str], Optional[str]]:
     )
 
     regular_candidates = [
-        "malgun.ttf",
         "NanumGothic.ttf",
+        "malgun.ttf",
         "gulim.ttc",
         "batang.ttc",
         "msgothic.ttc",
     ]
     bold_candidates = [
-        "malgunbd.ttf",
         "NanumGothicBold.ttf",
+        "malgunbd.ttf",
         "NanumGothic.ttf",
         "malgun.ttf",
         "gulim.ttc",
     ]
 
-    search_dirs = [d for d in (bundled_fonts_dir, fonts_dir, user_fonts_dir) if d and os.path.isdir(d)]
+    search_dirs = [d for d in (bundled_fonts_dir, rel_fonts_dir, fonts_dir, user_fonts_dir) if d and os.path.isdir(d)]
 
     for directory in search_dirs:
         if _RESOLVED_FONT_PATH is None:

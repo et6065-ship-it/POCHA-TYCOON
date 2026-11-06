@@ -32,6 +32,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install pygbag pygame-ce
 
+      - name: Prepare clean WebApp bundle directory
+        run: |
+          rm -f requirements.txt *.bat *.spec *.exe
+
       - name: Build WebAssembly WebApp with Pygbag
         run: |
           pygbag --build --app_name "pocha_tycoon" --title "World Street Food Pocha Tycoon" .

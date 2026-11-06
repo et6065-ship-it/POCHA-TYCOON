@@ -41,6 +41,9 @@ def _score_ip(ip: str) -> int:
 
 def get_all_local_ips() -> List[str]:
     """현재 PC의 활성화된 모든 IPv4 사설/VPN IP 목록을 우선순위 순으로 반환한다."""
+    import sys
+    if sys.platform == "emscripten":
+        return ["127.0.0.1"]
     candidates: List[str] = []
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
