@@ -257,24 +257,43 @@ class PrepScene(BaseScene):
         if event.type == pygame.MOUSEMOTION:
             self._hover_pos = event.pos
 
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            swipe_start = getattr(self, "_swipe_start_pos", None)
+            self._swipe_start_pos = None
+            if swipe_start is not None:
+                dx = event.pos[0] - swipe_start[0]
+                dy = event.pos[1] - swipe_start[1]
+                if abs(dx) >= 55 and abs(dx) > abs(dy) * 1.3 and 126 <= swipe_start[1] <= 630:
+                    delta = -1 if dx > 0 else 1
+                    if self.active_tab == "character":
+                        self._handle_action("char_page_delta", delta, (640, 360))
+                        self._rebuild_click_targets()
+                        return
+                    elif self.active_tab == "chapter":
+                        act = "global_page_delta" if self.game_mgr.mode == "GLOBAL_ENDLESS" else "chapter_page_delta"
+                        self._handle_action(act, delta, (640, 360))
+                        self._rebuild_click_targets()
+                        return
+
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
+            self._swipe_start_pos = (mx, my)
 
             # 1) 좌측 상단 타이틀로 돌아가기
-            if self.back_btn_rect.collidepoint(mx, my):
+            if self.back_btn_rect.inflate(6, 6).collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("title")
                 return
 
             # 1-B) 옵션 설정 버튼
-            if self.options_btn_rect.collidepoint(mx, my):
+            if self.options_btn_rect.inflate(6, 6).collidepoint(mx, my):
                 if self.scene_mgr:
                     self.scene_mgr.open_options()
                 return
 
             # 2) 모드 전환 토글 버튼 (월드 투어 <-> 글로벌 야시장)
-            if self.mode_toggle_rect.collidepoint(mx, my):
+            if self.mode_toggle_rect.inflate(6, 6).collidepoint(mx, my):
                 sound_fx.play_click()
                 new_mode = "GLOBAL_ENDLESS" if self.game_mgr.mode == "WORLD_TOUR" else "WORLD_TOUR"
                 self.game_mgr.set_mode(new_mode)
@@ -290,7 +309,7 @@ class PrepScene(BaseScene):
 
             # 3) 상단 4개 탭 전환
             for tab_key, trect in self.tab_rects.items():
-                if trect.collidepoint(mx, my):
+                if trect.inflate(4, 6).collidepoint(mx, my):
                     if self.active_tab != tab_key:
                         sound_fx.play_click()
                         self.active_tab = tab_key
@@ -298,7 +317,7 @@ class PrepScene(BaseScene):
                     return
 
             # 4) 우측 하단 [오늘 영업 시작! (START DAY)] 버튼
-            if self.start_day_btn_rect.collidepoint(mx, my):
+            if self.start_day_btn_rect.inflate(6, 6).collidepoint(mx, my):
                 sound_fx.play_fanfare()
                 self.game_mgr.ai_opponent_id = ""
                 self.game_mgr.save_game()
@@ -306,11 +325,11 @@ class PrepScene(BaseScene):
                     self.scene_mgr.change_scene("play", show_cutscene=True)
                 return
 
-            # 5) 탭 내부 동적 버튼 처리
+            # 5) 탭 내부 동적 버튼 처리 (모바일 터치 여유 판정)
             if not self._click_targets:
                 self._rebuild_click_targets()
             for rect, action_type, payload in list(self._click_targets):
-                if rect.collidepoint(mx, my):
+                if rect.inflate(4, 4).collidepoint(mx, my):
                     self._handle_action(action_type, payload, rect.center)
                     self._rebuild_click_targets()
                     return

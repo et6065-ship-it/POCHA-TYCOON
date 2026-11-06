@@ -74,9 +74,13 @@ class DuelLobbyScene(BaseScene):
         self.local_dual_btn: pygame.Rect = pygame.Rect(72, 344, 510, 62)
         self.local_join_btn: pygame.Rect = pygame.Rect(72, 424, 510, 58)
 
-        self.ip_box_rect: pygame.Rect = pygame.Rect(695, 232, 365, 48)
-        self.ip_connect_btn: pygame.Rect = pygame.Rect(1072, 232, 138, 48)
-        self.refresh_lan_btn: pygame.Rect = pygame.Rect(1080, 310, 130, 34)
+        self.ip_box_rect: pygame.Rect = pygame.Rect(693, 224, 370, 46)
+        self.ip_connect_btn: pygame.Rect = pygame.Rect(1073, 224, 138, 46)
+        self.numpad_btns: List[Tuple[str, pygame.Rect]] = [
+            (k, pygame.Rect(693 + idx * 37, 278, 34, 34))
+            for idx, k in enumerate(("1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ".", ":", "⌫", "C"))
+        ]
+        self.refresh_lan_btn: pygame.Rect = pygame.Rect(1080, 322, 130, 34)
         self.lan_room_rects: List[Tuple[Dict[str, Any], pygame.Rect]] = []
 
         # 2) 대기실(연결/호스팅 중) Rect
@@ -367,6 +371,19 @@ class DuelLobbyScene(BaseScene):
 
     def _handle_setup_click(self, mx: int, my: int) -> None:
         self.ip_focused = self.ip_box_rect.collidepoint(mx, my)
+
+        # 모바일/터치용 온스크린 숫자 키패드 버튼 처리
+        for k_char, k_rect in self.numpad_btns:
+            if k_rect.inflate(2, 4).collidepoint(mx, my):
+                sound_fx.play_click()
+                self.ip_focused = True
+                if k_char == "⌫":
+                    self.ip_input = self.ip_input[:-1]
+                elif k_char == "C":
+                    self.ip_input = ""
+                elif len(self.ip_input) < 28:
+                    self.ip_input += k_char
+                return
 
         # 1) 호스트 방 만들기
         if self.host_create_btn.collidepoint(mx, my):
@@ -807,9 +824,20 @@ class DuelLobbyScene(BaseScene):
         ct = btn_f.render("접속하기 ▶", True, (18, 16, 26) if c_hov else config.WHITE)
         surface.blit(ct, (self.ip_connect_btn.centerx - ct.get_width() // 2, self.ip_connect_btn.centery - ct.get_height() // 2))
 
+        # 모바일 터치용 온스크린 숫자/점/콜론 키패드 바
+        kp_f = config.get_font(14, bold=True)
+        for k_char, k_rect in self.numpad_btns:
+            k_hov = k_rect.collidepoint(mx, my)
+            is_del = k_char in ("⌫", "C")
+            k_bg = (115, 42, 52) if is_del else ((58, 78, 118) if k_hov else (38, 34, 58))
+            pygame.draw.rect(surface, k_bg, k_rect, border_radius=7)
+            pygame.draw.rect(surface, config.GOLD if k_hov else config.UI_BORDER, k_rect, width=1, border_radius=7)
+            kt = kp_f.render("←" if k_char == "⌫" else k_char, True, config.WHITE)
+            surface.blit(kt, kt.get_rect(center=k_rect.center))
+
         # LAN 자동 탐색 섹션 헤더
         lan_hdr = bold_f.render("📡 LAN / 로컬 열린 결투 방 목록 (자동 탐색):", True, config.GOLD)
-        surface.blit(lan_hdr, (right_panel.x + 28, 316))
+        surface.blit(lan_hdr, (right_panel.x + 28, 326))
 
         ref_hov = self.refresh_lan_btn.collidepoint(mx, my)
         pygame.draw.rect(
@@ -829,7 +857,7 @@ class DuelLobbyScene(BaseScene):
         )
 
         # LAN 방 리스트 박스
-        list_box = pygame.Rect(right_panel.x + 28, 356, right_panel.width - 56, 296)
+        list_box = pygame.Rect(right_panel.x + 28, 362, right_panel.width - 56, 290)
         pygame.draw.rect(surface, (20, 17, 32), list_box, border_radius=12)
         pygame.draw.rect(surface, config.UI_BORDER, list_box, width=1, border_radius=12)
 

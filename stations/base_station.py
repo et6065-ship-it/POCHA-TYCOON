@@ -202,16 +202,16 @@ class StationSlot:
         pygame.draw.rect(surface, bg_col, r, border_radius=8)
         pygame.draw.rect(surface, border_col, r, width=2, border_radius=8)
 
-        font_sm = config.get_font(12, bold=True)
-        font_xs = config.get_font(11, bold=False)
+        font_sm = config.get_font(13, bold=True)
+        font_xs = config.get_font(12, bold=True)
 
         if self.state == STATE_IDLE:
-            lbl = font_xs.render(empty_label, True, config.TEXT_MUTED)
+            lbl = font_xs.render(empty_label.replace("클릭", "터치"), True, config.TEXT_SECONDARY)
             surface.blit(lbl, (r.centerx - lbl.get_width() // 2, r.centery - lbl.get_height() // 2))
             return
 
-        icon_size = min(46, max(28, min(r.width, r.height) - 22))
-        icon_center = (r.centerx, r.y + icon_size // 2 + 6)
+        icon_size = min(48, max(30, min(r.width, r.height) - 20))
+        icon_center = (r.centerx, r.y + icon_size // 2 + 5)
         if self.recipe_id:
             draw_food_icon(
                 surface,
@@ -221,9 +221,9 @@ class StationSlot:
                 burnt=(self.state == STATE_BURNT),
             )
 
-        # 하단 게이지 바 및 상태 라벨
-        gauge_rect = pygame.Rect(r.x + 6, r.bottom - 14, r.width - 12, 8)
-        pygame.draw.rect(surface, config.GAUGE_BG, gauge_rect, border_radius=4)
+        # 하단 게이지 바 및 상태 라벨 (모바일 시인성 강화: 게이지 두께 10px)
+        gauge_rect = pygame.Rect(r.x + 6, r.bottom - 15, r.width - 12, 10)
+        pygame.draw.rect(surface, config.GAUGE_BG, gauge_rect, border_radius=5)
 
         if self.state == STATE_COOKING:
             fill_w = int((gauge_rect.width - 2) * self.progress)
@@ -232,10 +232,10 @@ class StationSlot:
                     surface,
                     config.GAUGE_COOKING,
                     (gauge_rect.x + 1, gauge_rect.y + 1, fill_w, gauge_rect.height - 2),
-                    border_radius=3,
+                    border_radius=4,
                 )
             st_surf = font_xs.render("조리중...", True, config.GAUGE_COOKING)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 15))
+            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 17))
 
         elif self.state == STATE_READY:
             if self.can_burn:
@@ -250,22 +250,22 @@ class StationSlot:
                     surface,
                     bar_col,
                     (gauge_rect.x + 1, gauge_rect.y + 1, fill_w, gauge_rect.height - 2),
-                    border_radius=3,
+                    border_radius=4,
                 )
-            label_txt = "주의! 곧 탐" if (self.can_burn and self.burn_progress >= 0.65) else "완성! 클릭"
+            label_txt = "주의! 곧 탐" if (self.can_burn and self.burn_progress >= 0.65) else "완성! 터치"
             label_col = config.GAUGE_WARNING if (self.can_burn and self.burn_progress >= 0.65) else config.GAUGE_READY
             st_surf = font_sm.render(label_txt, True, label_col)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 16))
+            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 17))
 
         elif self.state == STATE_BURNT:
             pygame.draw.rect(
                 surface,
                 config.GAUGE_BURNT,
                 (gauge_rect.x + 1, gauge_rect.y + 1, gauge_rect.width - 2, gauge_rect.height - 2),
-                border_radius=3,
+                border_radius=4,
             )
-            st_surf = font_sm.render("탄 음식 폐기", True, config.GAUGE_BURNT)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 16))
+            st_surf = font_sm.render("탄 음식 비우기", True, config.GAUGE_BURNT)
+            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 17))
 
         pygame.draw.rect(surface, config.GAUGE_BORDER, gauge_rect, width=1, border_radius=4)
 

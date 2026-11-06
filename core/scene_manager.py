@@ -107,12 +107,12 @@ class SceneManager:
             }
         self.opt_sfx_test_btn = pygame.Rect(px + 720, py + 174 + 54, 86, 36)
 
-        # 3) 해상도 프리셋 버튼 4종 (2x2 그리드)
+        # 3) 해상도 및 모바일 화면비 프리셋 버튼 6종 (3x2 그리드)
         self.opt_res_btns: List[Tuple[Tuple[int, int], pygame.Rect]] = []
         for idx, res in enumerate(config.RESOLUTION_PRESETS):
-            col = idx % 2
-            row = idx // 2
-            r = pygame.Rect(px + 34 + col * 392, py + 392 + row * 48, 380, 40)
+            col = idx % 3
+            row = idx // 3
+            r = pygame.Rect(px + 34 + col * 258, py + 390 + row * 46, 250, 38)
             self.opt_res_btns.append((res, r))
 
         # 4) 창모드 / 전체화면 전환 버튼
@@ -264,23 +264,57 @@ class SceneManager:
     goto = change_scene
 
     # ==========================================================================
-    # 해상도 스케일링 대응 마우스 좌표 역변환
+    # 다중 화면비(16:9 / 18:9 / 20:9 / 16:10) 등비 뷰포트 계산 및 터치·마우스 좌표 역변환
     # ==========================================================================
+    @staticmethod
+    def _compute_viewport(win_w: int, win_h: int) -> Tuple[int, int, int, int, float]:
+        """
+        실제 디스플레이 해상도(win_w, win_h) 안에서 1280x720(16:9) 코어 UI가 찌그러지지 않는
+        최대 등비 뷰포트(ox, oy, vp_w, vp_h, scale)를 반환한다.
+        """
+        if win_w <= 0 or win_h <= 0:
+            return 0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT, 1.0
+        scale = min(win_w / float(config.SCREEN_WIDTH), win_h / float(config.SCREEN_HEIGHT))
+        vp_w = max(1, int(round(config.SCREEN_WIDTH * scale)))
+        vp_h = max(1, int(round(config.SCREEN_HEIGHT * scale)))
+        ox = (win_w - vp_w) // 2
+        oy = (win_h - vp_h) // 2
+        return ox, oy, vp_w, vp_h, scale
+
     def _remap_event_to_logical(self, event: pygame.event.Event) -> pygame.event.Event:
-        """실제 창 크기(WINDOW_SIZE)가 1280x720과 다를 때 마우스 좌표를 1280x720 논리 좌표로 변환한다."""
+        """
+        실제 창 크기/모바일 화면비가 1280x720과 다를 때 마우스 및 모바일 터치(FINGER*) 이벤트를
+        1280x720 논리 좌표계로 정확히 역변환한다.
+        """
+        disp = pygame.display.get_surface()
+        win_w, win_h = disp.get_size() if disp is not None else config.WINDOW_SIZE
+        ox, oy, vp_w, vp_h, _scale = self._compute_viewport(win_w, win_h)
+
+        # 모바일 네이티브 터치 이벤트(FINGERDOWN / FINGERUP / FINGERMOTION) -> 마우스 호환 이벤트 변환
+        if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
+            fx = float(getattr(event, "x", 0.5)) * win_w
+            fy = float(getattr(event, "y", 0.5)) * win_h
+            lx = int(round((fx - ox) * config.SCREEN_WIDTH / float(max(1, vp_w))))
+            ly = int(round((fy - oy) * config.SCREEN_HEIGHT / float(max(1, vp_h))))
+            lx = max(0, min(config.SCREEN_WIDTH - 1, lx))
+            ly = max(0, min(config.SCREEN_HEIGHT - 1, ly))
+            if event.type == pygame.FINGERDOWN:
+                return pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"pos": (lx, ly), "button": 1, "touch": True})
+            if event.type == pygame.FINGERUP:
+                return pygame.event.Event(pygame.MOUSEBUTTONUP, {"pos": (lx, ly), "button": 1, "touch": True})
+            return pygame.event.Event(pygame.MOUSEMOTION, {"pos": (lx, ly), "rel": (0, 0), "buttons": (1, 0, 0), "touch": True})
+
         if event.type not in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
             return event
         pos = getattr(event, "pos", None)
         if not pos:
             return event
 
-        disp = pygame.display.get_surface()
-        win_w, win_h = disp.get_size() if disp is not None else config.WINDOW_SIZE
-        if (win_w, win_h) == (config.SCREEN_WIDTH, config.SCREEN_HEIGHT) or win_w <= 0 or win_h <= 0:
+        if (win_w, win_h) == (config.SCREEN_WIDTH, config.SCREEN_HEIGHT):
             return event
 
-        lx = int(round(pos[0] * config.SCREEN_WIDTH / float(win_w)))
-        ly = int(round(pos[1] * config.SCREEN_HEIGHT / float(win_h)))
+        lx = int(round((pos[0] - ox) * config.SCREEN_WIDTH / float(max(1, vp_w))))
+        ly = int(round((pos[1] - oy) * config.SCREEN_HEIGHT / float(max(1, vp_h))))
         lx = max(0, min(config.SCREEN_WIDTH - 1, lx))
         ly = max(0, min(config.SCREEN_HEIGHT - 1, ly))
 
@@ -290,8 +324,8 @@ class SceneManager:
         if hasattr(event, "buttons"):
             attrs["buttons"] = event.buttons
         if hasattr(event, "rel"):
-            rx = int(round(event.rel[0] * config.SCREEN_WIDTH / float(win_w)))
-            ry = int(round(event.rel[1] * config.SCREEN_HEIGHT / float(win_h)))
+            rx = int(round(event.rel[0] * config.SCREEN_WIDTH / float(max(1, vp_w))))
+            ry = int(round(event.rel[1] * config.SCREEN_HEIGHT / float(max(1, vp_h))))
             attrs["rel"] = (rx, ry)
         return pygame.event.Event(event.type, attrs)
 
@@ -477,8 +511,49 @@ class SceneManager:
         if self.current_scene is not None and hasattr(self.current_scene, "update"):
             self.current_scene.update(dt)
 
+    def _draw_mobile_bleed_bezels(
+        self,
+        surface: pygame.Surface,
+        ox: int,
+        oy: int,
+        vp_w: int,
+        vp_h: int,
+    ) -> None:
+        """
+        20:9 울트라와이드 스마트폰이나 16:10 태블릿에서 남는 좌우/상하 Safe Area 여백에
+        검은 빈 공간 대신 야시장 네온 등불·간판 베젤(Bleed Pillar)을 렌더링한다.
+        """
+        win_w, win_h = surface.get_size()
+        surface.fill((14, 11, 24))
+        f_xs = config.get_font(12, bold=True)
+
+        if ox > 4:
+            left_r = pygame.Rect(0, 0, ox, win_h)
+            right_r = pygame.Rect(ox + vp_w, 0, win_w - (ox + vp_w), win_h)
+            for side_r, is_left in ((left_r, True), (right_r, False)):
+                pygame.draw.rect(surface, (18, 14, 32), side_r)
+                border_x = side_r.right - 2 if is_left else side_r.x
+                pygame.draw.line(surface, config.POCHA_ORANGE, (border_x, 0), (border_x, win_h), 2)
+                if side_r.width >= 28:
+                    cx = side_r.centerx
+                    for idx, ly in enumerate(range(70, win_h - 60, 110)):
+                        col = config.POCHA_ORANGE if idx % 2 == 0 else config.NEON_PINK
+                        pygame.draw.circle(surface, (52, 24, 38), (cx, ly), 14)
+                        pygame.draw.circle(surface, col, (cx, ly), 10)
+                        pygame.draw.circle(surface, config.GOLD, (cx, ly), 4)
+                    lbl = f_xs.render("POCHA", True, config.GOLD)
+                    surface.blit(lbl, lbl.get_rect(center=(cx, 28)))
+
+        if oy > 4:
+            top_r = pygame.Rect(0, 0, win_w, oy)
+            bot_r = pygame.Rect(0, oy + vp_h, win_w, win_h - (oy + vp_h))
+            pygame.draw.rect(surface, (18, 14, 32), top_r)
+            pygame.draw.rect(surface, (24, 18, 30), bot_r)
+            pygame.draw.line(surface, config.GOLD, (0, top_r.bottom - 1), (win_w, top_r.bottom - 1), 2)
+            pygame.draw.line(surface, config.POCHA_ORANGE, (0, bot_r.y), (win_w, bot_r.y), 2)
+
     def draw(self, surface: pygame.Surface) -> None:
-        """현재 활성 씬과 전역 옵션 모달을 렌더링하며, 창 해상도에 맞춰 자동 스케일링한다."""
+        """현재 활성 씬과 전역 옵션 모달을 렌더링하며, 다중 화면비(16:9/20:9/16:10) 등비 뷰포트로 자동 스케일링한다."""
         if self.current_scene is None or not hasattr(self.current_scene, "draw"):
             return
 
@@ -495,11 +570,23 @@ class SceneManager:
             self.current_scene.draw(self._logical_surface)
             if self.options_open:
                 self._draw_options_modal(self._logical_surface)
-            try:
-                pygame.transform.smoothscale(self._logical_surface, target_size, surface)
-            except Exception:
-                scaled = pygame.transform.scale(self._logical_surface, target_size)
-                surface.blit(scaled, (0, 0))
+
+            ox, oy, vp_w, vp_h, _scale = self._compute_viewport(target_size[0], target_size[1])
+            if ox > 0 or oy > 0:
+                self._draw_mobile_bleed_bezels(surface, ox, oy, vp_w, vp_h)
+
+            if (vp_w, vp_h) == target_size:
+                try:
+                    pygame.transform.smoothscale(self._logical_surface, target_size, surface)
+                except Exception:
+                    scaled = pygame.transform.scale(self._logical_surface, target_size)
+                    surface.blit(scaled, (0, 0))
+            else:
+                try:
+                    scaled = pygame.transform.smoothscale(self._logical_surface, (vp_w, vp_h))
+                except Exception:
+                    scaled = pygame.transform.scale(self._logical_surface, (vp_w, vp_h))
+                surface.blit(scaled, (ox, oy))
 
     # ==========================================================================
     # 전역 옵션 모달 렌더링 (1280x720 논리 캔버스 기준)
@@ -624,6 +711,7 @@ class SceneManager:
         )
         surface.blit(s2_hdr, (p.x + 30, p.y + 356))
 
+        res_f = config.get_font(12, bold=True)
         for (rw, rh), r_rect in self.opt_res_btns:
             is_sel = (rw, rh) == cur_res
             r_hov = r_rect.collidepoint(mx, my)
@@ -633,8 +721,8 @@ class SceneManager:
             pygame.draw.rect(surface, border_c, r_rect, width=2 if is_sel else 1, border_radius=9)
 
             res_label = config.RESOLUTION_LABELS.get((rw, rh), f"{rw} × {rh}")
-            prefix = "✅ " if is_sel else "🖥️ "
-            rt = sub_f.render(f"{prefix}{res_label}", True, config.WHITE if is_sel else config.TEXT_PRIMARY)
+            prefix = "✅ " if is_sel else "📱 "
+            rt = res_f.render(f"{prefix}{res_label}", True, config.WHITE if is_sel else config.TEXT_PRIMARY)
             surface.blit(rt, rt.get_rect(center=r_rect.center))
 
         # 창모드 / 전체화면 토글 버튼

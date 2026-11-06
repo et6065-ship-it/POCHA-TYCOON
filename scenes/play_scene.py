@@ -1242,8 +1242,8 @@ class PlayScene(BaseScene):
         elif skill_ready:
             pulse = 0.85 + 0.15 * math.sin(self.time_tick * 6.0)
             bg_col = (235, 105, 38) if is_hov else (int(215 * pulse), int(82 * pulse), 34)
-            lbl_top = "⚡ [SPACE] 스킬 발동!"
-            lbl_bot = "클릭 또는 스페이스바"
+            lbl_top = "⚡ 스킬 터치 발동!"
+            lbl_bot = "터치 또는 SPACE"
         else:
             bg_col = (52, 48, 66)
             cd = self.game_mgr.skill_cooldown

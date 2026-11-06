@@ -469,9 +469,9 @@ class TitleScene(BaseScene):
         title_f = config.get_font(15, bold=True)
         body_f = config.get_font(14, bold=False)
 
-        g1 = title_f.render("🎮 핵심 조작 가이드 (100% 마우스 원클릭 + 단축키 완벽 지원)", True, config.GOLD)
+        g1 = title_f.render("📱 모바일 터치 & PC 마우스 원터치 완벽 지원 (다중 화면비 16:9 · 20:9 · 태블릿 호환)", True, config.GOLD)
         g2 = body_f.render(
-            "• [마우스 클릭]: 조리 시작 / 트레이로 이동 / 토핑 추가 / 완성된 메뉴 클릭 시 가장 급한 주문 손님에게 포물선 자동 서빙!",
+            "• [원터치 조작]: 기구 터치 조리 → 트레이 토핑 추가 → 완성 메뉴 터치 시 가장 급한 손님에게 포물선 자동 비행 서빙!",
             True,
             config.TEXT_PRIMARY,
         )
