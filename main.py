@@ -98,6 +98,15 @@ async def main(max_frames: int = 0) -> None:
                 active_surface = pygame.display.get_surface() or screen
                 scene_mgr.draw(active_surface)
                 pygame.display.flip()
+                if frame_count <= 2 and sys.platform == "emscripten":
+                    try:
+                        import platform
+                        platform.window.eval(
+                            "window.__pocha_first_frame_drawn = true; "
+                            "if (window.__dismissPochaBootLoader) { window.__dismissPochaBootLoader(); }"
+                        )
+                    except Exception:
+                        pass
             except Exception:
                 if sys.platform != "emscripten":
                     try:
