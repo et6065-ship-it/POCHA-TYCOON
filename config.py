@@ -173,27 +173,68 @@ def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> No
         pass
 
 
+_MOBILE_CHECK_DONE: bool = False
+
+
 def is_mobile_ui() -> bool:
     """모바일 브라우저 접속 또는 모바일 세로(Portrait)·와이드(20:9) 화면 모드일 때 True를 반환한다 (텍스트 제거·그림 위주 UI 활성화)."""
-    global MOBILE_BROWSER_DETECTED
+    global MOBILE_BROWSER_DETECTED, _MOBILE_CHECK_DONE
     if WINDOW_HEIGHT > WINDOW_WIDTH or (WINDOW_WIDTH, WINDOW_HEIGHT) == (1600, 720) or MOBILE_BROWSER_DETECTED:
         return True
-    if sys.platform == "emscripten":
+    if sys.platform == "emscripten" and not _MOBILE_CHECK_DONE:
         try:
             import platform
 
             win = platform.window
-            if bool(int(getattr(win, "__pocha_is_mobile", 0))) or bool(int(getattr(win, "__pocha_portrait", 0))):
-                MOBILE_BROWSER_DETECTED = True
-                return True
-            vw = int(getattr(win, "innerWidth", 1280) or 1280)
-            vh = int(getattr(win, "innerHeight", 720) or 720)
-            if vh > vw or vw < 960:
-                MOBILE_BROWSER_DETECTED = True
-                return True
+            try:
+                ua = str(win.navigator.userAgent or "").lower()
+                if any(
+                    k in ua
+                    for k in (
+                        "android",
+                        "iphone",
+                        "ipad",
+                        "ipod",
+                        "mobile",
+                        "webos",
+                        "iemobile",
+                        "opera mini",
+                        "kakaotalk",
+                    )
+                ):
+                    MOBILE_BROWSER_DETECTED = True
+                    _MOBILE_CHECK_DONE = True
+                    return True
+            except Exception:
+                pass
+            try:
+                if int(win.navigator.maxTouchPoints or 0) > 1:
+                    MOBILE_BROWSER_DETECTED = True
+                    _MOBILE_CHECK_DONE = True
+                    return True
+            except Exception:
+                pass
+            try:
+                if bool(int(getattr(win, "__pocha_is_mobile", 0))) or bool(int(getattr(win, "__pocha_portrait", 0))):
+                    MOBILE_BROWSER_DETECTED = True
+                    _MOBILE_CHECK_DONE = True
+                    return True
+            except Exception:
+                pass
+            try:
+                vw = int(win.innerWidth or 1280)
+                vh = int(win.innerHeight or 720)
+                if vh > vw or vw < 960 or vh < 560:
+                    MOBILE_BROWSER_DETECTED = True
+                    _MOBILE_CHECK_DONE = True
+                    return True
+                if vw >= 960 and vh >= 560:
+                    _MOBILE_CHECK_DONE = True
+            except Exception:
+                pass
         except Exception:
             pass
-    return False
+    return MOBILE_BROWSER_DETECTED
 
 
 def apply_display_mode(

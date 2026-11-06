@@ -238,6 +238,19 @@ jobs:
           </div>
           <script>
           (function(){
+            try {
+              var vw0 = window.innerWidth || document.documentElement.clientWidth || 1280;
+              var vh0 = window.innerHeight || document.documentElement.clientHeight || 720;
+              var isMobInit = Boolean(
+                (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+                (navigator.maxTouchPoints && navigator.maxTouchPoints > 1) ||
+                /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|KAKAOTALK/i.test(navigator.userAgent || '') ||
+                (vh0 > vw0) ||
+                (vw0 < 960)
+              );
+              window.__pocha_is_mobile = isMobInit ? 1 : 0;
+              window.__pocha_portrait = (vh0 > vw0) ? 1 : 0;
+            } catch (e) {}
             window.__pochaAudioContexts = window.__pochaAudioContexts || [];
             var OrigAudioCtx = window.AudioContext || window.webkitAudioContext;
             if (OrigAudioCtx && !window.__pochaCtxHooked) {

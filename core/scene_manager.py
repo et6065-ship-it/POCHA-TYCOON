@@ -707,6 +707,7 @@ class SceneManager:
 
         # 모바일 브라우저/SDL에서 터치 1회에 FINGER* 이벤트와 합성 MOUSE* 이벤트가 중복 발생하는 현상 원천 차단
         if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
+            config.MOBILE_BROWSER_DETECTED = True
             self._last_touch_event_ticks = now_ticks
         elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
             last_touch_t = int(getattr(self, "_last_touch_event_ticks", -9999))
