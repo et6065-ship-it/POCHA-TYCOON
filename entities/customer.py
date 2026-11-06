@@ -561,12 +561,24 @@ class Customer:
         is_mob = config.is_mobile_ui()
         item_count = len(display_orders)
 
+        short_map = {
+            "갈릭버터 큐브스테이크": "갈릭 스테이크",
+            "오리지널 큐브스테이크": "큐브스테이크",
+            "스위트 칠리 지파이": "칠리 지파이",
+            "마라 시즈닝 지파이": "마라 지파이",
+            "크리스피 대왕 지파이": "대왕 지파이",
+            "어묵국물 (오뎅탕)": "어묵국물",
+            "전통 살얼음 식혜": "살얼음 식혜",
+            "구슬 사이다 (라무네)": "라무네 사이다",
+            "타피오카 버블밀크티": "버블밀크티",
+        }
+
         if is_mob:
-            # 모바일 그림 중심 말풍선: 글자를 완전히 없애고 큼직한 음식 일러스트 + 토핑 아이콘만 배치
-            row_h = 58
-            bubble_w = max(116, min(142, self.rect.right - char_rect.right + 12))
+            # 모바일 주문 말풍선: 대형 음식 아이콘 + 음식 이름 + 토핑 아이콘/이름만 깔끔하게 표시 (조리법 설명 문구 생략)
+            row_h = 56
+            bubble_w = max(148, self.rect.right - char_rect.right + 14)
             bubble_h = 12 + item_count * row_h
-            bubble_x = max(self.rect.x + 76, self.rect.right - bubble_w - 4)
+            bubble_x = max(self.rect.x + 72, self.rect.right - bubble_w - 2)
             min_bubble_y = config.CUSTOMER_AREA_TOP + 12
             max_bubble_y = max(min_bubble_y, self.rect.bottom - bubble_h - 4)
             bubble_y = max(min_bubble_y, min(char_rect.top - 16, max_bubble_y))
@@ -588,12 +600,12 @@ class Customer:
             pygame.draw.rect(surface, border_col, bubble_rect, width=3, border_radius=12)
 
             completed_pool = list(self.completed_orders)
-            chk_font = config.get_font(14, bold=True)
-            plus_font = config.get_font(15, bold=True)
+            chk_font = config.get_font(13, bold=True)
+            top_font = config.get_font(12, bold=True)
 
             for idx, rid in enumerate(display_orders):
                 row_y = bubble_rect.y + 6 + idx * row_h
-                row_rect = pygame.Rect(bubble_rect.x + 6, row_y, bubble_rect.width - 12, row_h - 4)
+                row_rect = pygame.Rect(bubble_rect.x + 5, row_y, bubble_rect.width - 10, row_h - 4)
 
                 is_done = False
                 if rid in completed_pool:
@@ -601,6 +613,8 @@ class Customer:
                     is_done = True
 
                 rec = RECIPES.get(rid)
+                full_name = str(rec["name"]) if rec else rid
+                short_name = short_map.get(full_name, full_name)
                 req_tops = list(rec.get("required_toppings", [])) if (rec and rec.get("has_topping", False)) else []
 
                 row_bg = (214, 248, 222) if is_done else (248, 242, 230)
@@ -608,24 +622,32 @@ class Customer:
                 pygame.draw.rect(surface, row_bg, row_rect, border_radius=10)
                 pygame.draw.rect(surface, row_border, row_rect, width=2 if (is_done or req_tops) else 1, border_radius=10)
 
+                draw_food_icon(surface, (row_rect.x + 23, row_rect.centery), rid, size=42, burnt=False)
+
+                max_txt_w = row_rect.width - 48
+                active_nf = config.get_font(14, bold=True)
+                for f_sz in (14, 13, 12, 11):
+                    active_nf = config.get_font(f_sz, bold=True)
+                    if active_nf.size(short_name)[0] <= max_txt_w:
+                        break
+                text_col = (24, 118, 48) if is_done else (18, 14, 28)
+                nm_surf = active_nf.render(short_name, True, text_col)
+
                 if req_tops:
-                    # 음식 아이콘(좌) + 토핑 아이콘(우) 직관적 그림 조합
-                    food_cx = row_rect.x + 32
-                    draw_food_icon(surface, (food_cx, row_rect.centery), rid, size=48, burnt=False)
-                    p_surf = plus_font.render("+", True, (212, 72, 24))
-                    surface.blit(p_surf, p_surf.get_rect(center=(row_rect.x + 64, row_rect.centery)))
-                    top_cx = row_rect.right - 24
-                    pygame.draw.circle(surface, (255, 250, 238), (top_cx, row_rect.centery), 16)
-                    pygame.draw.circle(surface, (222, 92, 32), (top_cx, row_rect.centery), 16, width=2)
-                    draw_topping_badge(surface, (top_cx, row_rect.centery), str(req_tops[0]), size=24)
+                    surface.blit(nm_surf, (row_rect.x + 44, row_rect.y + 4))
+                    top_id = str(req_tops[0])
+                    top_names = [TOPPINGS[t]["short_name"] for t in req_tops if t in TOPPINGS]
+                    top_lbl = "+" + "+".join(top_names) if top_names else "+토핑"
+                    draw_topping_badge(surface, (row_rect.x + 53, row_rect.bottom - 13), top_id, size=18)
+                    t_surf = top_font.render(top_lbl, True, (204, 62, 18))
+                    surface.blit(t_surf, (row_rect.x + 65, row_rect.bottom - 21))
                 else:
-                    # 단일 메뉴: 말풍선 한가운데 초대형 음식 일러스트
-                    draw_food_icon(surface, row_rect.center, rid, size=50, burnt=False)
+                    surface.blit(nm_surf, (row_rect.x + 44, row_rect.centery - nm_surf.get_height() // 2))
 
                 if is_done:
-                    chk_pos = (row_rect.right - 14, row_rect.y + 14)
-                    pygame.draw.circle(surface, (34, 168, 68), chk_pos, 11)
-                    pygame.draw.circle(surface, config.WHITE, chk_pos, 11, width=2)
+                    chk_pos = (row_rect.right - 13, row_rect.y + 13)
+                    pygame.draw.circle(surface, (34, 168, 68), chk_pos, 10)
+                    pygame.draw.circle(surface, config.WHITE, chk_pos, 10, width=2)
                     c_surf = chk_font.render("✔", True, config.WHITE)
                     surface.blit(c_surf, c_surf.get_rect(center=chk_pos))
             return

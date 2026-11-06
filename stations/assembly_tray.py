@@ -494,14 +494,10 @@ class AssemblyTray:
 
             dish = self.dishes[idx] if idx < len(self.dishes) else None
             if dish is not None:
-                if is_mobile:
-                    icon_size = min(58, max(48, min(s_rect.width, s_rect.height) - 12))
-                    if dish.has_topping:
-                        pygame.draw.circle(surface, config.GOLD, s_rect.center, icon_size // 2 + 4, width=3)
-                    dish.draw(surface, s_rect.center, size=icon_size)
-                else:
-                    icon_size = min(56, max(38, min(s_rect.width, s_rect.height) - 20))
-                    dish.draw(surface, (s_rect.centerx, s_rect.centery - 9), size=icon_size)
+                icon_size = min(56, max(38, min(s_rect.width, s_rect.height) - 20))
+                if is_mobile and dish.has_topping:
+                    pygame.draw.circle(surface, config.GOLD, (s_rect.centerx, s_rect.centery - 9), icon_size // 2 + 4, width=3)
+                dish.draw(surface, (s_rect.centerx, s_rect.centery - 9), size=icon_size)
 
                 # 우측 상단 모바일 원터치 폐기 [✕] 배지 (28x28 대형 고시인성)
                 del_badge = pygame.Rect(s_rect.right - 30, s_rect.y + 2, 28, 28)
@@ -518,27 +514,26 @@ class AssemblyTray:
                     pygame.draw.rect(surface, config.RED, (hbar.x, hbar.y, int(hbar.width * hold_ratio), hbar.height), border_radius=6)
                     pygame.draw.rect(surface, config.WHITE, hbar, width=2, border_radius=6)
 
-                if not is_mobile:
-                    name_txt = (
-                        dish.name.replace("갈릭버터 큐브스테이크", "갈릭 큐브스테이크")
-                        .replace("오리지널 큐브스테이크", "큐브스테이크")
-                        .replace("스위트 칠리 지파이", "칠리 지파이")
-                        .replace("마라 시즈닝 지파이", "마라 지파이")
-                        .replace("크리스피 대왕 지파이", "대왕 지파이")
-                    )
-                    lbl_bg = pygame.Rect(s_rect.x + 3, s_rect.bottom - 24, s_rect.width - 6, 22)
-                    pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=6)
-                    pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=6)
-                    dish_font = font_xs
-                    for f_sz in (14, 13, 12, 11):
-                        dish_font = config.get_font(f_sz, bold=True)
-                        if dish_font.size(name_txt)[0] <= lbl_bg.width - 6:
-                            break
-                    lbl_surf = dish_font.render(name_txt, True, config.GOLD if dish.has_topping else config.WHITE)
-                    surface.blit(
-                        lbl_surf,
-                        (lbl_bg.centerx - lbl_surf.get_width() // 2, lbl_bg.centery - lbl_surf.get_height() // 2),
-                    )
+                name_txt = (
+                    dish.name.replace("갈릭버터 큐브스테이크", "갈릭 큐브스테이크")
+                    .replace("오리지널 큐브스테이크", "큐브스테이크")
+                    .replace("스위트 칠리 지파이", "칠리 지파이")
+                    .replace("마라 시즈닝 지파이", "마라 지파이")
+                    .replace("크리스피 대왕 지파이", "대왕 지파이")
+                )
+                lbl_bg = pygame.Rect(s_rect.x + 3, s_rect.bottom - 24, s_rect.width - 6, 22)
+                pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=6)
+                pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=6)
+                dish_font = font_xs
+                for f_sz in (14, 13, 12, 11, 10):
+                    dish_font = config.get_font(f_sz, bold=True)
+                    if dish_font.size(name_txt)[0] <= lbl_bg.width - 6:
+                        break
+                lbl_surf = dish_font.render(name_txt, True, config.GOLD if dish.has_topping else config.WHITE)
+                surface.blit(
+                    lbl_surf,
+                    (lbl_bg.centerx - lbl_surf.get_width() // 2, lbl_bg.centery - lbl_surf.get_height() // 2),
+                )
             else:
                 if is_mobile:
                     pygame.draw.circle(surface, (46, 38, 58), s_rect.center, 14, width=2)
@@ -551,7 +546,7 @@ class AssemblyTray:
                         (empty_pill.centerx - empty_surf.get_width() // 2, empty_pill.centery - empty_surf.get_height() // 2),
                     )
 
-        # 2. 토핑 버튼 렌더링 (큼직한 터치 버튼 >= 56x44px, 모바일은 대형 아이콘만 중앙 배치)
+        # 2. 토핑 버튼 렌더링 (큼직한 터치 버튼 >= 56x44px, 토핑 아이콘 + 토핑 이름 표시)
         top_font = config.get_font(15, bold=True)
         for btn_rect, tid in self.topping_buttons:
             t_meta = TOPPINGS.get(tid)
@@ -565,11 +560,6 @@ class AssemblyTray:
 
             pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
             pygame.draw.rect(surface, b_col, btn_rect, width=3 if can_apply else 2, border_radius=10)
-
-            if is_mobile:
-                badge_size = min(50, max(40, min(btn_rect.width, btn_rect.height) - 8))
-                draw_topping_badge(surface, btn_rect.center, tid, size=badge_size)
-                continue
 
             badge_size = min(28, max(22, btn_rect.height - 14))
             draw_topping_badge(

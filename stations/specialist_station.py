@@ -464,26 +464,22 @@ class SpecialistStation:
             stripe_r = pygame.Rect(btn_rect.x + 4, btn_rect.y + 6, 6, btn_rect.height - 12)
             pygame.draw.rect(surface, r_col, stripe_r, border_radius=3)
 
-            if is_mobile:
-                icon_sz = min(54, max(46, min(btn_rect.width, btn_rect.height) - 10))
-                if is_selected:
-                    pygame.draw.circle(surface, config.NEON_CYAN, btn_rect.center, icon_sz // 2 + 4, width=2)
-                draw_food_icon(surface, btn_rect.center, rid, size=icon_sz, burnt=False)
-                continue
-
-            # 좌측 컬러 스트라이프 & 46px 대형 음식 아이콘
+            # 좌측 컬러 스트라이프 & 대형 음식 아이콘
             icon_pos = (btn_rect.x + 36, btn_rect.centery)
-            draw_food_icon(surface, icon_pos, rid, size=46, burnt=False)
+            draw_food_icon(surface, icon_pos, rid, size=48 if is_mobile else 46, burnt=False)
 
-            # 우측 상단 굵은 메뉴명
+            # 우측 굵은 메뉴명 (모바일에서는 가격/설명 배지를 생략하고 음식 이름을 정중앙에 큼직하게 배치)
             max_tx_w = btn_rect.width - 68
             act_nf = name_f
-            for sz in (15, 14, 13, 12):
+            for sz in (16 if is_mobile else 15, 15, 14, 13, 12):
                 act_nf = config.get_font(sz, bold=True)
                 if act_nf.size(r_name)[0] <= max_tx_w:
                     break
             nm_col = (255, 244, 148) if is_selected else (config.WHITE if has_empty else config.TEXT_MUTED)
             nm_s = act_nf.render(r_name, True, nm_col)
+            if is_mobile:
+                surface.blit(nm_s, (btn_rect.x + 64, btn_rect.centery - nm_s.get_height() // 2))
+                continue
             surface.blit(nm_s, (btn_rect.x + 64, btn_rect.centery - 20))
 
             # 우측 하단 가격 & 터치 투입 배지
@@ -527,8 +523,12 @@ class SpecialistStation:
         pygame.draw.rect(surface, config.GOLD, hdr_rect, width=1, border_radius=8)
         lvl = self.game_mgr.get_station_level(self.slot_type)
         if is_mobile:
-            draw_food_icon(surface, (hdr_rect.centerx - 24, hdr_rect.centery), self.selected_recipe_id, size=24, burnt=False)
-            lv_badge = pygame.Rect(hdr_rect.centerx - 4, hdr_rect.y + 4, 42, 22)
+            sel_rec = RECIPES.get(self.selected_recipe_id)
+            sel_nm_hdr = str(sel_rec["name"]) if sel_rec else "단팥 붕어빵"
+            draw_food_icon(surface, (hdr_rect.x + 22, hdr_rect.centery), self.selected_recipe_id, size=24, burnt=False)
+            nm_hdr_s = config.get_font(14, bold=True).render(sel_nm_hdr, True, config.GOLD)
+            surface.blit(nm_hdr_s, (hdr_rect.x + 38, hdr_rect.centery - nm_hdr_s.get_height() // 2))
+            lv_badge = pygame.Rect(hdr_rect.right - 48, hdr_rect.y + 4, 42, 22)
             pygame.draw.rect(surface, (18, 16, 28), lv_badge, border_radius=6)
             pygame.draw.rect(surface, config.GOLD, lv_badge, width=1, border_radius=6)
             lv_s = config.get_font(12, bold=True).render(f"Lv.{lvl}", True, config.GOLD)
@@ -558,10 +558,10 @@ class SpecialistStation:
             )
 
             sel_rec = RECIPES.get(self.selected_recipe_id)
-            sel_nm = "" if is_mobile else (str(sel_rec["name"]) if sel_rec else "단팥")
+            sel_nm = str(sel_rec["name"]) if sel_rec else "단팥"
             for idx, slot in enumerate(self.slots):
                 rec = RECIPES.get(slot.recipe_id or "")
-                r_nm = "" if is_mobile else (str(rec["name"]) if rec else "")
+                r_nm = str(rec["name"]) if rec else ""
                 draw_bungeo_tycoon_mold_slot(
                     surface,
                     slot.rect,
@@ -572,29 +572,6 @@ class SpecialistStation:
                     is_targeted=(getattr(self, "selected_slot_index", None) == idx),
                     time_tick=time_tick,
                 )
-                if is_mobile:
-                    # 모바일: 주물틀 하단 텍스트 배지 위에 깔끔한 무문자 컬러 게이지/아이콘 표시
-                    sr = slot.rect
-                    bot_bar = pygame.Rect(sr.x + 6, sr.bottom - 24, sr.width - 12, 18)
-                    pygame.draw.rect(surface, (22, 24, 34), bot_bar, border_radius=6)
-                    if slot.state == STATE_IDLE:
-                        pygame.draw.circle(surface, (118, 126, 152), bot_bar.center, 5, width=2)
-                    elif slot.state == STATE_COOKING:
-                        if slot.is_flip_ready:
-                            pygame.draw.rect(surface, config.NEON_CYAN, bot_bar, border_radius=6)
-                            pygame.draw.circle(surface, (18, 24, 36), bot_bar.center, 6, width=2)
-                        else:
-                            fill_w = max(4, int((bot_bar.width - 4) * slot.progress))
-                            pygame.draw.rect(
-                                surface,
-                                config.GAUGE_COOKING,
-                                (bot_bar.x + 2, bot_bar.y + 2, fill_w, bot_bar.height - 4),
-                                border_radius=4,
-                            )
-                    elif slot.state == STATE_READY:
-                        pygame.draw.rect(surface, config.NEON_GREEN, bot_bar, border_radius=6)
-                    elif slot.state == STATE_BURNT:
-                        pygame.draw.rect(surface, config.GAUGE_BURNT, bot_bar, border_radius=6)
             return
 
         name_f = config.get_font(13, bold=True)
@@ -630,18 +607,17 @@ class SpecialistStation:
                 surface.blit(s2, s2.get_rect(center=(sr.centerx, sr.centery + 12)))
                 continue
 
-            if not is_mobile:
-                rec = RECIPES.get(slot.recipe_id or "")
-                short_nm = str(rec["name"]) if rec else str(slot.recipe_id)
-                if len(short_nm) > 7:
-                    short_nm = short_nm[:7]
+            rec = RECIPES.get(slot.recipe_id or "")
+            short_nm = str(rec["name"]) if rec else str(slot.recipe_id)
+            if len(short_nm) > 7:
+                short_nm = short_nm[:7]
 
-                # 상단 메뉴명 배지 (조리 중일 때는 우측 상단 [✕] 취소 버튼과 겹치지 않게 폭 조정)
-                tag_w = (sr.width - 36) if slot.state == STATE_COOKING else (sr.width - 12)
-                top_tag = pygame.Rect(sr.x + 6, sr.y + 5, tag_w, 20)
-                pygame.draw.rect(surface, (18, 16, 28), top_tag, border_radius=5)
-                nt = config.get_font(12, bold=True).render(short_nm, True, config.WHITE)
-                surface.blit(nt, nt.get_rect(center=top_tag.center))
+            # 상단 메뉴명 배지 (조리 중일 때는 우측 상단 [✕] 취소 버튼과 겹치지 않게 폭 조정)
+            tag_w = (sr.width - 36) if slot.state == STATE_COOKING else (sr.width - 12)
+            top_tag = pygame.Rect(sr.x + 6, sr.y + 5, tag_w, 20)
+            pygame.draw.rect(surface, (18, 16, 28), top_tag, border_radius=5)
+            nt = config.get_font(12, bold=True).render(short_nm, True, config.WHITE)
+            surface.blit(nt, nt.get_rect(center=top_tag.center))
 
             if slot.state == STATE_COOKING:
                 cancel_badge = pygame.Rect(sr.right - 26, sr.y + 4, 22, 22)

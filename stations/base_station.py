@@ -299,8 +299,8 @@ class StationSlot:
                 )
                 return
 
-            icon_size = min(58, max(48, min(r.width, r.height) - 18))
-            icon_center = (r.centerx, r.centery - 6)
+            icon_size = min(54, max(44, min(r.width, r.height) - 24))
+            icon_center = (r.centerx, r.centery + 2)
 
             if self.state == STATE_READY:
                 # 완성: 황금빛 후광(Glow) + 체크/반짝임 그래픽
@@ -315,6 +315,19 @@ class StationSlot:
                     size=icon_size,
                     burnt=(self.state == STATE_BURNT),
                 )
+                rec = RECIPES.get(self.recipe_id)
+                if rec:
+                    r_nm = str(rec.get("name", self.recipe_id))
+                    tag_w = (r.width - 34) if self.state == STATE_COOKING else (r.width - 10)
+                    name_tag = pygame.Rect(r.x + 5, r.y + 4, max(36, tag_w), 18)
+                    pygame.draw.rect(surface, (18, 15, 28), name_tag, border_radius=5)
+                    nf = config.get_font(12, bold=True)
+                    for f_sz in (12, 11, 10):
+                        nf = config.get_font(f_sz, bold=True)
+                        if nf.size(r_nm)[0] <= name_tag.width - 4:
+                            break
+                    ns = nf.render(r_nm, True, config.GOLD if self.state == STATE_READY else config.WHITE)
+                    surface.blit(ns, ns.get_rect(center=name_tag.center))
 
             if self.state == STATE_READY:
                 chk_center = (r.right - 14, r.y + 14)
@@ -694,8 +707,11 @@ class BaseStation:
                 if (self.game_mgr and hasattr(self.game_mgr, "get_station_level"))
                 else 1
             )
-            draw_food_icon(surface, (header_rect.centerx - 24, header_rect.centery), str(rep_rid), size=24, burnt=False)
-            lv_badge = pygame.Rect(header_rect.centerx - 4, header_rect.y + 4, 42, 22)
+            draw_food_icon(surface, (header_rect.x + 18, header_rect.centery), str(rep_rid), size=24, burnt=False)
+            short_nm = self.short_name or self.name
+            nm_s = config.get_font(13, bold=True).render(short_nm, True, config.GOLD)
+            surface.blit(nm_s, (header_rect.x + 34, header_rect.centery - nm_s.get_height() // 2))
+            lv_badge = pygame.Rect(header_rect.right - 46, header_rect.y + 4, 40, 22)
             pygame.draw.rect(surface, (18, 16, 28), lv_badge, border_radius=6)
             pygame.draw.rect(surface, config.GOLD, lv_badge, width=1, border_radius=6)
             lv_s = config.get_font(12, bold=True).render(f"Lv.{lvl}", True, config.GOLD)

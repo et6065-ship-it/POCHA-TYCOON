@@ -227,22 +227,30 @@ class GrillStation(BaseStation):
         pygame.draw.rect(surface, btn_col, self.cook_button_rect, border_radius=10)
         pygame.draw.rect(surface, border_col, self.cook_button_rect, width=3 if has_idle else 2, border_radius=10)
 
+        rec = RECIPES.get(self.base_recipe_id)
+        base_name = str(rec["name"]) if rec else self.base_recipe_id
+        font_main = config.get_font(15, bold=True)
+
         if is_mobile:
-            icon_sz = min(54, max(46, min(self.cook_button_rect.width, self.cook_button_rect.height) - 8))
-            draw_food_icon(surface, self.cook_button_rect.center, self.base_recipe_id, size=icon_sz, burnt=False)
-            plus_c = (self.cook_button_rect.centerx + icon_sz // 2 + 12, self.cook_button_rect.centery)
-            pygame.draw.circle(surface, (28, 22, 36), plus_c, 11)
-            pygame.draw.circle(surface, config.GOLD if has_idle else config.UI_BORDER, plus_c, 11, width=2)
-            pygame.draw.line(surface, config.WHITE, (plus_c[0] - 5, plus_c[1]), (plus_c[0] + 5, plus_c[1]), 3)
-            pygame.draw.line(surface, config.WHITE, (plus_c[0], plus_c[1] - 5), (plus_c[0], plus_c[1] + 5), 3)
+            draw_food_icon(surface, (self.cook_button_rect.x + 32, self.cook_button_rect.centery), self.base_recipe_id, size=44, burnt=False)
+            max_w = self.cook_button_rect.width - 62
+            for f_sz in (16, 15, 14, 13):
+                font_main = config.get_font(f_sz, bold=True)
+                if font_main.size(base_name)[0] <= max_w:
+                    break
+            lbl_main = font_main.render(base_name, True, config.WHITE)
+            surface.blit(
+                lbl_main,
+                (
+                    self.cook_button_rect.x + 58,
+                    self.cook_button_rect.centery - lbl_main.get_height() // 2,
+                ),
+            )
             return
 
         icon_pos = (self.cook_button_rect.x + 28, self.cook_button_rect.centery)
         draw_food_icon(surface, icon_pos, self.base_recipe_id, size=40, burnt=False)
 
-        rec = RECIPES.get(self.base_recipe_id)
-        base_name = str(rec["name"]) if rec else self.base_recipe_id
-        font_main = config.get_font(15, bold=True)
         font_sub = config.get_font(12, bold=True)
 
         main_str = f"🔥 {base_name} 올리기"

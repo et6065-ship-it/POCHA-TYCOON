@@ -250,14 +250,27 @@ class DispenserStation(BaseStation):
             pygame.draw.rect(surface, border_col, r, width=3 if is_ready else 2, border_radius=10)
 
             if is_mobile:
-                icon_size = min(58, max(48, min(r.width, r.height) - 18))
-                icon_center = (r.centerx, r.centery - 6)
+                active_name_f = font_title
+                for f_sz in (13, 12, 11, 10):
+                    active_name_f = config.get_font(f_sz, bold=True)
+                    if active_name_f.size(drink_name)[0] <= r.width - 10:
+                        break
+                name_pill = pygame.Rect(r.x + 4, r.y + 4, r.width - 8, 20)
+                pygame.draw.rect(surface, (18, 22, 34), name_pill, border_radius=5)
+                name_surf = active_name_f.render(drink_name, True, config.GOLD if is_ready else config.WHITE)
+                surface.blit(
+                    name_surf,
+                    (name_pill.centerx - name_surf.get_width() // 2, name_pill.centery - name_surf.get_height() // 2),
+                )
+
+                icon_size = min(54, max(42, min(r.width, r.height) - 34))
+                icon_center = (r.centerx, r.centery + 3)
                 if is_ready:
                     pygame.draw.circle(surface, config.GOLD, icon_center, icon_size // 2 + 4, width=3)
                 draw_food_icon(surface, icon_center, drink_id, size=icon_size, burnt=False)
                 if is_ready:
-                    chk_center = (r.right - 14, r.y + 14)
-                    pygame.draw.circle(surface, (28, 168, 84), chk_center, 9)
+                    chk_center = (r.right - 13, r.y + 32)
+                    pygame.draw.circle(surface, (28, 168, 84), chk_center, 8)
                     pygame.draw.circle(surface, config.WHITE, chk_center, 9, width=2)
                     pygame.draw.lines(
                         surface,

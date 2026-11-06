@@ -295,7 +295,7 @@ class BatchPotStation(BaseStation):
                     pygame.draw.circle(surface, config.NEON_GREEN if filled else (24, 34, 28), (dx, dot_y), 6)
                     pygame.draw.circle(surface, config.WHITE if filled else (92, 112, 98), (dx, dot_y), 6, width=1)
 
-            # 모바일 하단 대형 아이콘 버튼 (문구 생략)
+            # 모바일 하단 대형 아이콘 + 음식 이름 버튼
             if slot.state == STATE_IDLE:
                 btn_col = (235, 118, 32)
             elif slot.state == STATE_COOKING:
@@ -304,8 +304,23 @@ class BatchPotStation(BaseStation):
                 btn_col = (42, 152, 82)
             pygame.draw.rect(surface, btn_col, self.action_button_rect, border_radius=10)
             pygame.draw.rect(surface, config.GOLD, self.action_button_rect, width=3, border_radius=10)
-            btn_icon_sz = min(54, max(46, min(self.action_button_rect.width, self.action_button_rect.height) - 8))
-            draw_food_icon(surface, self.action_button_rect.center, self.base_recipe_id, size=btn_icon_sz, burnt=False)
+            draw_food_icon(surface, (self.action_button_rect.x + 32, self.action_button_rect.centery), self.base_recipe_id, size=44, burnt=False)
+            rec = RECIPES.get(self.base_recipe_id)
+            base_name = str(rec["name"]) if rec else self.base_recipe_id
+            max_w = self.action_button_rect.width - 62
+            font_m = config.get_font(15, bold=True)
+            for f_sz in (16, 15, 14, 13):
+                font_m = config.get_font(f_sz, bold=True)
+                if font_m.size(base_name)[0] <= max_w:
+                    break
+            lbl_m = font_m.render(base_name, True, config.WHITE)
+            surface.blit(
+                lbl_m,
+                (
+                    self.action_button_rect.x + 58,
+                    self.action_button_rect.centery - lbl_m.get_height() // 2,
+                ),
+            )
             return
 
         font_lg = config.get_font(15, bold=True)

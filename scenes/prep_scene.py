@@ -1230,7 +1230,11 @@ class PrepScene(BaseScene):
                         is_topped = bool(r_meta.get("toppings"))
                         pygame.draw.rect(surface, (44, 34, 64) if is_topped else (30, 26, 46), cell_r, border_radius=9)
                         pygame.draw.rect(surface, config.GOLD if is_topped else (68, 60, 96), cell_r, width=1, border_radius=9)
-                        art_renderer.draw_food_icon(surface, cell_r.center, rid, size=48)
+                        art_renderer.draw_food_icon(surface, (cell_r.x + 22, cell_r.centery), rid, size=36)
+                        r_short = str(r_meta.get("short_name", r_meta.get("name", rid)))[:8]
+                        nm_f = xs_f if xs_f.size(r_short)[0] <= cell_r.width - 44 else config.get_font(10, bold=True)
+                        nm_s = nm_f.render(r_short, True, config.GOLD if is_topped else config.WHITE)
+                        surface.blit(nm_s, (cell_r.x + 42, cell_r.centery - nm_s.get_height() // 2))
                 else:
                     lock_f = config.get_font(28, bold=True)
                     lk_s = lock_f.render(f"🚧 {sp['emoji']}", True, config.TEXT_SECONDARY)
@@ -1475,7 +1479,7 @@ class PrepScene(BaseScene):
             target_gold = ch_data["base_target_gold"] + (ch_day - 1) * ch_data["daily_target_growth"]
 
             if is_mob:
-                # 모바일 그림 중심 챕터 카드: 부제 및 기구 이름 줄글을 제거하고 2x2 대형 음식 아이콘 그리드 배치
+                # 모바일 그림 중심 챕터 카드: 부제는 생략하되 4종 음식 아이콘과 음식/기구 이름은 표시
                 ch_title_str = f"[{ch_id}] {ch_data['name']}"
                 nm = config.get_font(18, bold=True).render(ch_title_str, True, config.WHITE if unlocked else config.TEXT_MUTED)
                 surface.blit(nm, nm.get_rect(center=(crect.centerx, crect.y + 158)))
@@ -1488,17 +1492,20 @@ class PrepScene(BaseScene):
                 pygame.draw.rect(surface, (68, 62, 92), st_box, width=1, border_radius=12)
 
                 grid_pts = [
-                    (st_box.x + st_box.width // 4, st_box.y + 42),
-                    (st_box.x + (st_box.width * 3) // 4, st_box.y + 42),
-                    (st_box.x + st_box.width // 4, st_box.y + 116),
-                    (st_box.x + (st_box.width * 3) // 4, st_box.y + 116),
+                    (st_box.x + st_box.width // 4, st_box.y + 34),
+                    (st_box.x + (st_box.width * 3) // 4, st_box.y + 34),
+                    (st_box.x + st_box.width // 4, st_box.y + 108),
+                    (st_box.x + (st_box.width * 3) // 4, st_box.y + 108),
                 ]
                 for s_idx, st_id in enumerate(ch_data["stations"][:4]):
                     st_meta = STATIONS_CATALOG[st_id]
                     first_rec = st_meta["recipes"][0] if st_meta["recipes"] else "bungeoppang_redbean"
                     gx, gy = grid_pts[s_idx]
-                    pygame.draw.circle(surface, (36, 30, 56), (gx, gy), 30)
-                    art_renderer.draw_food_icon(surface, (gx, gy), first_rec, size=52)
+                    pygame.draw.circle(surface, (36, 30, 56), (gx, gy), 24)
+                    art_renderer.draw_food_icon(surface, (gx, gy), first_rec, size=42)
+                    st_short = str(st_meta.get("short_name", st_meta["name"]))[:7]
+                    st_lbl = config.get_font(11, bold=True).render(st_short, True, config.WHITE)
+                    surface.blit(st_lbl, st_lbl.get_rect(center=(gx, gy + 32)))
             else:
                 # 챕터명 & 부제
                 ch_title_str = f"[{ch_id}] {ch_data['name']}"
@@ -1650,13 +1657,13 @@ class PrepScene(BaseScene):
                 first_rec = rec_ids[0] if rec_ids else "bungeoppang_redbean"
 
                 if is_mob:
-                    # 모바일 그림 중심 기구 카드: 메뉴명 줄글을 제거하고 기구 하드웨어 + 대표 음식 2종 아이콘 배치
+                    # 모바일 그림 중심 기구 카드: 기구 하드웨어 + 기구명 + 대표 음식 아이콘 배치
                     hw_r = pygame.Rect(irect.x + 8, irect.y + 13, 64, 64)
                     art_renderer.draw_station_hardware(surface, hw_r, station_type=slot_type, station_id=st_id)
-                    c_badge = card_f.render(st_meta["country"], True, config.GOLD)
-                    surface.blit(c_badge, (hw_r.right + 10, irect.y + 10))
+                    c_badge = card_f.render(f"[{st_meta['country']}] {st_meta['short_name']}", True, config.GOLD)
+                    surface.blit(c_badge, (hw_r.right + 10, irect.y + 8))
                     for r_i, r_id in enumerate(rec_ids[:2]):
-                        art_renderer.draw_food_icon(surface, (hw_r.right + 34 + r_i * 58, irect.y + 56), r_id, size=46)
+                        art_renderer.draw_food_icon(surface, (hw_r.right + 34 + r_i * 58, irect.y + 58), r_id, size=44)
                     if is_eq:
                         eq_s = config.get_font(18, bold=True).render("✔", True, config.NEON_CYAN)
                         surface.blit(eq_s, (irect.right - 28, irect.y + 10))

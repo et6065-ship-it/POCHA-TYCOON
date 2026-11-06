@@ -282,13 +282,8 @@ class MoldStation(BaseStation):
             pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
             pygame.draw.rect(surface, border_col, btn_rect, width=3 if is_sel else 2, border_radius=10)
 
-            if is_mobile:
-                icon_sz = min(54, max(46, min(btn_rect.width, btn_rect.height) - 10))
-                draw_food_icon(surface, btn_rect.center, rid, size=icon_sz, burnt=False)
-                continue
-
             icon_pos = (btn_rect.centerx, btn_rect.y + 22)
-            draw_food_icon(surface, icon_pos, rid, size=38, burnt=False)
+            draw_food_icon(surface, icon_pos, rid, size=40 if is_mobile else 38, burnt=False)
 
             rec = RECIPES.get(rid)
             r_name = str(rec["name"]) if rec else rid
