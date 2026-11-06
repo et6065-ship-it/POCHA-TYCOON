@@ -1,0 +1,17 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller / Pygbag local build artifacts
+build/
+dist/
+*.spec
+*.exe
+*.apk
+
+# Local runtime logs & user save data
+crash_log.txt
+save_data.json
+.DS_Store
+Thumbs.db
