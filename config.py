@@ -32,23 +32,96 @@ WINDOW_HEIGHT: int = 720
 WINDOW_SIZE: Tuple[int, int] = (WINDOW_WIDTH, WINDOW_HEIGHT)
 FULLSCREEN: bool = False
 
+# 세로(Portrait) 가상 기준 해상도: 세로 모드 시 720 x 1280 레이아웃으로 자동 재배치된다.
+PORTRAIT_WIDTH: int = 720
+PORTRAIT_HEIGHT: int = 1280
+PORTRAIT_SIZE: Tuple[int, int] = (PORTRAIT_WIDTH, PORTRAIT_HEIGHT)
+
 RESOLUTION_PRESETS: List[Tuple[int, int]] = [
     (1280, 720),
-    (1440, 720),
     (1600, 720),
+    (720, 1280),
+    (720, 1440),
     (1280, 800),
-    (1600, 900),
     (1920, 1080),
 ]
 
 RESOLUTION_LABELS: Dict[Tuple[int, int], str] = {
-    (1280, 720): "1280×720 (16:9 표준 HD)",
-    (1440, 720): "1440×720 (18:9 모바일 와이드)",
-    (1600, 720): "1600×720 (20:9 최신 스마트폰)",
-    (1280, 800): "1280×800 (16:10 태블릿/폴드)",
-    (1600, 900): "1600×900 (16:9 HD+ 대회면)",
-    (1920, 1080): "1920×1080 (16:9 FHD 고해상도)",
+    (1280, 720): "가로 1280×720 (16:9 표준 HD)",
+    (1600, 720): "가로 1600×720 (20:9 모바일 와이드)",
+    (720, 1280): "세로 720×1280 (9:16 모바일 세로)",
+    (720, 1440): "세로 720×1440 (9:18 스마트폰 세로)",
+    (1280, 800): "가로 1280×800 (16:10 태블릿/폴드)",
+    (1920, 1080): "가로 1920×1080 (16:9 FHD 대화면)",
 }
+
+
+def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> None:
+    """웹앱(Pygbag WebAssembly) 환경에서 다크 베젤 CSS 및 브라우저 전체화면 API를 동기화한다."""
+    if sys.platform != "emscripten":
+        return
+    try:
+        import platform
+
+        js_code = """
+        (function() {
+            var doc = document;
+            var body = doc.body;
+            if (body) {
+                body.style.backgroundColor = '#0c0a16';
+                body.style.margin = '0';
+                body.style.padding = '0';
+                body.style.overflow = 'hidden';
+            }
+            var cvs = doc.getElementById('canvas');
+            if (cvs) {
+                cvs.style.objectFit = 'contain';
+                cvs.style.maxWidth = '100vw';
+                cvs.style.maxHeight = '100vh';
+                cvs.style.backgroundColor = '#0c0a16';
+            }
+        })();
+        """
+        platform.window.eval(js_code)
+
+        if fullscreen is True:
+            fs_js = """
+            (function() {
+                var el = document.documentElement;
+                var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+                if (req && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                    var p = req.call(el);
+                    if (p && p.catch) {
+                        p.catch(function() {
+                            var onceFs = function() {
+                                document.removeEventListener('pointerup', onceFs, true);
+                                document.removeEventListener('touchend', onceFs, true);
+                                document.removeEventListener('click', onceFs, true);
+                                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                                    req.call(el);
+                                }
+                            };
+                            document.addEventListener('pointerup', onceFs, true);
+                            document.addEventListener('touchend', onceFs, true);
+                            document.addEventListener('click', onceFs, true);
+                        });
+                    }
+                }
+            })();
+            """
+            platform.window.eval(fs_js)
+        elif fullscreen is False:
+            exit_js = """
+            (function() {
+                var ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+                if (ex && (document.fullscreenElement || document.webkitFullscreenElement)) {
+                    ex.call(document);
+                }
+            })();
+            """
+            platform.window.eval(exit_js)
+    except Exception:
+        pass
 
 
 def apply_display_mode(
@@ -59,7 +132,7 @@ def apply_display_mode(
     """실제 윈도우 해상도 및 전체화면 모드를 즉시 변경하고 새 디스플레이 Surface를 반환한다."""
     global WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_SIZE, FULLSCREEN
     if (int(width), int(height)) not in RESOLUTION_PRESETS:
-        width, height = 1280, 720
+        width, height = (720, 1280) if int(height) > int(width) else (1280, 720)
     WINDOW_WIDTH = int(width)
     WINDOW_HEIGHT = int(height)
     WINDOW_SIZE = (WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -67,6 +140,13 @@ def apply_display_mode(
 
     if not pygame.get_init() or not pygame.display.get_init():
         return None
+
+    if sys.platform == "emscripten":
+        sync_browser_display_and_fullscreen(FULLSCREEN)
+        try:
+            return pygame.display.set_mode(WINDOW_SIZE, 0)
+        except Exception:
+            return pygame.display.get_surface()
 
     flags = pygame.FULLSCREEN if FULLSCREEN else 0
     try:

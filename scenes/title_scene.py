@@ -38,16 +38,18 @@ class TitleScene(BaseScene):
         self.hovered_btn: Optional[str] = None
         self.preview_country: str = self.game_mgr.current_chapter or "KR"
 
-        # UI 영역 Rect 정의 (1280 x 720) — 프로필 카드 + 3대 게임 모드 카드
-        self.profile_card_rect: pygame.Rect = pygame.Rect(40, 215, 280, 340)
-        self.world_tour_rect: pygame.Rect = pygame.Rect(336, 215, 292, 340)
-        self.global_mode_rect: pygame.Rect = pygame.Rect(642, 215, 292, 340)
-        self.duel_mode_rect: pygame.Rect = pygame.Rect(948, 215, 292, 340)
+        # UI 영역 Rect 정의 (1280 x 720) — 프로필 카드 + 2대 메인 게임 모드 카드 (1:1 대전 카드 숨김)
+        self.profile_card_rect: pygame.Rect = pygame.Rect(40, 215, 340, 340)
+        self.world_tour_rect: pygame.Rect = pygame.Rect(404, 215, 406, 340)
+        self.global_mode_rect: pygame.Rect = pygame.Rect(834, 215, 406, 340)
+        self.duel_mode_rect: pygame.Rect = pygame.Rect(-9999, -9999, 0, 0)
 
         # 하단 유틸리티 버튼 Rect 및 상단 9개국 배경 테마 프리뷰 버튼
-        self.load_btn_rect: pygame.Rect = pygame.Rect(40, 648, 162, 46)
-        self.reset_btn_rect: pygame.Rect = pygame.Rect(212, 648, 162, 46)
-        self.options_btn_rect: pygame.Rect = pygame.Rect(384, 648, 198, 46)
+        self.load_btn_rect: pygame.Rect = pygame.Rect(40, 648, 156, 46)
+        self.reset_btn_rect: pygame.Rect = pygame.Rect(204, 648, 156, 46)
+        self.options_btn_rect: pygame.Rect = pygame.Rect(368, 648, 186, 46)
+        self.rotate_btn_rect: pygame.Rect = pygame.Rect(562, 648, 172, 46)
+        self.fullscreen_btn_rect: pygame.Rect = pygame.Rect(742, 648, 178, 46)
         self.country_btn_rects: List[Tuple[str, pygame.Rect]] = [
             (cid, pygame.Rect(796 + idx * 49, 20, 44, 28))
             for idx, cid in enumerate(CHAPTER_ORDER)
@@ -65,8 +67,6 @@ class TitleScene(BaseScene):
                 self.hovered_card = "WORLD_TOUR"
             elif self.global_mode_rect.collidepoint(mx, my):
                 self.hovered_card = "GLOBAL_ENDLESS"
-            elif self.duel_mode_rect.collidepoint(mx, my):
-                self.hovered_card = "DUEL_MODE"
             elif self.profile_card_rect.collidepoint(mx, my):
                 self.hovered_card = "PROFILE"
 
@@ -76,6 +76,10 @@ class TitleScene(BaseScene):
                 self.hovered_btn = "RESET"
             elif self.options_btn_rect.collidepoint(mx, my):
                 self.hovered_btn = "OPTIONS"
+            elif self.rotate_btn_rect.collidepoint(mx, my):
+                self.hovered_btn = "ROTATE"
+            elif self.fullscreen_btn_rect.collidepoint(mx, my):
+                self.hovered_btn = "FULLSCREEN"
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
@@ -101,13 +105,6 @@ class TitleScene(BaseScene):
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter")
-                return
-
-            # 3) 1:1 네트워크 결투 모드 카드 클릭
-            if self.duel_mode_rect.collidepoint(mx, my):
-                sound_fx.play_click()
-                if self.scene_mgr:
-                    self.scene_mgr.change_scene("duel_lobby")
                 return
 
             # 프로필 카드 클릭 시 주인공 선택 탭으로 이동
@@ -162,6 +159,18 @@ class TitleScene(BaseScene):
                     self.scene_mgr.open_options()
                 return
 
+            # 가로/세로 방향 즉시 전환 버튼
+            if self.rotate_btn_rect.collidepoint(mx, my):
+                if self.scene_mgr and hasattr(self.scene_mgr, "toggle_orientation"):
+                    self.scene_mgr.toggle_orientation()
+                return
+
+            # 전체화면 (브라우저 전체화면 포함) 즉시 전환 버튼
+            if self.fullscreen_btn_rect.collidepoint(mx, my):
+                if self.scene_mgr and hasattr(self.scene_mgr, "toggle_fullscreen"):
+                    self.scene_mgr.toggle_fullscreen()
+                return
+
         elif event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_ESCAPE, pygame.K_o):
                 if self.scene_mgr:
@@ -176,10 +185,6 @@ class TitleScene(BaseScene):
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter")
-            elif event.key == pygame.K_3:
-                sound_fx.play_click()
-                if self.scene_mgr:
-                    self.scene_mgr.change_scene("duel_lobby")
 
     def update(self, dt: float) -> None:
         self.time_tick += dt
@@ -205,7 +210,7 @@ class TitleScene(BaseScene):
         # 3. 좌측 현재 주인공 & 진행도 요약 카드
         self._draw_profile_card(surface)
 
-        # 4. 중앙/우측 게임 모드 선택 카드 3종
+        # 4. 중앙/우측 게임 모드 선택 카드 2종 (스토리 모드 & 글로벌 통합 모드)
         self._draw_mode_card(
             surface,
             rect=self.world_tour_rect,
@@ -240,24 +245,7 @@ class TitleScene(BaseScene):
             button_label="글로벌 통합 입장 [2]",
         )
 
-        self._draw_mode_card(
-            surface,
-            rect=self.duel_mode_rect,
-            mode_key="DUEL_MODE",
-            badge_text="MODE 3 · 1v1 NETWORK",
-            title_text="1:1 네트워크 결투",
-            subtitle_text="Online / LAN Real-Time Duel",
-            desc_lines=[
-                "네트워크 연결 실시간 매출 타임어택!",
-                "9개국 야시장 & 32인 마스터 전원 선택",
-                "동일 기구 레벨 & 시드 공정 실력 승부!",
-            ],
-            food_icons=["tteokbokki_cheese", "yakitori_tare", "quesadilla_chicken", "jipai_mala"],
-            accent_color=config.NEON_PINK,
-            button_label="1:1 결투 로비 입장 [3]",
-        )
-
-        # 5. 하단 조작 가이드 및 세이브 버튼
+        # 5. 하단 조작 가이드 및 세이브/화면 전환 버튼
         self._draw_bottom_bar(surface)
 
         # 6. 파티클 & 플로팅 텍스트
@@ -478,11 +466,15 @@ class TitleScene(BaseScene):
         surface.blit(g1, (guide_rect.x + 18, guide_rect.y + 10))
         surface.blit(g2, (guide_rect.x + 18, guide_rect.y + 34))
 
-        # 세이브 불러오기 / 초기화 / 옵션(사운드·해상도) 버튼
+        # 세이브 불러오기 / 초기화 / 옵션 / 가로·세로 회전 / 브라우저 전체화면 버튼
+        is_portrait = bool(getattr(self.scene_mgr, "is_portrait_mode", False))
+        rot_label = "🔄 가로모드 전환" if is_portrait else "🔄 세로모드 전환"
         for key, rect, label, col in (
-            ("LOAD", self.load_btn_rect, "💾 세이브 불러오기", config.NEON_CYAN),
-            ("RESET", self.reset_btn_rect, "🔄 데이터 초기화", config.TEXT_WARNING),
-            ("OPTIONS", self.options_btn_rect, "⚙️ 옵션 (사운드·해상도)", config.GOLD),
+            ("LOAD", self.load_btn_rect, "💾 세이브 로드", config.NEON_CYAN),
+            ("RESET", self.reset_btn_rect, "🗑️ 초기화", config.TEXT_WARNING),
+            ("OPTIONS", self.options_btn_rect, "⚙️ 사운드·화면 설정", config.GOLD),
+            ("ROTATE", self.rotate_btn_rect, rot_label, config.NEON_GREEN),
+            ("FULLSCREEN", self.fullscreen_btn_rect, "⛶ 전체화면 전환", config.POCHA_ORANGE),
         ):
             is_hov = self.hovered_btn == key
             pygame.draw.rect(
@@ -492,15 +484,15 @@ class TitleScene(BaseScene):
                 border_radius=10,
             )
             pygame.draw.rect(surface, col if is_hov else config.UI_BORDER, rect, width=2 if is_hov else 1, border_radius=10)
-            bf = config.get_font(15, bold=True)
+            bf = config.get_font(14, bold=True)
             bt = bf.render(label, True, config.WHITE if is_hov else col)
             surface.blit(bt, (rect.centerx - bt.get_width() // 2, rect.centery - bt.get_height() // 2))
 
-        # 우측 하단 단축키 요약
-        key_f = config.get_font(13, bold=True)
+        # 우측 하단 단축키 요약 (하단 버튼 우측 영역 x=935~1240 배치)
+        key_f = config.get_font(12, bold=True)
         k_txt = key_f.render(
-            "단축키: [Q/W] 몰드  [E] 그릴  [R] 대량팬  [A/S] 음료  [1~4] 트레이  [SPACE] 스킬  [F10/ESC] 옵션",
+            "단축키: [Q/W/E/R/A/S] 조리 · [SPACE] 스킬 · [F10] 옵션",
             True,
             config.TEXT_SECONDARY,
         )
-        surface.blit(k_txt, (1240 - k_txt.get_width(), 662))
+        surface.blit(k_txt, (1240 - k_txt.get_width(), 664))

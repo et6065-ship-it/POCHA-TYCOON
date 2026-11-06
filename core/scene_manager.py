@@ -68,6 +68,9 @@ class SceneManager:
         self.current_scene: Optional[Any] = None
         self.current_scene_name: str = ""
         self._logical_surface: Optional[pygame.Surface] = None
+        self._portrait_surface: Optional[pygame.Surface] = None
+        self._manual_orientation_override: bool = False
+        self._browser_orient_timer: float = 0.2
 
         # 전역 옵션 모달 상태
         self.options_open: bool = False
@@ -77,10 +80,33 @@ class SceneManager:
         self._opt_status_timer: float = 0.0
         self._setup_options_rects()
 
+        config.sync_browser_display_and_fullscreen(None)
         self._register_default_scenes()
 
         if initial_scene:
             self.change_scene(initial_scene)
+
+    @property
+    def is_portrait_mode(self) -> bool:
+        """현재 디스플레이가 세로(Portrait, 높이 > 너비) 모드인지 여부를 반환한다."""
+        disp = pygame.display.get_surface()
+        win_w, win_h = disp.get_size() if disp is not None else config.WINDOW_SIZE
+        return win_h > win_w
+
+    def toggle_orientation(self) -> None:
+        """가로 모드(1280×720)와 세로 모드(720×1280)를 원터치로 즉시 전환한다."""
+        sound_fx.play_click()
+        self._manual_orientation_override = True
+        if self.is_portrait_mode:
+            self._apply_resolution_preset(1280, 720)
+        else:
+            self._apply_resolution_preset(720, 1280)
+
+    def toggle_fullscreen(self) -> None:
+        """전체화면(웹앱의 경우 브라우저 전체화면 API 포함)과 창모드를 즉시 전환한다."""
+        sound_fx.play_click()
+        new_fs = not bool(config.FULLSCREEN)
+        self._apply_resolution_preset(config.WINDOW_WIDTH, config.WINDOW_HEIGHT, fullscreen=new_fs)
 
     def _setup_options_rects(self) -> None:
         """1280x720 기준 전역 옵션 모달 UI Rect 레이아웃을 초기화한다."""
@@ -115,9 +141,10 @@ class SceneManager:
             r = pygame.Rect(px + 34 + col * 258, py + 390 + row * 46, 250, 38)
             self.opt_res_btns.append((res, r))
 
-        # 4) 창모드 / 전체화면 전환 버튼
-        self.opt_windowed_btn = pygame.Rect(px + 34, py + 494, 380, 40)
-        self.opt_fullscreen_btn = pygame.Rect(px + 426, py + 494, 380, 40)
+        # 4) 가로/세로 회전 & 창모드 / 브라우저 전체화면 전환 버튼
+        self.opt_rotate_btn = pygame.Rect(px + 34, py + 494, 248, 40)
+        self.opt_windowed_btn = pygame.Rect(px + 294, py + 494, 248, 40)
+        self.opt_fullscreen_btn = pygame.Rect(px + 554, py + 494, 252, 40)
 
         # 5) 하단 기본값 복원 & 저장 후 닫기 버튼
         self.opt_reset_default_btn = pygame.Rect(px + 34, self.opt_panel_rect.bottom - 54, 276, 40)
@@ -264,26 +291,137 @@ class SceneManager:
     goto = change_scene
 
     # ==========================================================================
-    # 다중 화면비(16:9 / 18:9 / 20:9 / 16:10) 등비 뷰포트 계산 및 터치·마우스 좌표 역변환
+    # 다중 화면비(가로 16:9 / 20:9 & 세로 9:16 / 9:18) 등비 뷰포트 계산 및 터치·마우스 좌표 역변환
     # ==========================================================================
     @staticmethod
     def _compute_viewport(win_w: int, win_h: int) -> Tuple[int, int, int, int, float]:
         """
-        실제 디스플레이 해상도(win_w, win_h) 안에서 1280x720(16:9) 코어 UI가 찌그러지지 않는
-        최대 등비 뷰포트(ox, oy, vp_w, vp_h, scale)를 반환한다.
+        실제 디스플레이 해상도(win_w, win_h) 안에서 가로 모드(1280x720) 또는 세로 모드(720x1280)가
+        찌그러지지 않는 최대 등비 뷰포트(ox, oy, vp_w, vp_h, scale)를 반환한다.
         """
         if win_w <= 0 or win_h <= 0:
             return 0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT, 1.0
-        scale = min(win_w / float(config.SCREEN_WIDTH), win_h / float(config.SCREEN_HEIGHT))
-        vp_w = max(1, int(round(config.SCREEN_WIDTH * scale)))
-        vp_h = max(1, int(round(config.SCREEN_HEIGHT * scale)))
+        base_w = config.PORTRAIT_WIDTH if win_h > win_w else config.SCREEN_WIDTH
+        base_h = config.PORTRAIT_HEIGHT if win_h > win_w else config.SCREEN_HEIGHT
+        scale = min(win_w / float(base_w), win_h / float(base_h))
+        vp_w = max(1, int(round(base_w * scale)))
+        vp_h = max(1, int(round(base_h * scale)))
         ox = (win_w - vp_w) // 2
         oy = (win_h - vp_h) // 2
         return ox, oy, vp_w, vp_h, scale
 
+    def _get_portrait_region_mappings(self) -> List[Tuple[pygame.Rect, pygame.Rect, Tuple[int, int, int]]]:
+        """
+        세로 모드(720x1280)에서 1280x720 논리 화면의 핵심 구역(src_rect)을
+        세로 화면(dst_rect)으로 찌그러짐이나 잘림 없이 재배치하는 매핑 목록을 반환한다.
+        """
+        sc = self.current_scene
+        has_modal = (
+            self.options_open
+            or getattr(sc, "active_cutscene", None) is not None
+            or bool(getattr(sc, "paused", False))
+            or bool(getattr(sc, "show_roster_modal", False))
+            or self.current_scene_name in ("result", "duel_result", "duel_lobby")
+        )
+        if has_modal:
+            return [
+                (
+                    pygame.Rect(0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
+                    pygame.Rect(8, 250, 704, 780),
+                    config.GOLD,
+                )
+            ]
+
+        if self.current_scene_name in ("play", "duel_play"):
+            return [
+                # 1) 상단 HUD
+                (pygame.Rect(0, 0, 1280, 64), pygame.Rect(8, 8, 704, 54), config.GOLD),
+                # 2) 손님 대기 카운터 & 스토리 다시보기
+                (pygame.Rect(190, 64, 1090, 286), pygame.Rect(8, 68, 704, 198), config.UI_BORDER),
+                # 3) 좌측 조리 기구 2종 (① 몰드 구이 + ② 음료 디스펜서)
+                (pygame.Rect(10, 350, 456, 362), pygame.Rect(8, 272, 348, 484), config.POCHA_ORANGE),
+                # 4) 우측 조리 기구 2종 (④ 직화 그릴 + ⑤ 대량 조리 팬)
+                (pygame.Rect(814, 350, 456, 362), pygame.Rect(364, 272, 348, 484), config.POCHA_ORANGE),
+                # 5) 하단 좌측: 마스터 아바타 & 원터치 액티브 스킬 버튼
+                (pygame.Rect(8, 70, 182, 270), pygame.Rect(8, 764, 232, 504), config.NEON_CYAN),
+                # 6) 하단 우측: 중앙 조립 & 토핑 트레이 (가장 자주 터치하는 영역을 하단 엄지 존에 크게 배치)
+                (pygame.Rect(468, 350, 344, 362), pygame.Rect(248, 764, 464, 504), config.GOLD),
+            ]
+
+        if self.current_scene_name == "title":
+            return [
+                # 1) 상단 9개국 배경 미리보기 버튼 바
+                (pygame.Rect(615, 14, 635, 38), pygame.Rect(12, 12, 696, 40), config.UI_BORDER),
+                # 2) 메인 타이틀 네온 배너
+                (pygame.Rect(36, 52, 1208, 146), pygame.Rect(12, 58, 696, 132), config.GOLD),
+                # 3) 현재 포차 마스터 프로필 카드 (정방형 비율 유지)
+                (pygame.Rect(36, 210, 348, 348), pygame.Rect(150, 196, 420, 292), config.UI_BORDER),
+                # 4) 게임 모드 선택 카드 2종 (월드 투어 & 글로벌 통합)
+                (pygame.Rect(400, 210, 844, 348), pygame.Rect(12, 496, 696, 500), config.POCHA_ORANGE),
+                # 5) 모바일 터치 조작 가이드 바
+                (pygame.Rect(36, 568, 1208, 68), pygame.Rect(12, 1004, 696, 90), config.UI_BORDER),
+                # 6) 하단 유틸리티 & 가로·세로/전체화면 전환 버튼 바
+                (pygame.Rect(36, 644, 888, 54), pygame.Rect(12, 1102, 696, 98), config.NEON_CYAN),
+            ]
+
+        if self.current_scene_name == "prep":
+            active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
+            split_map = {"character": 852, "chapter": 641, "upgrade": 652, "tournament": 620}
+            split_x = split_map.get(active_tab, 641)
+            return [
+                # 1) 상단 네비게이션 및 보유 골드 바
+                (pygame.Rect(24, 10, 1232, 54), pygame.Rect(8, 8, 704, 54), config.GOLD),
+                # 2) 4대 메인 탭 버튼 바
+                (pygame.Rect(24, 68, 1232, 54), pygame.Rect(8, 68, 704, 56), config.UI_BORDER),
+                # 3) 국가 필터 및 페이지 전환 서브 헤더
+                (pygame.Rect(28, 126, 1224, 48), pygame.Rect(8, 130, 704, 48), config.UI_BORDER),
+                # 4) 메인 컨텐츠 상단 (좌측 영역)
+                (pygame.Rect(28, 174, split_x - 28, 456), pygame.Rect(8, 184, 704, 484), config.POCHA_ORANGE),
+                # 5) 메인 컨텐츠 하단 (우측 영역)
+                (pygame.Rect(split_x, 174, 1252 - split_x, 456), pygame.Rect(8, 674, 704, 466), config.NEON_CYAN),
+                # 6) 하단 [오늘 영업 시작!] 액션 바
+                (pygame.Rect(24, 636, 1232, 72), pygame.Rect(8, 1148, 704, 120), config.GOLD),
+            ]
+
+        return [
+            (
+                pygame.Rect(0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
+                pygame.Rect(8, 250, 704, 780),
+                config.GOLD,
+            )
+        ]
+
+    def _map_window_point_to_logical(self, wx: float, wy: float, win_w: int, win_h: int) -> Tuple[int, int]:
+        """실제 윈도우 좌표(wx, wy)를 가로/세로 모드에 맞춰 1280x720 논리 좌표(lx, ly)로 변환한다."""
+        ox, oy, vp_w, vp_h, _scale = self._compute_viewport(win_w, win_h)
+        if win_h > win_w:
+            # 세로 모드(720x1280 뷰포트) -> 영역 매핑 역변환
+            px = (wx - ox) * config.PORTRAIT_WIDTH / float(max(1, vp_w))
+            py = (wy - oy) * config.PORTRAIT_HEIGHT / float(max(1, vp_h))
+            for src_r, dst_r, _bcol in self._get_portrait_region_mappings():
+                if dst_r.inflate(4, 4).collidepoint(int(round(px)), int(round(py))):
+                    rx = (px - dst_r.x) / float(max(1, dst_r.width))
+                    ry = (py - dst_r.y) / float(max(1, dst_r.height))
+                    rx = max(0.0, min(1.0, rx))
+                    ry = max(0.0, min(1.0, ry))
+                    lx = int(round(src_r.x + rx * src_r.width))
+                    ly = int(round(src_r.y + ry * src_r.height))
+                    return (
+                        max(0, min(config.SCREEN_WIDTH - 1, lx)),
+                        max(0, min(config.SCREEN_HEIGHT - 1, ly)),
+                    )
+            return (-999, -999)
+
+        lx = int(round((wx - ox) * config.SCREEN_WIDTH / float(max(1, vp_w))))
+        ly = int(round((wy - oy) * config.SCREEN_HEIGHT / float(max(1, vp_h))))
+        return (
+            max(0, min(config.SCREEN_WIDTH - 1, lx)),
+            max(0, min(config.SCREEN_HEIGHT - 1, ly)),
+        )
+
     def _remap_event_to_logical(self, event: pygame.event.Event) -> pygame.event.Event:
         """
-        실제 창 크기/모바일 화면비가 1280x720과 다를 때 마우스 및 모바일 터치(FINGER*) 이벤트를
+        실제 창 크기/모바일 화면비(가로·세로 포함)가 1280x720과 다를 때 마우스 및 모바일 터치(FINGER*) 이벤트를
         1280x720 논리 좌표계로 정확히 역변환한다.
         """
         disp = pygame.display.get_surface()
@@ -294,10 +432,7 @@ class SceneManager:
         if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
             fx = float(getattr(event, "x", 0.5)) * win_w
             fy = float(getattr(event, "y", 0.5)) * win_h
-            lx = int(round((fx - ox) * config.SCREEN_WIDTH / float(max(1, vp_w))))
-            ly = int(round((fy - oy) * config.SCREEN_HEIGHT / float(max(1, vp_h))))
-            lx = max(0, min(config.SCREEN_WIDTH - 1, lx))
-            ly = max(0, min(config.SCREEN_HEIGHT - 1, ly))
+            lx, ly = self._map_window_point_to_logical(fx, fy, win_w, win_h)
             if event.type == pygame.FINGERDOWN:
                 return pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"pos": (lx, ly), "button": 1, "touch": True})
             if event.type == pygame.FINGERUP:
@@ -313,10 +448,7 @@ class SceneManager:
         if (win_w, win_h) == (config.SCREEN_WIDTH, config.SCREEN_HEIGHT):
             return event
 
-        lx = int(round((pos[0] - ox) * config.SCREEN_WIDTH / float(max(1, vp_w))))
-        ly = int(round((pos[1] - oy) * config.SCREEN_HEIGHT / float(max(1, vp_h))))
-        lx = max(0, min(config.SCREEN_WIDTH - 1, lx))
-        ly = max(0, min(config.SCREEN_HEIGHT - 1, ly))
+        lx, ly = self._map_window_point_to_logical(float(pos[0]), float(pos[1]), win_w, win_h)
 
         attrs = {"pos": (lx, ly)}
         if hasattr(event, "button"):
@@ -335,10 +467,14 @@ class SceneManager:
     def handle_event(self, event: pygame.event.Event) -> None:
         mapped_event = self._remap_event_to_logical(event)
 
-        # F10 단축키: 언제든 옵션 모달 열기/닫기
-        if mapped_event.type == pygame.KEYDOWN and mapped_event.key == pygame.K_F10:
-            self.toggle_options()
-            return
+        # F10 단축키: 언제든 옵션 모달 열기/닫기, F11 단축키: 전체화면 전환
+        if mapped_event.type == pygame.KEYDOWN:
+            if mapped_event.key == pygame.K_F10:
+                self.toggle_options()
+                return
+            if mapped_event.key == pygame.K_F11:
+                self.toggle_fullscreen()
+                return
 
         if self.options_open:
             self._handle_options_event(mapped_event)
@@ -377,8 +513,9 @@ class SceneManager:
         self.game_mgr.settings["fullscreen"] = fs
         config.apply_display_mode(int(width), int(height), fullscreen=fs)
         self.game_mgr.save_game()
+        orient_str = "세로 모드" if int(height) > int(width) else "가로 모드"
         mode_str = "전체화면" if fs else "창모드"
-        self._show_opt_status(f"해상도 적용 완료: {width} × {height} ({mode_str})")
+        self._show_opt_status(f"화면 적용 완료: {width}×{height} ({orient_str} · {mode_str})")
 
     def _show_opt_status(self, msg: str) -> None:
         self._opt_status_msg = msg
@@ -458,14 +595,19 @@ class SceneManager:
                 self._show_opt_status("🔔 효과음 테스트 재생!")
                 return
 
-            # 4) 해상도 프리셋 버튼 4종
+            # 4) 해상도 프리셋 버튼 6종 (가로 & 세로)
             for (rw, rh), r_rect in self.opt_res_btns:
                 if r_rect.collidepoint(mx, my):
                     sound_fx.play_click()
+                    self._manual_orientation_override = True
                     self._apply_resolution_preset(rw, rh)
                     return
 
-            # 5) 창모드 / 전체화면 전환 버튼
+            # 5) 가로/세로 방향 전환 & 창모드 / 전체화면 전환 버튼
+            if self.opt_rotate_btn.collidepoint(mx, my):
+                self.toggle_orientation()
+                return
+
             if self.opt_windowed_btn.collidepoint(mx, my):
                 sound_fx.play_click()
                 res = self.game_mgr.settings.get("resolution", [config.WINDOW_WIDTH, config.WINDOW_HEIGHT])
@@ -481,6 +623,7 @@ class SceneManager:
             # 6) 기본값 복원 버튼
             if self.opt_reset_default_btn.collidepoint(mx, my):
                 sound_fx.play_cash()
+                self._manual_orientation_override = False
                 self.game_mgr.settings.update(
                     {
                         "master_volume": 0.80,
@@ -498,10 +641,32 @@ class SceneManager:
                 return
 
     # ==========================================================================
-    # 업데이트 및 렌더링 (가상 캔버스 -> 실제 윈도우 해상도 스케일링)
+    # 업데이트 및 렌더링 (가로 1280x720 & 세로 720x1280 자동/수동 레이아웃 스케일링)
     # ==========================================================================
+    def _poll_browser_viewport_orientation(self, dt: float) -> None:
+        """웹앱(emscripten) 환경에서 스마트폰 가로/세로 회전 시 자동으로 레이아웃을 전환한다."""
+        import sys
+        if sys.platform != "emscripten" or self._manual_orientation_override:
+            return
+        self._browser_orient_timer -= dt
+        if self._browser_orient_timer > 0.0:
+            return
+        self._browser_orient_timer = 0.45
+        try:
+            import platform
+            iw = int(platform.window.innerWidth)
+            ih = int(platform.window.innerHeight)
+            if iw > 0 and ih > 0:
+                if ih > iw * 1.06 and not self.is_portrait_mode:
+                    config.apply_display_mode(720, 1280, fullscreen=config.FULLSCREEN)
+                elif iw >= ih * 1.04 and self.is_portrait_mode:
+                    config.apply_display_mode(1280, 720, fullscreen=config.FULLSCREEN)
+        except Exception:
+            pass
+
     def update(self, dt: float) -> None:
         """현재 활성 씬의 update(dt)를 호출한다. (옵션 모달이 열려 있으면 인게임 타이머 일시정지)"""
+        self._poll_browser_viewport_orientation(dt)
         if self._opt_status_timer > 0.0:
             self._opt_status_timer = max(0.0, self._opt_status_timer - dt)
 
@@ -551,9 +716,45 @@ class SceneManager:
             pygame.draw.rect(surface, (24, 18, 30), bot_r)
             pygame.draw.line(surface, config.GOLD, (0, top_r.bottom - 1), (win_w, top_r.bottom - 1), 2)
             pygame.draw.line(surface, config.POCHA_ORANGE, (0, bot_r.y), (win_w, bot_r.y), 2)
+            if top_r.height >= 28:
+                for idx, lx in enumerate(range(60, win_w - 50, 110)):
+                    col = config.GOLD if idx % 2 == 0 else config.POCHA_ORANGE
+                    pygame.draw.circle(surface, col, (lx, top_r.centery), 8)
+
+    def _compose_portrait_surface(self, logical_surf: pygame.Surface, portrait_surf: pygame.Surface) -> None:
+        """1280x720 논리 화면을 720x1280 세로 모바일 전용 레이아웃으로 합성한다."""
+        portrait_surf.fill((16, 13, 28))
+        mappings = self._get_portrait_region_mappings()
+
+        # 모달/결과 화면 등 단일 중앙 배치일 때 상하단 야시장 네온 배너 장식
+        if len(mappings) == 1:
+            hdr_f = config.get_font(22, bold=True)
+            sub_f = config.get_font(14, bold=True)
+            hs = hdr_f.render("🏮 전세계 길거리 음식 포차 타이쿤 (세로 모드)", True, config.GOLD)
+            ss = sub_f.render("화면을 터치하여 진행하세요 · [⚙️ 옵션]에서 가로/세로 및 전체화면 전환 가능", True, config.NEON_CYAN)
+            portrait_surf.blit(hs, hs.get_rect(center=(config.PORTRAIT_WIDTH // 2, 110)))
+            portrait_surf.blit(ss, ss.get_rect(center=(config.PORTRAIT_WIDTH // 2, 152)))
+            for idx, lx in enumerate(range(80, config.PORTRAIT_WIDTH - 60, 110)):
+                col = config.POCHA_ORANGE if idx % 2 == 0 else config.NEON_PINK
+                pygame.draw.circle(portrait_surf, col, (lx, 56), 10)
+                pygame.draw.circle(portrait_surf, config.GOLD, (lx, 56), 4)
+                pygame.draw.circle(portrait_surf, col, (lx, 1140), 10)
+                pygame.draw.circle(portrait_surf, config.GOLD, (lx, 1140), 4)
+
+        for src_r, dst_r, border_col in mappings:
+            clipped_src = src_r.clip(logical_surf.get_rect())
+            if clipped_src.width <= 0 or clipped_src.height <= 0:
+                continue
+            sub = logical_surf.subsurface(clipped_src)
+            try:
+                scaled_part = pygame.transform.smoothscale(sub, dst_r.size)
+            except Exception:
+                scaled_part = pygame.transform.scale(sub, dst_r.size)
+            portrait_surf.blit(scaled_part, dst_r.topleft)
+            pygame.draw.rect(portrait_surf, border_col, dst_r, width=2, border_radius=10)
 
     def draw(self, surface: pygame.Surface) -> None:
-        """현재 활성 씬과 전역 옵션 모달을 렌더링하며, 다중 화면비(16:9/20:9/16:10) 등비 뷰포트로 자동 스케일링한다."""
+        """현재 활성 씬과 전역 옵션 모달을 렌더링하며, 가로(16:9/20:9) 및 세로(9:16/9:18) 화면비로 자동 스케일링한다."""
         if self.current_scene is None or not hasattr(self.current_scene, "draw"):
             return
 
@@ -564,29 +765,42 @@ class SceneManager:
             self.current_scene.draw(surface)
             if self.options_open:
                 self._draw_options_modal(surface)
+            return
+
+        if self._logical_surface is None or self._logical_surface.get_size() != logical_size:
+            self._logical_surface = pygame.Surface(logical_size)
+        self.current_scene.draw(self._logical_surface)
+        if self.options_open:
+            self._draw_options_modal(self._logical_surface)
+
+        ox, oy, vp_w, vp_h, _scale = self._compute_viewport(target_size[0], target_size[1])
+        if ox > 0 or oy > 0:
+            self._draw_mobile_bleed_bezels(surface, ox, oy, vp_w, vp_h)
+
+        # 세로 모드(Portrait, win_h > win_w)인 경우 720x1280 세로 레이아웃 캔버스로 재조합 후 출력
+        if target_size[1] > target_size[0]:
+            portrait_size = (config.PORTRAIT_WIDTH, config.PORTRAIT_HEIGHT)
+            if self._portrait_surface is None or self._portrait_surface.get_size() != portrait_size:
+                self._portrait_surface = pygame.Surface(portrait_size)
+            self._compose_portrait_surface(self._logical_surface, self._portrait_surface)
+            src_canvas = self._portrait_surface
         else:
-            if self._logical_surface is None or self._logical_surface.get_size() != logical_size:
-                self._logical_surface = pygame.Surface(logical_size)
-            self.current_scene.draw(self._logical_surface)
-            if self.options_open:
-                self._draw_options_modal(self._logical_surface)
+            src_canvas = self._logical_surface
 
-            ox, oy, vp_w, vp_h, _scale = self._compute_viewport(target_size[0], target_size[1])
-            if ox > 0 or oy > 0:
-                self._draw_mobile_bleed_bezels(surface, ox, oy, vp_w, vp_h)
-
-            if (vp_w, vp_h) == target_size:
-                try:
-                    pygame.transform.smoothscale(self._logical_surface, target_size, surface)
-                except Exception:
-                    scaled = pygame.transform.scale(self._logical_surface, target_size)
-                    surface.blit(scaled, (0, 0))
-            else:
-                try:
-                    scaled = pygame.transform.smoothscale(self._logical_surface, (vp_w, vp_h))
-                except Exception:
-                    scaled = pygame.transform.scale(self._logical_surface, (vp_w, vp_h))
-                surface.blit(scaled, (ox, oy))
+        if (vp_w, vp_h) == target_size and target_size == src_canvas.get_size():
+            surface.blit(src_canvas, (0, 0))
+        elif (vp_w, vp_h) == target_size:
+            try:
+                pygame.transform.smoothscale(src_canvas, target_size, surface)
+            except Exception:
+                scaled = pygame.transform.scale(src_canvas, target_size)
+                surface.blit(scaled, (0, 0))
+        else:
+            try:
+                scaled = pygame.transform.smoothscale(src_canvas, (vp_w, vp_h))
+            except Exception:
+                scaled = pygame.transform.scale(src_canvas, (vp_w, vp_h))
+            surface.blit(scaled, (ox, oy))
 
     # ==========================================================================
     # 전역 옵션 모달 렌더링 (1280x720 논리 캔버스 기준)
@@ -606,9 +820,9 @@ class SceneManager:
         xs_f = config.get_font(12, bold=False)
 
         # 상단 헤더
-        hdr_s = title_f.render("⚙️ 환경 설정 (사운드 조절 & 화면 해상도 설정)", True, config.GOLD)
+        hdr_s = title_f.render("⚙️ 환경 설정 (사운드 조절 & 가로·세로 화면 / 전체화면 설정)", True, config.GOLD)
         surface.blit(hdr_s, (p.x + 28, p.y + 18))
-        sub_s = xs_f.render("모든 설정은 변경 즉시 실시간 반영되며 세이브 파일(save_data.json)에 자동 저장됩니다. [단축키: F10 / ESC]", True, config.TEXT_SECONDARY)
+        sub_s = xs_f.render("모든 설정은 변경 즉시 실시간 반영되며 자동 저장됩니다. [단축키: F10 옵션 / F11 전체화면]", True, config.TEXT_SECONDARY)
         surface.blit(sub_s, (p.x + 30, p.y + 52))
 
         c_hov = self.opt_close_btn.collidepoint(mx, my)
@@ -700,12 +914,13 @@ class SceneManager:
         pygame.draw.line(surface, config.UI_BORDER, (p.x + 24, p.y + 346), (p.right - 24, p.y + 346), 1)
 
         # ------------------------------------------------------------------
-        # 섹션 2: 화면 해상도 및 창모드/전체화면 설정
+        # 섹션 2: 화면 해상도(가로/세로) 및 창모드/브라우저 전체화면 설정
         # ------------------------------------------------------------------
         cur_res = (config.WINDOW_WIDTH, config.WINDOW_HEIGHT)
         cur_fs = bool(config.FULLSCREEN)
+        orient_lbl = "세로 모드" if cur_res[1] > cur_res[0] else "가로 모드"
         s2_hdr = sec_f.render(
-            f"🖥️ 화면 해상도 및 디스플레이 모드 (현재: {cur_res[0]}×{cur_res[1]} · {'전체화면' if cur_fs else '창모드'})",
+            f"🖥️ 화면 방향 및 해상도 설정 (현재: {cur_res[0]}×{cur_res[1]} {orient_lbl} · {'전체화면' if cur_fs else '창모드'})",
             True,
             config.GOLD,
         )
@@ -725,10 +940,17 @@ class SceneManager:
             rt = res_f.render(f"{prefix}{res_label}", True, config.WHITE if is_sel else config.TEXT_PRIMARY)
             surface.blit(rt, rt.get_rect(center=r_rect.center))
 
-        # 창모드 / 전체화면 토글 버튼
+        # 가로/세로 즉시 회전 & 창모드 / 브라우저 전체화면 토글 버튼
+        rot_hov = self.opt_rotate_btn.collidepoint(mx, my)
+        pygame.draw.rect(surface, (42, 116, 86) if rot_hov else (32, 88, 66), self.opt_rotate_btn, border_radius=9)
+        pygame.draw.rect(surface, config.NEON_GREEN, self.opt_rotate_btn, width=2, border_radius=9)
+        rot_txt = "🔄 가로모드로 전환" if self.is_portrait_mode else "🔄 세로모드로 전환"
+        rt_s = sub_f.render(rot_txt, True, config.WHITE)
+        surface.blit(rt_s, rt_s.get_rect(center=self.opt_rotate_btn.center))
+
         for rect, is_active, label_str in (
-            (self.opt_windowed_btn, not cur_fs, "🪟 창모드 (Windowed Mode)"),
-            (self.opt_fullscreen_btn, cur_fs, "🖥️ 전체화면 (Fullscreen Mode)"),
+            (self.opt_windowed_btn, not cur_fs, "🪟 일반 / 창모드"),
+            (self.opt_fullscreen_btn, cur_fs, "⛶ 브라우저 / 전체화면"),
         ):
             hov = rect.collidepoint(mx, my)
             bg_c = (48, 98, 142) if is_active else (config.UI_BUTTON_HOVER if hov else config.UI_PANEL)
