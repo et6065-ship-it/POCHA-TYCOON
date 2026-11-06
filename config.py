@@ -56,8 +56,12 @@ RESOLUTION_LABELS: Dict[Tuple[int, int], str] = {
 }
 
 
+MOBILE_BROWSER_DETECTED: bool = False
+
+
 def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> None:
     """웹앱(Pygbag WebAssembly) 환경에서 캔버스 비율(가로 16:9 / 세로 9:16) 박스를 정확히 계산하여 터치 오차를 0으로 만들고 전체화면 API를 동기화한다."""
+    global MOBILE_BROWSER_DETECTED
     if sys.platform != "emscripten":
         return
     try:
@@ -68,6 +72,18 @@ def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> No
         (function() {{
             window.__pocha_ready = true;
             window.__pocha_portrait = {is_portrait};
+            var isMob = false;
+            try {{
+                var vw0 = window.innerWidth || document.documentElement.clientWidth || 1280;
+                var vh0 = window.innerHeight || document.documentElement.clientHeight || 720;
+                isMob = Boolean(
+                    (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent || '') ||
+                    (vh0 > vw0) ||
+                    (vw0 < 960)
+                );
+            }} catch (e) {{}}
+            window.__pocha_is_mobile = isMob ? 1 : 0;
             var doc = document;
             var body = doc.body;
             if (body) {{
@@ -112,6 +128,10 @@ def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> No
         }})();
         """
         platform.window.eval(js_code)
+        try:
+            MOBILE_BROWSER_DETECTED = bool(int(getattr(platform.window, "__pocha_is_mobile", 0)))
+        except Exception:
+            pass
 
         if fullscreen is True:
             fs_js = """
@@ -151,6 +171,29 @@ def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> No
             platform.window.eval(exit_js)
     except Exception:
         pass
+
+
+def is_mobile_ui() -> bool:
+    """모바일 브라우저 접속 또는 모바일 세로(Portrait)·와이드(20:9) 화면 모드일 때 True를 반환한다 (텍스트 제거·그림 위주 UI 활성화)."""
+    global MOBILE_BROWSER_DETECTED
+    if WINDOW_HEIGHT > WINDOW_WIDTH or (WINDOW_WIDTH, WINDOW_HEIGHT) == (1600, 720) or MOBILE_BROWSER_DETECTED:
+        return True
+    if sys.platform == "emscripten":
+        try:
+            import platform
+
+            win = platform.window
+            if bool(int(getattr(win, "__pocha_is_mobile", 0))) or bool(int(getattr(win, "__pocha_portrait", 0))):
+                MOBILE_BROWSER_DETECTED = True
+                return True
+            vw = int(getattr(win, "innerWidth", 1280) or 1280)
+            vh = int(getattr(win, "innerHeight", 720) or 720)
+            if vh > vw or vw < 960:
+                MOBILE_BROWSER_DETECTED = True
+                return True
+        except Exception:
+            pass
+    return False
 
 
 def apply_display_mode(

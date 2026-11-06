@@ -12,7 +12,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import pygame
 
 import config
-from core.art_renderer import draw_customer, draw_food_icon
+from core.art_renderer import draw_customer, draw_food_icon, draw_topping_badge
 from core.game_manager import GameManager
 from data.characters import AttrDict
 from data.recipes import RECIPES, TOPPINGS
@@ -513,33 +513,36 @@ class Customer:
             )
         pygame.draw.rect(surface, (215, 212, 232), gauge_rect, width=2, border_radius=7)
 
-        # 손님 유형 뱃지 (캐릭터 머리 위/가슴 상단 — 13px 볼드 고대비, 상단 배너 침범 방지)
-        badge_font = config.get_font(13, bold=True)
-        badge_surf = badge_font.render(self.badge_text, True, config.WHITE)
-        badge_w = badge_surf.get_width() + 14
-        badge_h = 22
-        badge_y = max(config.CUSTOMER_AREA_TOP + 36, char_rect.top - 20)
-        badge_rect = pygame.Rect(
-            char_rect.centerx - badge_w // 2,
-            badge_y,
-            badge_w,
-            badge_h,
-        )
-        pygame.draw.rect(surface, self.badge_color, badge_rect, border_radius=7)
-        pygame.draw.rect(
-            surface,
-            config.GOLD if self.is_vip else config.WHITE,
-            badge_rect,
-            width=2,
-            border_radius=7,
-        )
-        surface.blit(
-            badge_surf,
-            (
-                badge_rect.centerx - badge_surf.get_width() // 2,
-                badge_rect.centery - badge_surf.get_height() // 2,
-            ),
-        )
+        # 손님 유형 뱃지 (모바일 UI에서는 일반 손님 텍스트 배지 생략, VIP만 심플 아이콘 배지 표시)
+        is_mob = config.is_mobile_ui()
+        if not is_mob or self.is_vip:
+            badge_label = ("👑 VIP" if self.customer_type == "tourist" else "📸 VIP") if is_mob else self.badge_text
+            badge_font = config.get_font(12 if is_mob else 13, bold=True)
+            badge_surf = badge_font.render(badge_label, True, config.WHITE)
+            badge_w = badge_surf.get_width() + (10 if is_mob else 14)
+            badge_h = 20 if is_mob else 22
+            badge_y = max(config.CUSTOMER_AREA_TOP + (14 if is_mob else 36), char_rect.top - 20)
+            badge_rect = pygame.Rect(
+                char_rect.centerx - badge_w // 2,
+                badge_y,
+                badge_w,
+                badge_h,
+            )
+            pygame.draw.rect(surface, self.badge_color, badge_rect, border_radius=7)
+            pygame.draw.rect(
+                surface,
+                config.GOLD if self.is_vip else config.WHITE,
+                badge_rect,
+                width=2,
+                border_radius=7,
+            )
+            surface.blit(
+                badge_surf,
+                (
+                    badge_rect.centerx - badge_surf.get_width() // 2,
+                    badge_rect.centery - badge_surf.get_height() // 2,
+                ),
+            )
 
         # 주문 말풍선 렌더링 (우측 상단 영역)
         self._draw_order_bubble(surface, char_rect, t)
@@ -550,12 +553,83 @@ class Customer:
         char_rect: pygame.Rect,
         time_tick: float,
     ) -> None:
-        """주문 메뉴 아이콘(38px), 굵은 한글 메뉴명(15px), 기구/토핑 컬러 배지가 포함된 고시인성 말풍선을 그린다."""
+        """주문 메뉴 아이콘, 메뉴명(PC) 또는 대형 음식·토핑 일러스트(모바일 그림 중심 UI) 말풍선을 그린다."""
         display_orders = self.initial_orders if self.initial_orders else self.orders
         if not display_orders:
             return
 
+        is_mob = config.is_mobile_ui()
         item_count = len(display_orders)
+
+        if is_mob:
+            # 모바일 그림 중심 말풍선: 글자를 완전히 없애고 큼직한 음식 일러스트 + 토핑 아이콘만 배치
+            row_h = 58
+            bubble_w = max(116, min(142, self.rect.right - char_rect.right + 12))
+            bubble_h = 12 + item_count * row_h
+            bubble_x = max(self.rect.x + 76, self.rect.right - bubble_w - 4)
+            min_bubble_y = config.CUSTOMER_AREA_TOP + 12
+            max_bubble_y = max(min_bubble_y, self.rect.bottom - bubble_h - 4)
+            bubble_y = max(min_bubble_y, min(char_rect.top - 16, max_bubble_y))
+            bubble_rect = pygame.Rect(bubble_x, bubble_y, bubble_w, bubble_h)
+
+            tail_pts = [
+                (bubble_rect.left + 8, bubble_rect.centery),
+                (char_rect.right - 10, char_rect.centery - 6),
+                (bubble_rect.left + 8, bubble_rect.centery + 12),
+            ]
+            bg_col = (255, 252, 245) if not self.is_vip else (255, 248, 222)
+            border_col = (
+                config.GOLD
+                if self.is_vip
+                else (config.PATIENCE_LOW if self.patience_ratio < 0.25 else (58, 48, 78))
+            )
+            pygame.draw.polygon(surface, bg_col, tail_pts)
+            pygame.draw.rect(surface, bg_col, bubble_rect, border_radius=12)
+            pygame.draw.rect(surface, border_col, bubble_rect, width=3, border_radius=12)
+
+            completed_pool = list(self.completed_orders)
+            chk_font = config.get_font(14, bold=True)
+            plus_font = config.get_font(15, bold=True)
+
+            for idx, rid in enumerate(display_orders):
+                row_y = bubble_rect.y + 6 + idx * row_h
+                row_rect = pygame.Rect(bubble_rect.x + 6, row_y, bubble_rect.width - 12, row_h - 4)
+
+                is_done = False
+                if rid in completed_pool:
+                    completed_pool.remove(rid)
+                    is_done = True
+
+                rec = RECIPES.get(rid)
+                req_tops = list(rec.get("required_toppings", [])) if (rec and rec.get("has_topping", False)) else []
+
+                row_bg = (214, 248, 222) if is_done else (248, 242, 230)
+                row_border = (46, 178, 78) if is_done else ((224, 128, 36) if req_tops else (196, 184, 168))
+                pygame.draw.rect(surface, row_bg, row_rect, border_radius=10)
+                pygame.draw.rect(surface, row_border, row_rect, width=2 if (is_done or req_tops) else 1, border_radius=10)
+
+                if req_tops:
+                    # 음식 아이콘(좌) + 토핑 아이콘(우) 직관적 그림 조합
+                    food_cx = row_rect.x + 32
+                    draw_food_icon(surface, (food_cx, row_rect.centery), rid, size=48, burnt=False)
+                    p_surf = plus_font.render("+", True, (212, 72, 24))
+                    surface.blit(p_surf, p_surf.get_rect(center=(row_rect.x + 64, row_rect.centery)))
+                    top_cx = row_rect.right - 24
+                    pygame.draw.circle(surface, (255, 250, 238), (top_cx, row_rect.centery), 16)
+                    pygame.draw.circle(surface, (222, 92, 32), (top_cx, row_rect.centery), 16, width=2)
+                    draw_topping_badge(surface, (top_cx, row_rect.centery), str(req_tops[0]), size=24)
+                else:
+                    # 단일 메뉴: 말풍선 한가운데 초대형 음식 일러스트
+                    draw_food_icon(surface, row_rect.center, rid, size=50, burnt=False)
+
+                if is_done:
+                    chk_pos = (row_rect.right - 14, row_rect.y + 14)
+                    pygame.draw.circle(surface, (34, 168, 68), chk_pos, 11)
+                    pygame.draw.circle(surface, config.WHITE, chk_pos, 11, width=2)
+                    c_surf = chk_font.render("✔", True, config.WHITE)
+                    surface.blit(c_surf, c_surf.get_rect(center=chk_pos))
+            return
+
         row_h = 52
         bubble_w = max(154, self.rect.right - char_rect.right + 14)
         bubble_h = 14 + item_count * row_h

@@ -441,29 +441,46 @@ class AssemblyTray:
         **kwargs: Any,
     ) -> None:
         self._ensure_layout()
+        is_mobile = bool(
+            getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
+        )
         pygame.draw.rect(surface, config.UI_PANEL, self.rect, border_radius=12)
         pygame.draw.rect(surface, config.UI_HIGHLIGHT, self.rect, width=2, border_radius=12)
 
-        # 상단 헤더 (단축키 텍스트 없이 정중앙 고대비 15px 볼드 타이틀)
+        # 상단 헤더 (단축키 텍스트 없이 정중앙 고대비 15px 볼드 타이틀, 모바일은 아이콘 + Lv 배지)
         header_rect = pygame.Rect(self.rect.x + 4, self.rect.y + 4, self.rect.width - 8, 30)
         pygame.draw.rect(surface, (62, 42, 32), header_rect, border_radius=8)
         pygame.draw.rect(surface, config.GOLD, header_rect, width=1, border_radius=8)
-        title_font = config.get_font(15, bold=True)
-        if self.game_mgr and str(getattr(self.game_mgr, "mode", "")).upper() == "SPECIALIST":
-            spec_title = str(self.game_mgr.get_selected_specialist_data().get("tray_title", "③ 토핑·소스 & 포장 서빙대"))
-            raw_title = f"{spec_title} ({len(self.dishes)}칸)"
+        if is_mobile:
+            lvl = (
+                int(self.game_mgr.get_station_level("tray"))
+                if (self.game_mgr and hasattr(self.game_mgr, "get_station_level"))
+                else 1
+            )
+            ico_s = config.get_font(16, bold=True).render("🍱", True, config.GOLD)
+            surface.blit(ico_s, ico_s.get_rect(center=(header_rect.centerx - 24, header_rect.centery)))
+            lv_badge = pygame.Rect(header_rect.centerx - 6, header_rect.y + 4, 42, 22)
+            pygame.draw.rect(surface, (18, 16, 28), lv_badge, border_radius=6)
+            pygame.draw.rect(surface, config.GOLD, lv_badge, width=1, border_radius=6)
+            lv_s = config.get_font(12, bold=True).render(f"Lv.{lvl}", True, config.GOLD)
+            surface.blit(lv_s, lv_s.get_rect(center=lv_badge.center))
         else:
-            raw_title = f"🍱 조립 & 서빙 트레이 ({len(self.dishes)}칸 · 터치 자동서빙)"
-        title_surf = title_font.render(raw_title, True, config.GOLD)
-        if title_surf.get_width() > header_rect.width - 10:
-            title_surf = config.get_font(13, bold=True).render(raw_title, True, config.GOLD)
-        surface.blit(
-            title_surf,
-            (
-                header_rect.centerx - title_surf.get_width() // 2,
-                header_rect.centery - title_surf.get_height() // 2,
-            ),
-        )
+            title_font = config.get_font(15, bold=True)
+            if self.game_mgr and str(getattr(self.game_mgr, "mode", "")).upper() == "SPECIALIST":
+                spec_title = str(self.game_mgr.get_selected_specialist_data().get("tray_title", "③ 토핑·소스 & 포장 서빙대"))
+                raw_title = f"{spec_title} ({len(self.dishes)}칸)"
+            else:
+                raw_title = f"🍱 조립 & 서빙 트레이 ({len(self.dishes)}칸 · 터치 자동서빙)"
+            title_surf = title_font.render(raw_title, True, config.GOLD)
+            if title_surf.get_width() > header_rect.width - 10:
+                title_surf = config.get_font(13, bold=True).render(raw_title, True, config.GOLD)
+            surface.blit(
+                title_surf,
+                (
+                    header_rect.centerx - title_surf.get_width() // 2,
+                    header_rect.centery - title_surf.get_height() // 2,
+                ),
+            )
 
         font_sm = config.get_font(14, bold=True)
         font_xs = config.get_font(14, bold=True)
@@ -477,8 +494,14 @@ class AssemblyTray:
 
             dish = self.dishes[idx] if idx < len(self.dishes) else None
             if dish is not None:
-                icon_size = min(56, max(38, min(s_rect.width, s_rect.height) - 20))
-                dish.draw(surface, (s_rect.centerx, s_rect.centery - 9), size=icon_size)
+                if is_mobile:
+                    icon_size = min(58, max(48, min(s_rect.width, s_rect.height) - 12))
+                    if dish.has_topping:
+                        pygame.draw.circle(surface, config.GOLD, s_rect.center, icon_size // 2 + 4, width=3)
+                    dish.draw(surface, s_rect.center, size=icon_size)
+                else:
+                    icon_size = min(56, max(38, min(s_rect.width, s_rect.height) - 20))
+                    dish.draw(surface, (s_rect.centerx, s_rect.centery - 9), size=icon_size)
 
                 # 우측 상단 모바일 원터치 폐기 [✕] 배지 (28x28 대형 고시인성)
                 del_badge = pygame.Rect(s_rect.right - 30, s_rect.y + 2, 28, 28)
@@ -495,36 +518,40 @@ class AssemblyTray:
                     pygame.draw.rect(surface, config.RED, (hbar.x, hbar.y, int(hbar.width * hold_ratio), hbar.height), border_radius=6)
                     pygame.draw.rect(surface, config.WHITE, hbar, width=2, border_radius=6)
 
-                name_txt = (
-                    dish.name.replace("갈릭버터 큐브스테이크", "갈릭 큐브스테이크")
-                    .replace("오리지널 큐브스테이크", "큐브스테이크")
-                    .replace("스위트 칠리 지파이", "칠리 지파이")
-                    .replace("마라 시즈닝 지파이", "마라 지파이")
-                    .replace("크리스피 대왕 지파이", "대왕 지파이")
-                )
-                lbl_bg = pygame.Rect(s_rect.x + 3, s_rect.bottom - 24, s_rect.width - 6, 22)
-                pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=6)
-                pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=6)
-                dish_font = font_xs
-                for f_sz in (14, 13, 12, 11):
-                    dish_font = config.get_font(f_sz, bold=True)
-                    if dish_font.size(name_txt)[0] <= lbl_bg.width - 6:
-                        break
-                lbl_surf = dish_font.render(name_txt, True, config.GOLD if dish.has_topping else config.WHITE)
-                surface.blit(
-                    lbl_surf,
-                    (lbl_bg.centerx - lbl_surf.get_width() // 2, lbl_bg.centery - lbl_surf.get_height() // 2),
-                )
+                if not is_mobile:
+                    name_txt = (
+                        dish.name.replace("갈릭버터 큐브스테이크", "갈릭 큐브스테이크")
+                        .replace("오리지널 큐브스테이크", "큐브스테이크")
+                        .replace("스위트 칠리 지파이", "칠리 지파이")
+                        .replace("마라 시즈닝 지파이", "마라 지파이")
+                        .replace("크리스피 대왕 지파이", "대왕 지파이")
+                    )
+                    lbl_bg = pygame.Rect(s_rect.x + 3, s_rect.bottom - 24, s_rect.width - 6, 22)
+                    pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=6)
+                    pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=6)
+                    dish_font = font_xs
+                    for f_sz in (14, 13, 12, 11):
+                        dish_font = config.get_font(f_sz, bold=True)
+                        if dish_font.size(name_txt)[0] <= lbl_bg.width - 6:
+                            break
+                    lbl_surf = dish_font.render(name_txt, True, config.GOLD if dish.has_topping else config.WHITE)
+                    surface.blit(
+                        lbl_surf,
+                        (lbl_bg.centerx - lbl_surf.get_width() // 2, lbl_bg.centery - lbl_surf.get_height() // 2),
+                    )
             else:
-                empty_pill = pygame.Rect(s_rect.centerx - 42, s_rect.centery - 13, 84, 26)
-                pygame.draw.rect(surface, (34, 28, 44), empty_pill, border_radius=7)
-                empty_surf = font_xs.render(f"빈 접시 {idx + 1}", True, (210, 198, 226))
-                surface.blit(
-                    empty_surf,
-                    (empty_pill.centerx - empty_surf.get_width() // 2, empty_pill.centery - empty_surf.get_height() // 2),
-                )
+                if is_mobile:
+                    pygame.draw.circle(surface, (46, 38, 58), s_rect.center, 14, width=2)
+                else:
+                    empty_pill = pygame.Rect(s_rect.centerx - 42, s_rect.centery - 13, 84, 26)
+                    pygame.draw.rect(surface, (34, 28, 44), empty_pill, border_radius=7)
+                    empty_surf = font_xs.render(f"빈 접시 {idx + 1}", True, (210, 198, 226))
+                    surface.blit(
+                        empty_surf,
+                        (empty_pill.centerx - empty_surf.get_width() // 2, empty_pill.centery - empty_surf.get_height() // 2),
+                    )
 
-        # 2. 토핑 버튼 렌더링 (큼직한 터치 버튼 >= 56x44px, 볼드 15px + 네온 그린 3px 보더)
+        # 2. 토핑 버튼 렌더링 (큼직한 터치 버튼 >= 56x44px, 모바일은 대형 아이콘만 중앙 배치)
         top_font = config.get_font(15, bold=True)
         for btn_rect, tid in self.topping_buttons:
             t_meta = TOPPINGS.get(tid)
@@ -538,6 +565,11 @@ class AssemblyTray:
 
             pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
             pygame.draw.rect(surface, b_col, btn_rect, width=3 if can_apply else 2, border_radius=10)
+
+            if is_mobile:
+                badge_size = min(50, max(40, min(btn_rect.width, btn_rect.height) - 8))
+                draw_topping_badge(surface, btn_rect.center, tid, size=badge_size)
+                continue
 
             badge_size = min(28, max(22, btn_rect.height - 14))
             draw_topping_badge(
@@ -567,11 +599,29 @@ class AssemblyTray:
         trash_bg = (168, 44, 52) if has_any_dish else (56, 52, 68)
         pygame.draw.rect(surface, trash_bg, self.trash_rect, border_radius=10)
         pygame.draw.rect(surface, config.RED if has_any_dish else config.UI_BORDER, self.trash_rect, width=2, border_radius=10)
-        trash_lbl = font_sm.render("🗑️ 선택 접시 폐기", True, config.WHITE if has_any_dish else config.TEXT_SECONDARY)
-        surface.blit(trash_lbl, trash_lbl.get_rect(center=self.trash_rect.center))
 
         mode_bg = (224, 52, 58) if self.trash_mode else (82, 46, 62)
         pygame.draw.rect(surface, mode_bg, self.trash_mode_rect, border_radius=10)
         pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.UI_BORDER, self.trash_mode_rect, width=2, border_radius=10)
+
+        if is_mobile:
+            ico_font = config.get_font(22, bold=True)
+            t_ico = ico_font.render("🗑️", True, config.WHITE if has_any_dish else config.TEXT_SECONDARY)
+            surface.blit(t_ico, t_ico.get_rect(center=(self.trash_rect.centerx - 12, self.trash_rect.centery)))
+            xc = (self.trash_rect.centerx + 14, self.trash_rect.centery)
+            pygame.draw.circle(surface, (220, 48, 56) if has_any_dish else (84, 78, 98), xc, 9)
+            pygame.draw.line(surface, config.WHITE, (xc[0] - 4, xc[1] - 4), (xc[0] + 4, xc[1] + 4), 2)
+            pygame.draw.line(surface, config.WHITE, (xc[0] + 4, xc[1] - 4), (xc[0] - 4, xc[1] + 4), 2)
+
+            m_ico = ico_font.render("🗑️", True, config.WHITE)
+            surface.blit(m_ico, m_ico.get_rect(center=(self.trash_mode_rect.centerx - 12, self.trash_mode_rect.centery)))
+            mc = (self.trash_mode_rect.centerx + 14, self.trash_mode_rect.centery)
+            pygame.draw.circle(surface, config.NEON_GREEN if self.trash_mode else (52, 34, 44), mc, 8)
+            pygame.draw.circle(surface, config.GOLD if self.trash_mode else config.UI_BORDER, mc, 8, width=2)
+            return
+
+        trash_lbl = font_sm.render("🗑️ 선택 접시 폐기", True, config.WHITE if has_any_dish else config.TEXT_SECONDARY)
+        surface.blit(trash_lbl, trash_lbl.get_rect(center=self.trash_rect.center))
+
         mode_lbl = font_xs.render("🗑️ 버리기모드 ON" if self.trash_mode else "🗑️ 버리기 모드", True, config.WHITE)
         surface.blit(mode_lbl, mode_lbl.get_rect(center=self.trash_mode_rect.center))

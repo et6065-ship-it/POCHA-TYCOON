@@ -228,6 +228,9 @@ class BatchPotStation(BaseStation):
         **kwargs: Any,
     ) -> None:
         t = float(time_tick) if isinstance(time_tick, (int, float)) else 0.0
+        is_mobile = bool(
+            getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
+        )
         self.draw_panel_frame(surface, subtitle=f"{self.max_servings}인분 팬")
 
         slot = self.main_slot
@@ -247,6 +250,63 @@ class BatchPotStation(BaseStation):
 
         pygame.draw.rect(surface, bg_col, r, border_radius=12)
         pygame.draw.rect(surface, border_col, r, width=b_w, border_radius=12)
+
+        if is_mobile:
+            if slot.state == STATE_IDLE:
+                draw_food_icon(surface, (r.centerx, r.centery - 10), self.base_recipe_id, size=56, burnt=False)
+                plus_c = (r.centerx, r.bottom - 22)
+                pygame.draw.circle(surface, (26, 22, 38), plus_c, 13)
+                pygame.draw.circle(surface, config.GOLD, plus_c, 13, width=2)
+                pygame.draw.line(surface, config.GOLD, (plus_c[0] - 6, plus_c[1]), (plus_c[0] + 6, plus_c[1]), 3)
+                pygame.draw.line(surface, config.GOLD, (plus_c[0], plus_c[1] - 6), (plus_c[0], plus_c[1] + 6), 3)
+            elif slot.state == STATE_COOKING:
+                draw_food_icon(surface, (r.centerx, r.centery - 10), self.base_recipe_id, size=58, burnt=False)
+                gauge_rect = pygame.Rect(r.x + 10, r.bottom - 20, r.width - 20, 14)
+                pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=7)
+                fill_w = int((gauge_rect.width - 4) * slot.progress)
+                if fill_w > 0:
+                    pygame.draw.rect(
+                        surface,
+                        config.GAUGE_COOKING,
+                        (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
+                        border_radius=5,
+                    )
+                pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=7)
+            else:
+                rem = self.remaining_servings
+                positions = [
+                    (r.centerx - 34, r.centery - 20),
+                    (r.centerx + 34, r.centery - 20),
+                    (r.centerx, r.centery - 4),
+                    (r.centerx - 28, r.centery + 12),
+                    (r.centerx + 28, r.centery + 12),
+                ]
+                for i in range(min(rem, len(positions))):
+                    draw_food_icon(surface, positions[i], self.base_recipe_id, size=48, burnt=False)
+
+                # 하단 인분 수 그래픽 도트 표시 (문구 생략)
+                tot = max(1, self.max_servings)
+                dot_spacing = min(22, (r.width - 24) // max(1, tot))
+                start_x = r.centerx - ((tot - 1) * dot_spacing) // 2
+                dot_y = r.bottom - 16
+                for i in range(tot):
+                    dx = start_x + i * dot_spacing
+                    filled = i < rem
+                    pygame.draw.circle(surface, config.NEON_GREEN if filled else (24, 34, 28), (dx, dot_y), 6)
+                    pygame.draw.circle(surface, config.WHITE if filled else (92, 112, 98), (dx, dot_y), 6, width=1)
+
+            # 모바일 하단 대형 아이콘 버튼 (문구 생략)
+            if slot.state == STATE_IDLE:
+                btn_col = (235, 118, 32)
+            elif slot.state == STATE_COOKING:
+                btn_col = (64, 58, 78)
+            else:
+                btn_col = (42, 152, 82)
+            pygame.draw.rect(surface, btn_col, self.action_button_rect, border_radius=10)
+            pygame.draw.rect(surface, config.GOLD, self.action_button_rect, width=3, border_radius=10)
+            btn_icon_sz = min(54, max(46, min(self.action_button_rect.width, self.action_button_rect.height) - 8))
+            draw_food_icon(surface, self.action_button_rect.center, self.base_recipe_id, size=btn_icon_sz, burnt=False)
+            return
 
         font_lg = config.get_font(15, bold=True)
         font_md = config.get_font(14, bold=True)

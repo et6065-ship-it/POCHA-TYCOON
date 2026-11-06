@@ -247,8 +247,11 @@ class StationSlot:
         time_tick: float = 0.0,
         empty_label: str = "➕ 터치 조리",
     ) -> None:
-        """개별 슬롯 박스, 대형 음식 아이콘(54~60px), 고대비 상태 배지 및 14px 진행률 게이지 바를 렌더링한다."""
+        """개별 슬롯 박스, 대형 음식 아이콘(48~60px), 고대비 상태 배지 및 14px 진행률 게이지 바를 렌더링한다."""
         r = self.rect
+        is_mobile = bool(
+            getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
+        )
         if self.state == STATE_IDLE:
             bg_col = (40, 36, 56)
             border_col = (106, 98, 142)
@@ -272,6 +275,118 @@ class StationSlot:
 
         pygame.draw.rect(surface, bg_col, r, border_radius=10)
         pygame.draw.rect(surface, border_col, r, width=b_width, border_radius=10)
+
+        if is_mobile:
+            if self.state == STATE_IDLE:
+                # 모바일: 안내 문구 없이 반투명 + 그래픽 아이콘만 표시
+                plus_rad = min(20, max(14, min(r.width, r.height) // 4))
+                pygame.draw.circle(surface, (28, 24, 42), r.center, plus_rad)
+                pygame.draw.circle(surface, (132, 122, 174), r.center, plus_rad, width=2)
+                arm = max(6, plus_rad - 6)
+                pygame.draw.line(
+                    surface,
+                    (196, 188, 232),
+                    (r.centerx - arm, r.centery),
+                    (r.centerx + arm, r.centery),
+                    3,
+                )
+                pygame.draw.line(
+                    surface,
+                    (196, 188, 232),
+                    (r.centerx, r.centery - arm),
+                    (r.centerx, r.centery + arm),
+                    3,
+                )
+                return
+
+            icon_size = min(58, max(48, min(r.width, r.height) - 18))
+            icon_center = (r.centerx, r.centery - 6)
+
+            if self.state == STATE_READY:
+                # 완성: 황금빛 후광(Glow) + 체크/반짝임 그래픽
+                glow_col = config.GAUGE_WARNING if (self.can_burn and self.burn_progress >= 0.65) else config.GOLD
+                pygame.draw.circle(surface, glow_col, icon_center, icon_size // 2 + 4, width=3)
+
+            if self.recipe_id:
+                draw_food_icon(
+                    surface,
+                    icon_center,
+                    self.recipe_id,
+                    size=icon_size,
+                    burnt=(self.state == STATE_BURNT),
+                )
+
+            if self.state == STATE_READY:
+                chk_center = (r.right - 14, r.y + 14)
+                pygame.draw.circle(surface, (28, 168, 84), chk_center, 9)
+                pygame.draw.circle(surface, config.WHITE, chk_center, 9, width=2)
+                pygame.draw.lines(
+                    surface,
+                    config.WHITE,
+                    False,
+                    [
+                        (chk_center[0] - 4, chk_center[1]),
+                        (chk_center[0] - 1, chk_center[1] + 3),
+                        (chk_center[0] + 5, chk_center[1] - 3),
+                    ],
+                    2,
+                )
+            elif self.state == STATE_BURNT:
+                # 탄 상태: 해골/X 그래픽 표시
+                x_center = (r.right - 14, r.y + 14)
+                pygame.draw.circle(surface, (198, 36, 42), x_center, 9)
+                pygame.draw.circle(surface, config.WHITE, x_center, 9, width=2)
+                pygame.draw.line(
+                    surface,
+                    config.WHITE,
+                    (x_center[0] - 4, x_center[1] - 4),
+                    (x_center[0] + 4, x_center[1] + 4),
+                    2,
+                )
+                pygame.draw.line(
+                    surface,
+                    config.WHITE,
+                    (x_center[0] + 4, x_center[1] - 4),
+                    (x_center[0] - 4, x_center[1] + 4),
+                    2,
+                )
+
+            # 하단 두꺼운 컬러 게이지 바만 표시 (문구 생략)
+            gauge_rect = pygame.Rect(r.x + 6, r.bottom - 16, r.width - 12, 12)
+            pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=6)
+            if self.state == STATE_COOKING:
+                fill_w = int((gauge_rect.width - 4) * self.progress)
+                if fill_w > 0:
+                    pygame.draw.rect(
+                        surface,
+                        config.GAUGE_COOKING,
+                        (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
+                        border_radius=4,
+                    )
+            elif self.state == STATE_READY:
+                if self.can_burn:
+                    rem_ratio = 1.0 - self.burn_progress
+                    bar_col = config.GAUGE_WARNING if self.burn_progress >= 0.60 else config.NEON_GREEN
+                    fill_w = int((gauge_rect.width - 4) * rem_ratio)
+                else:
+                    bar_col = config.NEON_GREEN
+                    fill_w = gauge_rect.width - 4
+                if fill_w > 0:
+                    pygame.draw.rect(
+                        surface,
+                        bar_col,
+                        (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
+                        border_radius=4,
+                    )
+            else:
+                pygame.draw.rect(
+                    surface,
+                    config.GAUGE_BURNT,
+                    (gauge_rect.x + 2, gauge_rect.y + 2, gauge_rect.width - 4, gauge_rect.height - 4),
+                    border_radius=4,
+                )
+            pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=6)
+            return
 
         font_md = config.get_font(14, bold=True)
 
@@ -547,7 +662,7 @@ class BaseStation:
         )
         pygame.draw.rect(surface, config.UI_BORDER, self.rect, width=2, border_radius=12)
 
-        # 상단 타이틀 바 (PC 단축키 접두어 없이 정중앙 15px 볼드 고대비)
+        # 상단 타이틀 바 (PC 단축키 접두어 없이 정중앙 15px 볼드 고대비, 모바일은 대표 음식 아이콘 + Lv 배지)
         header_rect = pygame.Rect(self.rect.x + 4, self.rect.y + 4, self.rect.width - 8, 30)
         header_col = self.meta.get("color", config.UI_PANEL_LIGHT)
         dark_header = (
@@ -557,6 +672,35 @@ class BaseStation:
         )
         pygame.draw.rect(surface, dark_header, header_rect, border_radius=8)
         pygame.draw.rect(surface, header_col, header_rect, width=1, border_radius=8)
+
+        is_mobile = bool(
+            getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
+        )
+        if is_mobile:
+            rep_rid = (
+                getattr(self, "base_recipe_id", None)
+                or getattr(self, "selected_recipe_id", None)
+                or (getattr(self, "drink_recipes", [None])[0] if getattr(self, "drink_recipes", None) else None)
+                or (self.slots[0].recipe_id if self.slots and self.slots[0].recipe_id else None)
+                or {
+                    "mold": "bungeoppang_redbean",
+                    "grill": "skewer_plain",
+                    "batch_pot": "tteokbokki_plain",
+                    "dispenser": "odeng_soup",
+                }.get(self.slot_type, "bungeoppang_redbean")
+            )
+            lvl = (
+                int(self.game_mgr.get_station_level(self.slot_type))
+                if (self.game_mgr and hasattr(self.game_mgr, "get_station_level"))
+                else 1
+            )
+            draw_food_icon(surface, (header_rect.centerx - 24, header_rect.centery), str(rep_rid), size=24, burnt=False)
+            lv_badge = pygame.Rect(header_rect.centerx - 4, header_rect.y + 4, 42, 22)
+            pygame.draw.rect(surface, (18, 16, 28), lv_badge, border_radius=6)
+            pygame.draw.rect(surface, config.GOLD, lv_badge, width=1, border_radius=6)
+            lv_s = config.get_font(12, bold=True).render(f"Lv.{lvl}", True, config.GOLD)
+            surface.blit(lv_s, lv_s.get_rect(center=lv_badge.center))
+            return
 
         title_font = config.get_font(15, bold=True)
         title_txt = self.short_name or self.name

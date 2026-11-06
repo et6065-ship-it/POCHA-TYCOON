@@ -220,6 +220,9 @@ class DispenserStation(BaseStation):
         **kwargs: Any,
     ) -> None:
         t = float(time_tick) if isinstance(time_tick, (int, float)) else 0.0
+        is_mobile = bool(
+            getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
+        )
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}노즐")
 
         font_title = config.get_font(15, bold=True)
@@ -245,6 +248,41 @@ class DispenserStation(BaseStation):
 
             pygame.draw.rect(surface, bg_col, r, border_radius=10)
             pygame.draw.rect(surface, border_col, r, width=3 if is_ready else 2, border_radius=10)
+
+            if is_mobile:
+                icon_size = min(58, max(48, min(r.width, r.height) - 18))
+                icon_center = (r.centerx, r.centery - 6)
+                if is_ready:
+                    pygame.draw.circle(surface, config.GOLD, icon_center, icon_size // 2 + 4, width=3)
+                draw_food_icon(surface, icon_center, drink_id, size=icon_size, burnt=False)
+                if is_ready:
+                    chk_center = (r.right - 14, r.y + 14)
+                    pygame.draw.circle(surface, (28, 168, 84), chk_center, 9)
+                    pygame.draw.circle(surface, config.WHITE, chk_center, 9, width=2)
+                    pygame.draw.lines(
+                        surface,
+                        config.WHITE,
+                        False,
+                        [
+                            (chk_center[0] - 4, chk_center[1]),
+                            (chk_center[0] - 1, chk_center[1] + 3),
+                            (chk_center[0] + 5, chk_center[1] - 3),
+                        ],
+                        2,
+                    )
+                gauge_rect = pygame.Rect(r.x + 6, r.bottom - 16, r.width - 12, 12)
+                pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=6)
+                fill_w = int((gauge_rect.width - 4) * slot.progress)
+                bar_col = config.NEON_GREEN if is_ready else config.NEON_CYAN
+                if fill_w > 0:
+                    pygame.draw.rect(
+                        surface,
+                        bar_col,
+                        (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
+                        border_radius=4,
+                    )
+                pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=6)
+                continue
 
             # 음료 메뉴명 상단 고대비 필 배지
             active_name_f = font_title

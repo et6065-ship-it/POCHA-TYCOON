@@ -212,17 +212,30 @@ class GrillStation(BaseStation):
         **kwargs: Any,
     ) -> None:
         t = float(time_tick) if isinstance(time_tick, (int, float)) else 0.0
+        is_mobile = bool(
+            getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
+        )
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}구")
 
         for slot in self.slots:
             slot.draw_slot_box(surface, time_tick=t, empty_label="➕ 터치 조리")
 
-        # 하단 [재료 올리기] 버튼 렌더링 (고시인성 16px 볼드 + 3px 보더 + 40px 아이콘)
+        # 하단 [재료 올리기] 버튼 렌더링
         has_idle = any(s.state == STATE_IDLE for s in self.slots)
         btn_col = (235, 118, 32) if has_idle else (62, 58, 78)
         border_col = config.GOLD if has_idle else config.UI_BORDER
         pygame.draw.rect(surface, btn_col, self.cook_button_rect, border_radius=10)
         pygame.draw.rect(surface, border_col, self.cook_button_rect, width=3 if has_idle else 2, border_radius=10)
+
+        if is_mobile:
+            icon_sz = min(54, max(46, min(self.cook_button_rect.width, self.cook_button_rect.height) - 8))
+            draw_food_icon(surface, self.cook_button_rect.center, self.base_recipe_id, size=icon_sz, burnt=False)
+            plus_c = (self.cook_button_rect.centerx + icon_sz // 2 + 12, self.cook_button_rect.centery)
+            pygame.draw.circle(surface, (28, 22, 36), plus_c, 11)
+            pygame.draw.circle(surface, config.GOLD if has_idle else config.UI_BORDER, plus_c, 11, width=2)
+            pygame.draw.line(surface, config.WHITE, (plus_c[0] - 5, plus_c[1]), (plus_c[0] + 5, plus_c[1]), 3)
+            pygame.draw.line(surface, config.WHITE, (plus_c[0], plus_c[1] - 5), (plus_c[0], plus_c[1] + 5), 3)
+            return
 
         icon_pos = (self.cook_button_rect.x + 28, self.cook_button_rect.centery)
         draw_food_icon(surface, icon_pos, self.base_recipe_id, size=40, burnt=False)
