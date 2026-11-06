@@ -75,12 +75,13 @@ class ResultScene(BaseScene):
             self.cutscene_line_idx = 0
 
     def _advance_cutscene(self, skip_all: bool = False) -> None:
-        sound_fx.play_click()
         if skip_all or self.active_cutscene is None:
+            sound_fx.play_click()
             self.cutscene_queue.clear()
             self.active_cutscene = None
             self.cutscene_line_idx = 0
             return
+        sound_fx.play_dialog()
         lines = self.active_cutscene.get("lines", [])
         if self.cutscene_line_idx + 1 < len(lines):
             self.cutscene_line_idx += 1
@@ -93,12 +94,13 @@ class ResultScene(BaseScene):
 
     def _extract_summary(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         raw = kwargs.get("result_data") or kwargs.get("day_stats") or kwargs.get("summary")
+        fallback_day = int(getattr(self.game_mgr, "last_played_day", max(1, self.game_mgr.day)))
         if isinstance(raw, dict):
             earned = int(raw.get("earned_gold", self.game_mgr.daily_gold))
             target = int(raw.get("target_gold", self.game_mgr.get_target_gold()))
             stars = int(raw.get("stars", calculate_stars(earned, target)))
             cleared = bool(raw.get("cleared", earned >= target))
-            day_num = int(raw.get("day", max(1, self.game_mgr.day - 1)))
+            day_num = int(raw.get("day", fallback_day))
             served = int(raw.get("served_customers", self.game_mgr.served_customers))
             missed = int(raw.get("missed_customers", self.game_mgr.missed_customers))
             max_combo = int(raw.get("max_combo", self.game_mgr.max_combo))
@@ -108,7 +110,7 @@ class ResultScene(BaseScene):
             target = int(kwargs.get("target_gold", self.game_mgr.get_target_gold()))
             stars = int(kwargs.get("stars", calculate_stars(earned, target)))
             cleared = bool(kwargs.get("cleared", earned >= target))
-            day_num = int(kwargs.get("day", self.game_mgr.day))
+            day_num = int(kwargs.get("day", fallback_day))
             served = int(kwargs.get("served_customers", self.game_mgr.served_customers))
             missed = int(kwargs.get("missed_customers", self.game_mgr.missed_customers))
             max_combo = int(kwargs.get("max_combo", self.game_mgr.max_combo))
@@ -149,10 +151,28 @@ class ResultScene(BaseScene):
             return "🏆 완벽한 3성(★★★) 마스터피스 영업! 손님들이 극찬하며 팁을 아끼지 않았습니다!"
         return "🎉 오늘의 목표 매출 달성 성공! 포차 명성이 더욱 높아졌습니다!"
 
+    def _retry_played_day(self) -> None:
+        """방금 플레이한 일차(last_played_day)로 복원하여 재도전을 시작한다."""
+        retry_day = max(
+            1,
+            int(self.summary.get("day", getattr(self.game_mgr, "last_played_day", self.game_mgr.day))),
+        )
+        self.game_mgr.day = retry_day
+        if self.game_mgr.mode == "SPECIALIST":
+            self.game_mgr.specialist_days[self.game_mgr.selected_specialist] = retry_day
+        elif self.game_mgr.mode == "GLOBAL_ENDLESS":
+            self.game_mgr.endless_day = retry_day
+        else:
+            self.game_mgr.chapter_days[self.game_mgr.current_chapter] = retry_day
+        self.game_mgr.save_game()
+        if self.scene_mgr:
+            self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
+
     def on_enter(self, **kwargs: Any) -> None:
         if kwargs:
             self.summary = self._extract_summary(kwargs)
         self.game_mgr.save_game()
+        sound_fx.play_bgm("result")
 
         if self.summary["cleared"]:
             sound_fx.play_fanfare()
@@ -183,8 +203,7 @@ class ResultScene(BaseScene):
                     self.scene_mgr.change_scene("prep", show_loading=True)
             elif self.retry_btn_rect.collidepoint(mx, my):
                 sound_fx.play_click()
-                if self.scene_mgr:
-                    self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
+                self._retry_played_day()
             elif self.title_btn_rect.collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
@@ -204,8 +223,7 @@ class ResultScene(BaseScene):
                     self.scene_mgr.change_scene("prep", show_loading=True)
             elif event.key == pygame.K_r:
                 sound_fx.play_click()
-                if self.scene_mgr:
-                    self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
+                self._retry_played_day()
             elif event.key == pygame.K_ESCAPE:
                 sound_fx.play_click()
                 if self.scene_mgr:

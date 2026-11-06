@@ -225,6 +225,14 @@ class ArtRenderer:
     _neon_cache = {}
     _font_cache = {}
 
+    @staticmethod
+    def _trim_cache(cache_dict: dict, max_size: int, evict_count: int = 16) -> None:
+        """캐시 크기가 상한을 초과했을 때 전체 초기화 대신 가장 오래된 항목 일부만 제거(FIFO)합니다."""
+        if len(cache_dict) >= max_size:
+            keys_to_remove = list(cache_dict.keys())[: max(1, evict_count)]
+            for k in keys_to_remove:
+                cache_dict.pop(k, None)
+
     @classmethod
     def draw_alpha_overlay(
         cls,
@@ -469,8 +477,7 @@ class ArtRenderer:
             else:
                 cls._draw_bg_kr(cached_bg, local_rect, levels, q_tick)
             pygame.draw.line(cached_bg, (18, 14, 24), (0, local_rect.bottom - 2), (local_rect.right, local_rect.bottom - 2), 3)
-            if len(cls._bg_cache) > 96:
-                cls._bg_cache.clear()
+            cls._trim_cache(cls._bg_cache, 96, 16)
             cls._bg_cache[cache_key] = cached_bg
 
         surface.blit(cached_bg, rect.topleft)
@@ -1463,6 +1470,7 @@ class ArtRenderer:
             cls._render_food_to_surface(pix_surf, rid, 24, is_burnt)
             final_pix = cls._finalize_pixel_sprite(pix_surf)
             cls._apply_food_post_fx(final_pix, rid, is_burnt)
+            cls._trim_cache(cls._food_cache, 384, 32)
             cls._food_cache[cache_key] = pygame.transform.scale(final_pix, (size, size))
 
         icon = cls._food_cache[cache_key]
@@ -2347,9 +2355,8 @@ class ArtRenderer:
             return None
         w, h = max(1, int(size[0])), max(1, int(size[1]))
         cache_key = (image_path, w, h)
-        cached = cls._story_img_cache.get(cache_key)
-        if cached is not None:
-            return cached
+        if cache_key in cls._story_img_cache:
+            return cls._story_img_cache[cache_key]
 
         candidates = [image_path]
         if config is not None and hasattr(config, "BASE_DIR"):
@@ -2370,6 +2377,7 @@ class ArtRenderer:
                 except Exception:
                     loaded_surf = None
 
+        cls._trim_cache(cls._story_img_cache, 24, 4)
         cls._story_img_cache[cache_key] = loaded_surf
         return loaded_surf
 

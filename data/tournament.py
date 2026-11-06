@@ -85,7 +85,7 @@ CANDIDATE_COUNTRIES: Dict[str, AttrDict] = {
         "master_chef_id": "chef_mx", "master_name": "디에고 외 2인 (멕시코 3대 지역 대표)",
         "stations": {
             "mold": {"id": "mx_quesadilla_press", "name": "퀘사디야 코말 프레스", "recipes": ["quesadilla_cheese", "quesadilla_chicken"]},
-            "grill": {"id": "mx_taco_grill", "name": "카르니타스 타코 그릴", "recipes": ["taco_plain", "taco_salsa", "taco_guacamole"]},
+            "grill": {"id": "mx_taco_grill", "name": "카르니타스 타코 그릴", "recipes": ["taco_plain", "taco_salsa", "taco_guac"]},
             "batch_pot": {"id": "mx_nacho_fryer", "name": "피에스타 나초 프라이어", "recipes": ["nacho_plain", "nacho_cheese"]},
             "dispenser": {"id": "mx_drink_dispenser", "name": "마가리타·멕시칸 콜라", "recipes": ["lime_margarita", "mexican_cola"]},
         },

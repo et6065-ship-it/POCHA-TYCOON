@@ -136,6 +136,16 @@ class DuelNetworkManager:
         self._scanning: bool = False
         self._last_ping_sent: float = 0.0
 
+    @property
+    def is_host(self) -> bool:
+        """현재 인스턴스가 1:1 결투 호스트(방장)인지 여부를 반환한다."""
+        return self.role == "HOST" or bool(self.hosting)
+
+    @property
+    def running(self) -> bool:
+        """네트워크 세션이 활성(호스팅/연결됨/연결 시도 중) 상태인지 여부를 반환한다."""
+        return not self._stop_event.is_set() and (self.hosting or self.connected or self.connecting)
+
     # ==========================================================================
     # 호스트(방 만들기) 시작
     # ==========================================================================
@@ -290,6 +300,12 @@ class DuelNetworkManager:
         sock.settimeout(3.0)
         try:
             sock.connect((host_ip, port))
+            if self._stop_event.is_set() or not self.running or self.role != "CLIENT":
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+                return
             try:
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             except Exception:
@@ -307,6 +323,8 @@ class DuelNetworkManager:
                 sock.close()
             except Exception:
                 pass
+            if self._stop_event.is_set() or self.role != "CLIENT":
+                return
             self.connecting = False
             self.connected = False
             self.role = "NONE"
@@ -321,12 +339,16 @@ class DuelNetworkManager:
     def _recv_loop(self, sock: socket.socket) -> None:
         sock.settimeout(0.5)
         buffer = ""
+        max_buffer_size = 65536
         while not self._stop_event.is_set():
             try:
                 chunk = sock.recv(4096)
                 if not chunk:
                     break
                 buffer += chunk.decode("utf-8", errors="ignore")
+                if len(buffer) > max_buffer_size and "\n" not in buffer:
+                    buffer = ""
+                    continue
                 while "\n" in buffer:
                     line, buffer = buffer.split("\n", 1)
                     line = line.strip()
@@ -339,12 +361,15 @@ class DuelNetworkManager:
                             if mtype == "PING":
                                 self.send({"type": "PONG", "ts": msg.get("ts", time.time())})
                             elif mtype == "PONG":
-                                sent_ts = float(msg.get("ts", time.time()))
+                                raw_ts = msg.get("ts")
+                                sent_ts = float(raw_ts) if raw_ts is not None else time.time()
                                 self.latency_ms = max(1, int((time.time() - sent_ts) * 1000))
                             else:
                                 self.inbox.put(msg)
-                    except json.JSONDecodeError:
+                    except (json.JSONDecodeError, TypeError, ValueError, KeyError):
                         continue
+                if len(buffer) > max_buffer_size:
+                    buffer = buffer[-max_buffer_size:]
             except socket.timeout:
                 continue
             except OSError:

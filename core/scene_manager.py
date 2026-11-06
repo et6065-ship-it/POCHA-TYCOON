@@ -39,7 +39,7 @@ LOADING_THEMES: List[Dict[str, Any]] = [
         "message": "🍢 뜨끈한 오뎅 국물 내는 중...",
         "sub": "멸치와 다시마, 무를 푹 우려내 진한 포장마차 어묵 육수를 끓이고 있습니다!",
         "tip": "TIP: 음료·국물 디스펜서는 자동으로 충전되며 터치 즉시 서빙됩니다!",
-        "foods": ("odeng_soup", "sikhye"),
+        "foods": ("odeng_soup", "sikhye_cup"),
         "country": "KR",
         "appliance": "pot_odeng",
         "station_title": "포차 뜨끈 어묵·식혜 온장고",
@@ -99,7 +99,7 @@ LOADING_THEMES: List[Dict[str, Any]] = [
         "message": "🧋 대만 야시장 흑당 버블티 삶는 중...",
         "sub": "스린 야시장 비법 흑당 시럽에 쫀득한 타피오카 펄을 뭉근하게 졸이는 중!",
         "tip": "TIP: 맛집 유튜버(VIP) 주문을 완성하면 12초간 골드 보너스 피버 타임 발동!",
-        "foods": ("boba_milktea", "jipai_mala"),
+        "foods": ("boba_milktea", "jipai_spicy"),
         "country": "TW",
         "appliance": "pot_boba",
         "station_title": "타이베이 스린 흑당 버블 솥",
@@ -111,7 +111,7 @@ LOADING_THEMES: List[Dict[str, Any]] = [
         "message": "🥘 사천 마라탕 육수 끓이고 양꼬치 굽는 중...",
         "sub": "얼얼한 화자오 마라 육수를 우려내고 양꼬치에 고소한 쯔란을 뿌리는 중입니다!",
         "tip": "TIP: 잘못 조합한 접시는 접시 우측 상단 [X] 배지를 터치해 즉시 비울 수 있어요!",
-        "foods": ("malatang_beef", "yangchuan_cumin"),
+        "foods": ("malatang_plain", "lamb_skewer_cumin"),
         "country": "CN",
         "appliance": "pot_mala",
         "station_title": "청두 사천 마라 홍탕 대형 가마솥",
@@ -123,7 +123,7 @@ LOADING_THEMES: List[Dict[str, Any]] = [
         "message": "🍗 화덕 달궈 탄두리 치킨 & 버거 굽는 중...",
         "sub": "황토 화덕에서 향신료 가득 탄두리 치킨과 육즙 가득 스매시 버거를 굽는 중!",
         "tip": "TIP: 포차 마스터마다 고유 패시브와 위기 탈출 액티브 스킬을 보유하고 있습니다!",
-        "foods": ("tandoori_masala", "smash_burger_bacon"),
+        "foods": ("tikka_masala", "bacon_burger"),
         "country": "IN",
         "appliance": "oven_tandoor",
         "station_title": "전통 탄두르 화덕 & 스매시 그릴",
@@ -135,7 +135,7 @@ LOADING_THEMES: List[Dict[str, Any]] = [
         "message": "🏮 포장마차 알전구 켜고 손님 맞이 준비 중...",
         "sub": "천막 간판에 불을 밝히고 전 세계 야시장 미식가들을 맞이할 준비를 마쳤습니다!",
         "tip": "TIP: 32강 월드 포차 그랑프리에서 전 세계 32인 마스터를 꺾고 우승에 도전하세요!",
-        "foods": ("churrasco_garlic", "shashlik_onion"),
+        "foods": ("picanha_farofa", "siberia_shashlik"),
         "country": "BR",
         "appliance": "pocha_tent",
         "station_title": "월드 스트리트 나이트마켓 포차 오픈!",
@@ -455,6 +455,25 @@ class SceneManager:
         self.current_scene = scene_obj
         self.current_scene_name = key
 
+        ch_id = str(getattr(self.game_mgr, "current_chapter", "KR") or "KR").upper()
+        play_bgm_map = {
+            "KR": "play_kr",
+            "JP": "play_jp",
+            "MX": "play_mx",
+            "TW": "play_tw",
+        }
+        bgm_map = {
+            "title": "title",
+            "prep": "prep",
+            "play": play_bgm_map.get(ch_id, "play_kr"),
+            "duel_lobby": "prep",
+            "duel_play": "fever",
+            "result": "result",
+            "duel_result": "result",
+        }
+        if key in bgm_map:
+            sound_fx.play_bgm(bgm_map[key])
+
         if bool(kwargs.get("show_loading", False)):
             self.start_loading(
                 duration=float(kwargs.get("loading_duration", 1.05)),
@@ -513,7 +532,12 @@ class SceneManager:
             ]
 
         if self.current_scene_name in ("play", "duel_play"):
-            return [
+            show_story_btn = (
+                self.current_scene_name == "play"
+                and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "WORLD_TOUR"
+            )
+            avatar_dst_h = 452 if show_story_btn else 522
+            regions: List[Tuple[pygame.Rect, pygame.Rect, Tuple[int, int, int]]] = [
                 # 1) 상단 우측 [옵션] & [준비/상점] 버튼
                 (pygame.Rect(1054, 8, 216, 48), pygame.Rect(464, 10, 248, 52), config.GOLD),
                 # 2) 손님 대기 카운터 & 주문 말풍선 (세로 높이 228px로 확대하여 주문 시인성 극대화)
@@ -523,12 +547,16 @@ class SceneManager:
                 # 4) 우측 조리 기구 2종 (④ 직화 그릴 + ⑤ 대량 조리 팬 · 세로 높이 316px 대형화)
                 (pygame.Rect(814, 350, 456, 362), pygame.Rect(364, 350, 348, 316), config.POCHA_ORANGE),
                 # 5) 하단 좌측 엄지 존: 마스터 아바타 & 원터치 액티브 스킬 패널
-                (pygame.Rect(8, 70, 182, 270), pygame.Rect(8, 674, 256, 452), config.NEON_CYAN),
+                (pygame.Rect(8, 70, 182, 270), pygame.Rect(8, 674, 256, avatar_dst_h), config.NEON_CYAN),
                 # 6) 하단 우측 엄지 존: 중앙 조립 & 토핑 트레이 (세로 높이 522px 대형 토핑 버튼)
                 (pygame.Rect(468, 350, 344, 362), pygame.Rect(272, 674, 440, 522), config.GOLD),
-                # 7) 하단 좌측 스토리 다시보기 버튼 (트레이 하단 라인과 정렬)
-                (pygame.Rect(194, 70, 122, 26), pygame.Rect(8, 1134, 256, 62), config.POCHA_ORANGE),
             ]
+            if show_story_btn:
+                # 7) 하단 좌측 스토리 다시보기 버튼 (WORLD_TOUR 모드 전용)
+                regions.append(
+                    (pygame.Rect(194, 70, 122, 26), pygame.Rect(8, 1134, 256, 62), config.POCHA_ORANGE)
+                )
+            return regions
 
         if self.current_scene_name == "title":
             return [
@@ -610,6 +638,13 @@ class SceneManager:
                         max(0, min(config.SCREEN_WIDTH - 1, lx)),
                         max(0, min(config.SCREEN_HEIGHT - 1, ly)),
                     )
+            if self.loading_active:
+                lx = int(round(px * config.SCREEN_WIDTH / float(max(1, config.PORTRAIT_WIDTH))))
+                ly = int(round(py * config.SCREEN_HEIGHT / float(max(1, config.PORTRAIT_HEIGHT))))
+                return (
+                    max(0, min(config.SCREEN_WIDTH - 1, lx)),
+                    max(0, min(config.SCREEN_HEIGHT - 1, ly)),
+                )
             return (-999, -999)
 
         lx = int(round((wx - ox) * config.SCREEN_WIDTH / float(max(1, vp_w))))
@@ -666,6 +701,10 @@ class SceneManager:
     # ==========================================================================
     def handle_event(self, event: pygame.event.Event) -> None:
         now_ticks = pygame.time.get_ticks()
+        if event.type in (pygame.MOUSEBUTTONDOWN, pygame.FINGERDOWN, pygame.KEYDOWN):
+            if hasattr(sound_fx, "unlock_audio_on_user_gesture"):
+                sound_fx.unlock_audio_on_user_gesture()
+
         # 모바일 브라우저/SDL에서 터치 1회에 FINGER* 이벤트와 합성 MOUSE* 이벤트가 중복 발생하는 현상 원천 차단
         if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
             self._last_touch_event_ticks = now_ticks
@@ -679,16 +718,17 @@ class SceneManager:
         # 동일 좌표 영역에서 110ms 이내에 연속 발생하는 터치 바운스(중복 클릭) 방지
         if mapped_event.type == pygame.MOUSEBUTTONDOWN and getattr(mapped_event, "button", 1) == 1:
             pos = getattr(mapped_event, "pos", (-999, -999))
-            last_click_t = int(getattr(self, "_last_click_ticks", -9999))
-            last_click_p = getattr(self, "_last_click_pos", (-999, -999))
-            if (
-                (now_ticks - last_click_t) < 110
-                and abs(pos[0] - last_click_p[0]) < 28
-                and abs(pos[1] - last_click_p[1]) < 28
-            ):
-                return
-            self._last_click_ticks = now_ticks
-            self._last_click_pos = pos
+            if pos != (-999, -999):
+                last_click_t = int(getattr(self, "_last_click_ticks", -9999))
+                last_click_p = getattr(self, "_last_click_pos", (-999, -999))
+                if (
+                    (now_ticks - last_click_t) < 110
+                    and abs(pos[0] - last_click_p[0]) < 28
+                    and abs(pos[1] - last_click_p[1]) < 28
+                ):
+                    return
+                self._last_click_ticks = now_ticks
+                self._last_click_pos = pos
 
         # F10 단축키: 언제든 옵션 모달 열기/닫기, F11 단축키: 전체화면 전환
         if mapped_event.type == pygame.KEYDOWN:
@@ -702,9 +742,13 @@ class SceneManager:
         if self.loading_active:
             if mapped_event.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN):
                 if self.loading_wait_for_tap and self.loading_progress >= 1.0:
+                    if hasattr(sound_fx, "unlock_audio_on_user_gesture"):
+                        sound_fx.unlock_audio_on_user_gesture(force_bgm_restart=True)
                     sound_fx.play_fanfare()
                     self.finish_loading()
                 elif not self.loading_wait_for_tap and self.loading_progress >= 0.35:
+                    if hasattr(sound_fx, "unlock_audio_on_user_gesture"):
+                        sound_fx.unlock_audio_on_user_gesture(force_bgm_restart=True)
                     self.finish_loading()
             return
 
@@ -1132,12 +1176,13 @@ class SceneManager:
             st_s = btn_f.render(st_str, True, config.WHITE)
             portrait_surf.blit(st_s, st_s.get_rect(center=stat_bar.center))
 
-            # 좌측 하단 스토리 다시보기 버튼 1:1 네이티브 오버레이
-            story_r = pygame.Rect(8, 1134, 256, 62)
-            pygame.draw.rect(portrait_surf, (64, 42, 108), story_r, border_radius=10)
-            pygame.draw.rect(portrait_surf, config.GOLD, story_r, width=2, border_radius=10)
-            sr_txt = btn_f.render("🎬 스토리 다시보기", True, config.GOLD)
-            portrait_surf.blit(sr_txt, sr_txt.get_rect(center=story_r.center))
+            # 좌측 하단 스토리 다시보기 버튼 1:1 네이티브 오버레이 (WORLD_TOUR 모드 전용)
+            if self.current_scene_name == "play" and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "WORLD_TOUR":
+                story_r = pygame.Rect(8, 1134, 256, 62)
+                pygame.draw.rect(portrait_surf, (64, 42, 108), story_r, border_radius=10)
+                pygame.draw.rect(portrait_surf, config.GOLD, story_r, width=2, border_radius=10)
+                sr_txt = btn_f.render("🎬 스토리 다시보기", True, config.GOLD)
+                portrait_surf.blit(sr_txt, sr_txt.get_rect(center=story_r.center))
 
             # 최하단 컴팩트 엄지 도움말 바 (높이 64px로 슬림화하여 상단 손님·조리대 공간 대폭 확보!)
             bot_info = pygame.Rect(8, 1204, 704, 64)

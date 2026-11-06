@@ -83,6 +83,7 @@ class DuelResultScene(BaseScene):
         if "duration" in kwargs:
             self.duration = int(kwargs["duration"])
 
+        sound_fx.play_bgm("result")
         outcome = self._get_outcome()
         if outcome == "WIN":
             sound_fx.play_fanfare()

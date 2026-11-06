@@ -143,6 +143,7 @@ class PlayScene(BaseScene):
         self.story_replay_btn_rect: pygame.Rect = pygame.Rect(194, 70, 122, 26)
 
         self._setup_new_day(show_cutscene=bool(kwargs.get("show_cutscene", False)))
+        self._initialized_day_in_init: bool = True
 
     # 플로팅 텍스트 및 비행 디쉬 리스트 직접 조회 호환 프로퍼티
     @property
@@ -173,14 +174,28 @@ class PlayScene(BaseScene):
             self.active_cutscene = self.cutscene_queue.pop(0)
             self.cutscene_line_idx = 0
 
+    def _get_play_bgm_track(self) -> str:
+        """현재 영업 챕터 및 피버/보스전 상태에 맞는 BGM 트랙 키를 반환한다."""
+        if self.fever_timer > 0.0 or bool(getattr(self.game_mgr, "ai_opponent_id", "")):
+            return "fever"
+        ch = str(self.game_mgr.current_chapter or "KR").upper()
+        if ch in ("JP",):
+            return "play_jp"
+        if ch in ("MX", "BR", "US"):
+            return "play_mx"
+        if ch in ("TW", "CN", "IN"):
+            return "play_tw"
+        return "play_kr"
+
     def _advance_cutscene(self, skip_all: bool = False) -> None:
         """현재 대사를 한 줄 넘기거나 컷신을 종료한다."""
-        sound_fx.play_click()
         if skip_all or self.active_cutscene is None:
+            sound_fx.play_click()
             self.cutscene_queue.clear()
             self.active_cutscene = None
             self.cutscene_line_idx = 0
             return
+        sound_fx.play_dialog()
         lines = self.active_cutscene.get("lines", [])
         if self.cutscene_line_idx + 1 < len(lines):
             self.cutscene_line_idx += 1
@@ -198,6 +213,7 @@ class PlayScene(BaseScene):
         self.fever_timer = 0.0
         self.patience_freeze_timer = 0.0
         self._day_finished = False
+        self._last_timer_tick_sec: int = -1
         self.ai_rival_gold: int = 0
         self.ai_rival_timer: float = 3.2
         self.particles.clear()
@@ -230,11 +246,21 @@ class PlayScene(BaseScene):
             self.cutscene_queue.clear()
             self.active_cutscene = None
             self.cutscene_line_idx = 0
+        sound_fx.play_bgm(self._get_play_bgm_track())
 
     def on_enter(self, **kwargs: Any) -> None:
         if "day_duration" in kwargs:
             self.day_duration = float(kwargs["day_duration"])
+        if getattr(self, "_initialized_day_in_init", False):
+            self._initialized_day_in_init = False
+            if "day_duration" in kwargs:
+                self.time_left = self.day_duration
+            if kwargs.get("show_cutscene", False) and self.active_cutscene is None:
+                self._queue_start_cutscenes()
+            sound_fx.play_bgm(self._get_play_bgm_track())
+            return
         self._setup_new_day(show_cutscene=bool(kwargs.get("show_cutscene", False)))
+        sound_fx.play_bgm(self._get_play_bgm_track())
 
     def _compute_customer_slot_rect(self, slot_idx: int) -> pygame.Rect:
         """좌측 마스터 패널(x=12~186) 우측 공간(x=196~1268)에 손님 슬롯을 균등 배치한다."""
@@ -254,6 +280,10 @@ class PlayScene(BaseScene):
         slot_rect = self._compute_customer_slot_rect(slot_idx)
         cust = Customer.create_random(slot_index=slot_idx, game_mgr=self.game_mgr, rect=slot_rect)
         self.customers[slot_idx] = cust
+        if cust.is_vip:
+            sound_fx.play_vip_arrive()
+        else:
+            sound_fx.play_customer_arrive()
         return cust
 
     # ==================================================================
@@ -282,15 +312,25 @@ class PlayScene(BaseScene):
         candidates.sort(key=lambda c: (c.patience_ratio, c.patience, c.slot_index))
         target_cust = candidates[0]
 
+        # 손님 주문 수령 전에 콤보를 먼저 증가시켜 현재 콤보가 즉시 손님 팁에 반영되도록 처리
+        prev_combo = self.game_mgr.combo
+        prev_max_combo = self.game_mgr.max_combo
+        prev_combo_timer = self.game_mgr.combo_timer
+        if hasattr(self.game_mgr, "add_combo"):
+            self.game_mgr.add_combo(1)
+        else:
+            self.game_mgr.combo = max(0, self.game_mgr.combo) + 1
+            self.game_mgr.max_combo = max(self.game_mgr.max_combo, self.game_mgr.combo)
+            self.game_mgr.combo_timer = config.COMBO_WINDOW
+
         # 손님 주문 수령 처리
         serve_info = target_cust.receive_dish(recipe_id, game_mgr=self.game_mgr)
         if not serve_info.get("served", False):
+            self.game_mgr.combo = prev_combo
+            self.game_mgr.max_combo = prev_max_combo
+            self.game_mgr.combo_timer = prev_combo_timer
             return False
 
-        # GameManager 콤보, 매출, 서빙 카운트 반영
-        self.game_mgr.combo = max(0, self.game_mgr.combo) + 1
-        self.game_mgr.max_combo = max(self.game_mgr.max_combo, self.game_mgr.combo)
-        self.game_mgr.combo_timer = config.COMBO_WINDOW
         self.game_mgr.served_customers += 1
 
         base_price = int(serve_info.get("price", self.game_mgr.get_recipe_price(recipe_id)))
@@ -369,7 +409,7 @@ class PlayScene(BaseScene):
         return True
 
     # ==================================================================
-    # 🧙‍♂️ 주인공 4인 액티브 스킬 ([SPACE] 또는 스킬 버튼 클릭)
+    # 🧙‍♂️ 주인공 32인 액티브 스킬 ([SPACE] 또는 스킬 버튼 클릭)
     # ==================================================================
     def _get_slot_unlock_hint(self, slot_key: str) -> str:
         """잠긴 조리 기구/기능이 어느 일차에 해금되는지 안내 문구를 반환한다."""
@@ -390,7 +430,7 @@ class PlayScene(BaseScene):
         return hints_overseas.get(slot_key, "🔒 스토리 진행 시 해금")
 
     def activate_skill(self) -> bool:
-        """현재 선택된 주인공(포차 마스터)의 액티브 스킬을 발동한다."""
+        """현재 선택된 주인공(포차 마스터)의 액티브 스킬을 발동한다 (32인 skill_desc 완벽 동기화)."""
         if not self.game_mgr.is_slot_unlocked_in_story("skill"):
             sound_fx.play_burn()
             self.particles.spawn_floating_text(
@@ -420,7 +460,7 @@ class PlayScene(BaseScene):
         duration = float(char_data.get("duration", 8.0))
 
         self.game_mgr.skill_cooldown = cooldown
-        self.game_mgr.skill_active_timer = max(2.0, duration)
+        self.game_mgr.skill_active_timer = max(2.5, duration)
 
         sound_fx.play_skill()
         self.particles.emit_skill_aura(
@@ -432,113 +472,127 @@ class PlayScene(BaseScene):
 
         skill_effect = str(char_data.get("skill_effect", "") or "")
         skill_name = str(char_data.get("skill_name", "마스터 스킬") or "마스터 스킬")
+        skill_desc = str(char_data.get("skill_desc", "") or "")
 
-        # 1. 김포차 (chef_kr) 및 조리 가속 + 인내심 회복 계열
-        if char_id == "chef_kr" or skill_effect == "kr_rush":
-            self.game_mgr.skill_active_timer = max(8.0, duration)
-            for cust in self.customers:
-                if cust is not None and cust.state == "WAITING":
-                    cust.heal_patience(0.40)
-                    self.particles.emit_hearts(cust.rect.centerx, cust.rect.centery, count=6)
-            self.particles.spawn_floating_text(
-                f"⚡ {skill_name}! (인내심 +40% 회복 & 조리속도 2배!)",
-                config.SCREEN_WIDTH // 2,
-                115,
-                color=config.GOLD,
-                size=24,
-                duration=1.8,
-            )
-
-        # 2. 켄지 (chef_jp) 및 전체 기구 즉시 완성 계열 (복합 효과 포함)
-        elif char_id == "chef_jp" or skill_effect in ("jp_instant", "instant_and_speed", "instant_and_tip", "instant_and_combo"):
-            self.game_mgr.skill_active_timer = max(2.5, duration)
+        # 1) 조리 기구 즉시 완성 (instant_finish_all)
+        should_instant_finish = (
+            char_id in ("chef_jp", "chef_tw_kaohsiung", "chef_br_rio", "chef_cn_canton", "chef_cn_shanghai")
+            or skill_effect in ("jp_instant", "instant_and_speed", "instant_and_tip", "instant_and_combo", "refill_and_heal")
+        ) and char_id != "chef_jp_hokkaido"
+        if should_instant_finish:
             if self.game_mgr.mode == "SPECIALIST":
                 self.specialist_station.instant_finish_all()
-                self.particles.emit_flame(self.specialist_station.appliance_rect.centerx, self.specialist_station.appliance_rect.centery, count=12)
-                self.particles.emit_stars(self.specialist_station.appliance_rect.centerx, self.specialist_station.appliance_rect.centery, count=10)
+                self.particles.emit_flame(
+                    self.specialist_station.appliance_rect.centerx,
+                    self.specialist_station.appliance_rect.centery,
+                    count=12,
+                )
+                self.particles.emit_stars(
+                    self.specialist_station.appliance_rect.centerx,
+                    self.specialist_station.appliance_rect.centery,
+                    count=10,
+                )
             else:
                 for st in self.station_list:
                     st.instant_finish_all()
                     self.particles.emit_flame(st.rect.centerx, st.rect.centery, count=10)
                     self.particles.emit_stars(st.rect.centerx, st.rect.centery, count=8)
             sound_fx.play_ready()
-            extra_msg = "모든 조리 기구 즉시 완성!"
-            if skill_effect == "instant_and_speed":
-                extra_msg = "즉시 완성 & 조리속도 2배!"
-            elif skill_effect == "instant_and_tip":
-                extra_msg = "즉시 완성 & 콤보 팁 2배!"
-            elif skill_effect == "instant_and_combo":
-                self.game_mgr.combo = max(0, self.game_mgr.combo) + 4
-                self.game_mgr.max_combo = max(self.game_mgr.max_combo, self.game_mgr.combo)
-                self.game_mgr.combo_timer = config.COMBO_WINDOW
-                extra_msg = "즉시 완성 & COMBO +4!"
-            self.particles.spawn_floating_text(
-                f"🔥 {skill_name}! ({extra_msg})",
-                config.SCREEN_WIDTH // 2,
-                115,
-                color=config.NEON_ORANGE,
-                size=24,
-                duration=1.8,
-            )
 
-        # 3. 디에고 (chef_mx) 및 인내심 동결 / 팁 2배 / 피버 발동 계열
-        elif char_id == "chef_mx" or skill_effect in ("mx_fiesta", "heal_and_freeze", "heal_and_tip", "speed_and_freeze", "force_fever"):
-            self.game_mgr.skill_active_timer = max(8.0, duration)
-            if skill_effect in ("mx_fiesta", "heal_and_freeze", "speed_and_freeze") or char_id == "chef_mx":
-                self.patience_freeze_timer = max(8.0, duration)
-            if skill_effect in ("heal_and_freeze", "heal_and_tip", "force_fever"):
-                heal_amt = 1.0 if skill_effect == "heal_and_freeze" else 0.50
-                for cust in self.customers:
-                    if cust is not None and cust.state == "WAITING":
-                        cust.heal_patience(heal_amt)
-                        self.particles.emit_hearts(cust.rect.centerx, cust.rect.centery, count=6)
-            if skill_effect == "force_fever":
-                self.fever_timer = max(10.0, duration)
-                self.game_mgr.combo = max(0, self.game_mgr.combo) + 5
-                self.game_mgr.max_combo = max(self.game_mgr.max_combo, self.game_mgr.combo)
-                self.game_mgr.combo_timer = config.COMBO_WINDOW
-            for cust in self.customers:
-                if cust is not None and cust.state == "WAITING":
-                    self.particles.emit_stars(cust.rect.centerx, cust.rect.centery, count=7)
-            self.particles.spawn_floating_text(
-                f"🎉 {skill_name}! ({char_data.get('skill_desc', '피에스타 버프 발동!')})",
-                config.SCREEN_WIDTH // 2,
-                115,
-                color=config.NEON_GREEN,
-                size=22,
-                duration=1.8,
+        # 2) 대기 손님 음료 즉시 자동 서빙
+        should_serve_drinks = (
+            char_id in (
+                "chef_tw",
+                "chef_br_saopaulo",
+                "chef_ru_caucasus",
+                "chef_us_cali",
+                "chef_in_chennai",
+                "chef_in_punjab",
+                "chef_cn_canton",
             )
-
-        # 4. 메이링 (chef_tw) 및 음료 즉시 서빙 / 콤보 부스트 계열
-        else:
-            self.game_mgr.skill_active_timer = max(2.5, duration)
-            served_drinks = 0
+            or skill_effect == "tw_express"
+        )
+        if should_serve_drinks:
             for cust in list(self.customers):
                 if cust is None or cust.state != "WAITING":
                     continue
-                if skill_effect == "refill_and_heal":
-                    cust.heal_patience(0.50)
                 for order_rid in list(cust.orders):
                     rec = RECIPES.get(order_rid)
                     if rec and rec.get("slot_type") == "dispenser":
-                        if self.try_auto_serve(order_rid, self.dispenser_station.rect.center):
-                            served_drinks += 1
-            served_drinks += self.dispenser_station.serve_all_waiting_drinks(self.try_auto_serve)
+                        self.try_auto_serve(order_rid, self.dispenser_station.rect.center)
+            self.dispenser_station.serve_all_waiting_drinks(self.try_auto_serve)
 
-            self.game_mgr.combo = max(0, self.game_mgr.combo) + 3
-            self.game_mgr.max_combo = max(self.game_mgr.max_combo, self.game_mgr.combo)
-            self.game_mgr.combo_timer = config.COMBO_WINDOW
+        # 3) 모든 대기 손님 인내심 회복 (40% / 50% / 60% / 100%)
+        heal_ratio = 0.0
+        if char_id in ("chef_jp_hokkaido", "chef_us_nola", "chef_cn_dongbei") or skill_effect == "heal_and_freeze":
+            heal_ratio = 1.00
+        elif char_id in ("chef_mx_oaxaca", "chef_in_punjab"):
+            heal_ratio = 0.60
+        elif (
+            char_id in ("chef_jp_fukuoka", "chef_br_bahia", "chef_in_mumbai", "chef_cn_shanghai")
+            or skill_effect in ("refill_and_heal", "heal_and_tip")
+        ):
+            heal_ratio = 0.50
+        elif char_id in ("chef_kr", "chef_ru_caucasus") or (
+            skill_effect == "kr_rush" and char_id != "chef_br_saopaulo"
+        ):
+            heal_ratio = 0.40
+
+        if heal_ratio > 0.0:
+            for cust in self.customers:
+                if cust is not None and cust.state == "WAITING":
+                    cust.heal_patience(heal_ratio)
+                    self.particles.emit_hearts(cust.rect.centerx, cust.rect.centery, count=6)
+
+        # 4) 손님 인내심 감소 정지 (patience_freeze_timer)
+        if (
+            char_id in ("chef_mx", "chef_jp_tokyo", "chef_ru_moscow", "chef_us_nola", "chef_in_chennai")
+            or skill_effect in ("mx_fiesta", "heal_and_freeze", "speed_and_freeze")
+        ):
+            self.patience_freeze_timer = max(8.0, duration)
+            for cust in self.customers:
+                if cust is not None and cust.state == "WAITING":
+                    self.particles.emit_stars(cust.rect.centerx, cust.rect.centery, count=6)
+
+        # 5) 즉시 FEVER TIME 발동
+        if (
+            char_id in ("chef_br_rio", "chef_us_cali", "chef_in_mumbai", "chef_cn_beijing")
+            or skill_effect == "force_fever"
+        ):
+            self.fever_timer = max(9.0, duration)
+
+        # 6) 콤보 스택 즉시 추가 (+3 / +4 / +5)
+        combo_add = 0
+        if char_id == "chef_us_philly":
+            combo_add = 5
+        elif (
+            char_id in ("chef_mx_jalisco", "chef_ru_caucasus", "chef_in_kolkata", "chef_cn_xinjiang")
+            or skill_effect == "instant_and_combo"
+        ):
+            combo_add = 4
+        elif char_id in ("chef_tw", "chef_cn_sichuan"):
+            combo_add = 3
+
+        if combo_add > 0:
+            if hasattr(self.game_mgr, "add_combo"):
+                self.game_mgr.add_combo(combo_add)
+            else:
+                self.game_mgr.combo = max(0, self.game_mgr.combo) + combo_add
+                self.game_mgr.max_combo = max(self.game_mgr.max_combo, self.game_mgr.combo)
+                self.game_mgr.combo_timer = config.COMBO_WINDOW
             sound_fx.play_combo(self.game_mgr.combo)
 
-            self.particles.spawn_floating_text(
-                f"🧋 {skill_name}! (음료 {served_drinks}잔 즉시 서빙 & COMBO +3!)",
-                config.SCREEN_WIDTH // 2,
-                115,
-                color=config.NEON_CYAN,
-                size=24,
-                duration=1.8,
-            )
-
+        # 7) 플로팅 텍스트 알림
+        banner_col = char_data.get("accent_color", config.GOLD)
+        summary_txt = skill_desc if skill_desc else "마스터 고유 버프 발동!"
+        self.particles.spawn_floating_text(
+            f"⚡ {skill_name}! ({summary_txt})",
+            config.SCREEN_WIDTH // 2,
+            115,
+            color=banner_col,
+            size=22,
+            duration=1.8,
+        )
         return True
 
     # ==================================================================
@@ -812,21 +866,30 @@ class PlayScene(BaseScene):
         if not res:
             return
         action = str(res.get("action", ""))
+        slot_type = str(res.get("slot_type", ""))
         px, py = pos
 
         if action == "start_cook":
-            sound_fx.play_sizzle()
+            sound_fx.play_sizzle(slot_type)
             self.particles.emit_smoke(px, py - 10, count=4)
         elif action == "moved_to_tray":
-            sound_fx.play_click()
+            if slot_type == "batch_pot" or "remaining_servings" in res:
+                sound_fx.play_pot_scoop()
+            else:
+                sound_fx.play_move_to_tray()
             self.particles.emit_stars(self.assembly_tray.rect.centerx, self.assembly_tray.rect.top + 80, count=5)
+        elif action in ("auto_served", "served"):
+            if slot_type == "dispenser":
+                sound_fx.play_drink_pour()
+            elif slot_type == "batch_pot" or "remaining_servings" in res:
+                sound_fx.play_pot_scoop()
         elif action == "add_topping":
-            sound_fx.play_click()
+            sound_fx.play_topping()
             tid = str(res.get("topping_id", ""))
             t_name = TOPPINGS.get(tid, {}).get("short_name", tid)
             self.particles.spawn_floating_text(f"+{t_name} 추가!", px, py - 15, color=config.NEON_GREEN, size=18)
         elif action in ("trash_burnt", "trash_dish"):
-            sound_fx.play_burn()
+            sound_fx.play_trash()
             self.particles.emit_burn(px, py, count=7)
             self.particles.spawn_floating_text("🗑️ 음식 폐기", px, py - 15, color=config.TEXT_WARNING, size=18)
         elif action == "toggle_trash_mode":
@@ -846,13 +909,17 @@ class PlayScene(BaseScene):
             msg = str(res.get("message", "🥣 속재료 선택 완료! 빈 틀을 터치해 부으세요!"))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
         elif action == "flip_mold":
-            sound_fx.play_sizzle()
+            sound_fx.play_mold_flip()
             self.particles.emit_smoke(px, py - 8, count=5)
             self.particles.emit_stars(px, py - 6, count=4)
             self.particles.spawn_floating_text("🔄 철컥! 뒤집기!", px, py - 16, color=config.GOLD, size=18)
         elif action == "too_early_flip":
             sound_fx.play_click()
             msg = str(res.get("message", "🥣 아직 앞면이 익는 중입니다!"))
+            self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_YELLOW, size=15)
+        elif action == "cooking_in_progress":
+            sound_fx.play_click()
+            msg = str(res.get("message", "조리 중입니다! 완성되면 터치하세요."))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_YELLOW, size=15)
         elif action == "select_slot":
             # 트레이에서 접시를 클릭했는데 매칭되는 손님이 없는 경우 안내
@@ -879,8 +946,13 @@ class PlayScene(BaseScene):
         if self.active_cutscene is not None:
             return
 
-        # 1. 영업 시간 타이머 감소
+        # 1. 영업 시간 타이머 감소 및 마감 10초 카운트다운 틱 사운드
         self.time_left = max(0.0, self.time_left - dt)
+        if 0.0 < self.time_left <= 10.0:
+            cur_sec = int(math.ceil(self.time_left))
+            if cur_sec != getattr(self, "_last_timer_tick_sec", -1):
+                self._last_timer_tick_sec = cur_sec
+                sound_fx.play_timer_tick(urgent=(cur_sec <= 5))
         if self.time_left <= 0.0:
             self._finish_day()
             return
@@ -894,6 +966,11 @@ class PlayScene(BaseScene):
             self.fever_timer = max(0.0, self.fever_timer - dt)
         if self.patience_freeze_timer > 0.0:
             self.patience_freeze_timer = max(0.0, self.patience_freeze_timer - dt)
+
+        # 피버 타임 시작/종료 시 BGM 트랙 동기화
+        target_bgm = self._get_play_bgm_track()
+        if getattr(sound_fx, "_current_bgm_track", "") != target_bgm:
+            sound_fx.play_bgm(target_bgm)
 
         if self.game_mgr.combo > 0:
             self.game_mgr.combo_timer -= dt
@@ -920,10 +997,17 @@ class PlayScene(BaseScene):
             if cust is None:
                 continue
             ev = cust.update(dt, patience_freeze=is_patience_frozen)
+            if (
+                cust.state == "WAITING"
+                and cust.patience_ratio < 0.25
+                and not getattr(cust, "_warn_sound_played", False)
+            ):
+                cust._warn_sound_played = True
+                sound_fx.play_customer_warn()
             if ev == "ANGRY_LEFT":
                 self.game_mgr.missed_customers += 1
                 self.game_mgr.break_combo()
-                sound_fx.play_burn()
+                sound_fx.play_customer_angry()
                 self.particles.spawn_floating_text(
                     "💢 손님 이탈! (콤보 초기화)",
                     cust.rect.centerx,
@@ -938,7 +1022,13 @@ class PlayScene(BaseScene):
         sel_eff = str(self.game_mgr.get_selected_character_data().get("skill_effect", "") or "")
         kr_rush_active = (
             self.game_mgr.skill_active_timer > 0.0
-            and (self.game_mgr.selected_character == "chef_kr" or sel_eff in ("kr_rush", "instant_and_speed", "speed_and_freeze"))
+            and (
+                self.game_mgr.selected_character in ("chef_kr", "chef_cn_xinjiang")
+                or (
+                    sel_eff in ("kr_rush", "instant_and_speed", "speed_and_freeze")
+                    and self.game_mgr.selected_character != "chef_in_chennai"
+                )
+            )
         )
         if self.game_mgr.mode == "SPECIALIST":
             prev_states = [s.state for s in self.specialist_station.slots]
@@ -949,9 +1039,20 @@ class PlayScene(BaseScene):
             self.specialist_station.update(dt)
             for s_idx, slot in enumerate(self.specialist_station.slots):
                 prev_st = prev_states[s_idx] if s_idx < len(prev_states) else slot.state
+                if slot.is_flip_ready and not getattr(slot, "_flip_sound_played", False):
+                    slot._flip_sound_played = True
+                    sound_fx.play_flip_ready()
                 if prev_st == STATE_COOKING and slot.state == STATE_READY:
                     sound_fx.play_ready()
                     self.particles.emit_stars(slot.rect.centerx, slot.rect.centery, count=6)
+                elif (
+                    slot.state == STATE_READY
+                    and slot.can_burn
+                    and slot.burn_progress >= 0.65
+                    and not getattr(slot, "_burn_warn_played", False)
+                ):
+                    slot._burn_warn_played = True
+                    sound_fx.play_burn_warning()
                 elif prev_st == STATE_READY and slot.state == STATE_BURNT:
                     self.game_mgr.break_combo()
                     sound_fx.play_burn()
@@ -976,10 +1077,23 @@ class PlayScene(BaseScene):
                 st.update(dt)
                 for s_idx, slot in enumerate(st.slots):
                     prev_st = prev_states[s_idx] if s_idx < len(prev_states) else slot.state
+                    if slot.is_flip_ready and not getattr(slot, "_flip_sound_played", False):
+                        slot._flip_sound_played = True
+                        sound_fx.play_flip_ready()
                     if prev_st == STATE_COOKING and slot.state == STATE_READY:
-                        if st.slot_type != "dispenser":
+                        if st.slot_type == "dispenser":
+                            sound_fx.play_drink_ready()
+                        else:
                             sound_fx.play_ready()
                             self.particles.emit_stars(slot.rect.centerx, slot.rect.centery, count=5)
+                    elif (
+                        slot.state == STATE_READY
+                        and slot.can_burn
+                        and slot.burn_progress >= 0.65
+                        and not getattr(slot, "_burn_warn_played", False)
+                    ):
+                        slot._burn_warn_played = True
+                        sound_fx.play_burn_warning()
                     elif prev_st == STATE_READY and slot.state == STATE_BURNT:
                         self.game_mgr.break_combo()
                         sound_fx.play_burn()
@@ -992,27 +1106,35 @@ class PlayScene(BaseScene):
                             size=17,
                         )
 
-        # 6. 조리 중인 슬롯의 주기적 연기/불꽃 파티클 방출
+        # 6. 조리 중인 슬롯의 주기적 연기/불꽃 파티클 및 화구 앰비언트 조리음 방출
         self._ambient_particle_timer += dt
         if self._ambient_particle_timer >= 0.35:
             self._ambient_particle_timer = 0.0
             if self.game_mgr.mode == "SPECIALIST":
+                any_cooking = False
                 for slot in self.specialist_station.slots:
                     if slot.state == STATE_COOKING:
+                        any_cooking = True
                         if self.specialist_station.specialist_id == "skewer":
                             self.particles.emit_flame(slot.rect.centerx, slot.rect.centery, count=2)
                         else:
                             self.particles.emit_smoke(slot.rect.centerx, slot.rect.top + 10, count=1)
+                if any_cooking:
+                    sound_fx.play_ambient_cooking(self.specialist_station.slot_type)
             else:
                 for st in (self.mold_station, self.grill_station, self.batch_pot_station):
                     if not self.game_mgr.is_slot_unlocked_in_story(st.slot_type):
                         continue
+                    st_cooking = False
                     for slot in st.slots:
                         if slot.state == STATE_COOKING:
+                            st_cooking = True
                             if st.slot_type == "grill":
                                 self.particles.emit_flame(slot.rect.centerx, slot.rect.centery, count=2)
                             else:
                                 self.particles.emit_smoke(slot.rect.centerx, slot.rect.top + 10, count=1)
+                    if st_cooking:
+                        sound_fx.play_ambient_cooking(st.slot_type)
 
         # 6-B. 32강 토너먼트 AI 보스전 활성화 시 AI 라이벌 실시간 매출 시뮬레이션
         ai_opp = getattr(self.game_mgr, "ai_opponent_id", "")
@@ -1037,6 +1159,7 @@ class PlayScene(BaseScene):
         if self._day_finished:
             return
         self._day_finished = True
+        sound_fx.play_day_end()
         ai_opp = getattr(self.game_mgr, "ai_opponent_id", "")
         if ai_opp:
             if self.game_mgr.daily_gold >= self.ai_rival_gold:
@@ -1371,21 +1494,34 @@ class PlayScene(BaseScene):
             nm = config.get_font(14, bold=True).render(f"{char_data['name']} ({char_data['country']})", True, config.WHITE)
         surface.blit(nm, (panel.centerx - nm.get_width() // 2, panel.y + 104))
 
-        # 스킬 이름 & 설명 요약
+        # 스킬 이름 & 설명 요약 (픽셀 폭 기반 줄바꿈으로 잘림 방지)
         sk_title = xs_f.render(f"★ {char_data['skill_name']}", True, config.GOLD)
         if sk_title.get_width() > panel.width - 10:
             sk_title = config.get_font(12, bold=True).render(f"★ {char_data['skill_name']}", True, config.GOLD)
-        surface.blit(sk_title, (panel.centerx - sk_title.get_width() // 2, panel.y + 128))
+        surface.blit(sk_title, (panel.centerx - sk_title.get_width() // 2, panel.y + 126))
 
         desc = str(char_data["skill_desc"])
-        line1 = desc[:13]
-        line2 = desc[13:26]
-        desc_f = config.get_font(12, bold=True)
-        d1 = desc_f.render(line1, True, (220, 216, 236))
-        surface.blit(d1, (panel.centerx - d1.get_width() // 2, panel.y + 150))
-        if line2:
-            d2 = desc_f.render(line2, True, (220, 216, 236))
-            surface.blit(d2, (panel.centerx - d2.get_width() // 2, panel.y + 168))
+        max_desc_w = panel.width - 12
+        desc_f = config.get_font(11, bold=True)
+        wrapped_lines: List[str] = []
+        cur_line = ""
+        for ch_char in desc:
+            test_line = cur_line + ch_char
+            if desc_f.size(test_line)[0] <= max_desc_w:
+                cur_line = test_line
+            else:
+                if cur_line:
+                    wrapped_lines.append(cur_line.strip())
+                cur_line = ch_char.lstrip()
+        if cur_line:
+            wrapped_lines.append(cur_line.strip())
+
+        line_y = panel.y + 146
+        line_step = 15 if len(wrapped_lines) >= 3 else 17
+        for ln in wrapped_lines[:3]:
+            d_surf = desc_f.render(ln, True, (220, 216, 236))
+            surface.blit(d_surf, (panel.centerx - d_surf.get_width() // 2, line_y))
+            line_y += line_step
 
         # 하단 원터치 액티브 스킬 버튼 (불필요한 PC 단축키 안내 제거 & 16px 볼드 고시인성)
         s_rect = self.skill_btn_rect
@@ -1437,6 +1573,9 @@ class PlayScene(BaseScene):
         t2 = xs_f.render(lbl_bot, True, config.GOLD if skill_ready else (config.WHITE if skill_unlocked else config.TEXT_SECONDARY))
         surface.blit(t1, (s_rect.centerx - t1.get_width() // 2, s_rect.y + 6))
         surface.blit(t2, (s_rect.centerx - t2.get_width() // 2, s_rect.y + 30))
+
+    # 별칭 호환
+    _draw_character_skill_panel = _draw_chef_skill_panel
 
     def _draw_locked_slot_cover(
         self,

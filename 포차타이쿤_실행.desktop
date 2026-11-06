@@ -1,0 +1,12 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=전세계 길거리 음식 포차 타이쿤
+Comment=9개국 야시장 월드 투어 × 단일 메뉴 장인 × 1:1 네트워크 결투
+Path=/var/home/janginwoo/Desktop/GAME_POCHA
+Exec="/var/home/janginwoo/Desktop/GAME_POCHA/Pocha_Tycoon.x86_64"
+Icon=/var/home/janginwoo/Desktop/GAME_POCHA/assets/icon.svg
+Terminal=false
+Categories=Game;Simulation;
+StartupNotify=true

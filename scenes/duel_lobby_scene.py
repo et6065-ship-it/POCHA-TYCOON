@@ -10,6 +10,7 @@ scenes/duel_lobby_scene.py
 
 from __future__ import annotations
 
+import atexit
 import math
 import os
 import random
@@ -31,6 +32,19 @@ from data.characters import CHARACTER_ORDER, CHARACTERS
 class DuelLobbyScene(BaseScene):
     """1:1 네트워크 결투 매칭 및 대기실 씬."""
 
+    _active_spawned_proc: Optional[subprocess.Popen] = None
+    _atexit_registered: bool = False
+
+    @classmethod
+    def _cleanup_spawned_proc(cls) -> None:
+        proc = cls._active_spawned_proc
+        if proc is not None and proc.poll() is None:
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+        cls._active_spawned_proc = None
+
     def __init__(
         self,
         game_mgr: Optional[GameManager] = None,
@@ -42,6 +56,10 @@ class DuelLobbyScene(BaseScene):
         self.time_tick: float = 0.0
         self.particles: ParticleSystem = ParticleSystem()
         self._hover_pos: Tuple[int, int] = (0, 0)
+        self._spawned_proc: Optional[subprocess.Popen] = DuelLobbyScene._active_spawned_proc
+        if not DuelLobbyScene._atexit_registered:
+            atexit.register(DuelLobbyScene._cleanup_spawned_proc)
+            DuelLobbyScene._atexit_registered = True
 
         # 접속 UI 상태
         self.ip_input: str = str(kwargs.get("default_ip", f"127.0.0.1:{config.DEFAULT_DUEL_PORT}"))
@@ -208,6 +226,17 @@ class DuelLobbyScene(BaseScene):
         if not self.net.hosting:
             if not self._start_host_room():
                 return
+        active_proc = self._spawned_proc or DuelLobbyScene._active_spawned_proc
+        if active_proc is not None and active_proc.poll() is None:
+            sound_fx.play_click()
+            self.particles.spawn_floating_text(
+                "이미 2P 도전자 창이 실행 중입니다!",
+                config.SCREEN_WIDTH // 2,
+                110,
+                color=config.GOLD,
+                size=20,
+            )
+            return
         sound_fx.play_skill()
         target_arg = f"127.0.0.1:{self.net.tcp_port}"
         if getattr(sys, "frozen", False):
@@ -216,7 +245,9 @@ class DuelLobbyScene(BaseScene):
             main_script = os.path.join(config.BASE_DIR, "main.py")
             cmd = [sys.executable, main_script, "--duel-client", target_arg]
         try:
-            subprocess.Popen(cmd, cwd=config.BASE_DIR)
+            proc = subprocess.Popen(cmd, cwd=config.BASE_DIR)
+            self._spawned_proc = proc
+            DuelLobbyScene._active_spawned_proc = proc
             self.particles.spawn_floating_text(
                 "2P 도전자 창을 실행했습니다! 잠시 후 자동 연결됩니다.",
                 config.SCREEN_WIDTH // 2,

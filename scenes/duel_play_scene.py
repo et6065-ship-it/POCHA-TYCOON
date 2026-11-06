@@ -104,6 +104,8 @@ class DuelPlayScene(PlayScene):
         )
         for st in self.station_list:
             st.game_mgr = self.game_mgr
+        if hasattr(self, "specialist_station") and self.specialist_station is not None:
+            self.specialist_station.game_mgr = self.game_mgr
         self.assembly_tray.game_mgr = self.game_mgr
 
         self._setup_new_day()
@@ -125,6 +127,10 @@ class DuelPlayScene(PlayScene):
             rng=self.duel_rng,
         )
         self.customers[slot_idx] = cust
+        if cust.is_vip:
+            sound_fx.play_vip_arrive()
+        else:
+            sound_fx.play_customer_arrive()
         return cust
 
     def try_auto_serve(
@@ -221,7 +227,7 @@ class DuelPlayScene(PlayScene):
                 self.opp_stats["fever"] = bool(msg.get("fever", False))
                 self.opp_stats["skill"] = bool(msg.get("skill", False))
                 # 호스트 기준 남은 시간 동기화 (프레임 드랍으로 인한 양측 타이머 격차 원천 차단)
-                if not self.net.is_host and "time_left" in msg and not self._day_finished:
+                if not getattr(self.net, "is_host", self.net.role == "HOST") and "time_left" in msg and not self._day_finished:
                     host_tl = max(0.0, float(msg["time_left"]))
                     local_tl = max(0.0, self.day_duration - (now_wall - self._match_start_wall))
                     if abs(local_tl - host_tl) > 0.5:
@@ -284,6 +290,11 @@ class DuelPlayScene(PlayScene):
         self.time_tick += sim_dt
         real_elapsed = now_wall - self._match_start_wall
         self.time_left = max(0.0, self.day_duration - real_elapsed)
+        if 0.0 < self.time_left <= 10.0:
+            cur_sec = int(math.ceil(self.time_left))
+            if cur_sec != getattr(self, "_last_timer_tick_sec", -1):
+                self._last_timer_tick_sec = cur_sec
+                sound_fx.play_timer_tick(urgent=(cur_sec <= 5))
         if self.time_left <= 0.0:
             self._finish_day()
             return
@@ -320,10 +331,17 @@ class DuelPlayScene(PlayScene):
             if cust is None:
                 continue
             ev = cust.update(sim_dt, patience_freeze=is_patience_frozen)
+            if (
+                cust.state == "WAITING"
+                and cust.patience_ratio < 0.25
+                and not getattr(cust, "_warn_sound_played", False)
+            ):
+                cust._warn_sound_played = True
+                sound_fx.play_customer_warn()
             if ev == "ANGRY_LEFT":
                 self.game_mgr.missed_customers += 1
                 self.game_mgr.break_combo()
-                sound_fx.play_burn()
+                sound_fx.play_customer_angry()
                 self.particles.spawn_floating_text(
                     "💢 손님 이탈! (콤보 초기화)",
                     cust.rect.centerx,
@@ -334,8 +352,13 @@ class DuelPlayScene(PlayScene):
             if cust.ready_to_remove:
                 self.customers[idx] = None
 
+        sel_eff = str(self.game_mgr.get_selected_character_data().get("skill_effect", "") or "")
         kr_rush_active = (
-            self.game_mgr.skill_active_timer > 0.0 and self.game_mgr.selected_character == "chef_kr"
+            self.game_mgr.skill_active_timer > 0.0
+            and (
+                self.game_mgr.selected_character == "chef_kr"
+                or sel_eff in ("kr_rush", "instant_and_speed", "speed_and_freeze")
+            )
         )
         for st in self.station_list:
             prev_states = [s.state for s in st.slots]
@@ -346,10 +369,23 @@ class DuelPlayScene(PlayScene):
             st.update(sim_dt)
             for s_idx, slot in enumerate(st.slots):
                 prev_st = prev_states[s_idx] if s_idx < len(prev_states) else slot.state
+                if slot.is_flip_ready and not getattr(slot, "_flip_sound_played", False):
+                    slot._flip_sound_played = True
+                    sound_fx.play_flip_ready()
                 if prev_st == "COOKING" and slot.state == "READY":
-                    if st.slot_type != "dispenser":
+                    if st.slot_type == "dispenser":
+                        sound_fx.play_drink_ready()
+                    else:
                         sound_fx.play_ready()
                         self.particles.emit_stars(slot.rect.centerx, slot.rect.centery, count=5)
+                elif (
+                    slot.state == "READY"
+                    and slot.can_burn
+                    and slot.burn_progress >= 0.65
+                    and not getattr(slot, "_burn_warn_played", False)
+                ):
+                    slot._burn_warn_played = True
+                    sound_fx.play_burn_warning()
                 elif prev_st == "READY" and slot.state == "BURNT":
                     self.game_mgr.break_combo()
                     sound_fx.play_burn()
@@ -366,13 +402,22 @@ class DuelPlayScene(PlayScene):
         if self._ambient_particle_timer >= 0.35:
             self._ambient_particle_timer = 0.0
             for st in (self.mold_station, self.grill_station, self.batch_pot_station):
+                st_cooking = False
                 for slot in st.slots:
                     if slot.state == "COOKING":
+                        st_cooking = True
                         if st.slot_type == "grill":
                             self.particles.emit_flame(slot.rect.centerx, slot.rect.centery, count=2)
                         else:
                             self.particles.emit_smoke(slot.rect.centerx, slot.rect.top + 10, count=1)
+                if st_cooking:
+                    sound_fx.play_ambient_cooking(st.slot_type)
 
+        self.assembly_tray.update(sim_dt)
+        hold_fb = self.assembly_tray.pop_hold_feedback()
+        if hold_fb is not None:
+            fb_pos = hold_fb.get("pos", self.assembly_tray.rect.center)
+            self._handle_station_feedback(hold_fb, fb_pos)
         self.particles.update(sim_dt)
 
         # 주기적 네트워크 상태 동기화
@@ -385,6 +430,7 @@ class DuelPlayScene(PlayScene):
         if self._day_finished:
             return
         self._day_finished = True
+        sound_fx.play_day_end()
         self._send_state_sync(finished=True)
 
         if self.opp_stats.get("finished", False) or not self.net.connected:

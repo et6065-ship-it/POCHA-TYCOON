@@ -28,9 +28,18 @@ from core.scene_manager import SceneManager
 
 def create_app(initial_scene: str = "title") -> tuple[pygame.Surface, pygame.time.Clock, GameManager, SceneManager]:
     """Pygame 디스플레이, 클럭, GameManager, SceneManager를 초기화하여 반환한다."""
+    try:
+        pygame.mixer.pre_init(44100, -16, 2, 1024)
+    except Exception:
+        pass
     pygame.init()
     if not pygame.font.get_init():
         pygame.font.init()
+    try:
+        from core.effects import sound_fx
+        sound_fx._init_mixer_safely()
+    except Exception:
+        pass
 
     screen = pygame.display.set_mode(config.SCREEN_SIZE)
     pygame.display.set_caption(config.WINDOW_TITLE)

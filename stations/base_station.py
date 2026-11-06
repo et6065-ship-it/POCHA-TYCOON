@@ -73,6 +73,8 @@ class StationSlot:
         self.needs_flip: bool = False
         self.flipped: bool = False
         self.flip_burn_elapsed: float = 0.0
+        self._flip_sound_played: bool = False
+        self._burn_warn_played: bool = False
 
     @property
     def timer(self) -> float:
@@ -134,6 +136,7 @@ class StationSlot:
             self.flipped = True
             self.elapsed = max(self.elapsed, self.cook_time * 0.5)
             self.flip_burn_elapsed = 0.0
+            self._burn_warn_played = False
             return True
         return False
 
@@ -169,6 +172,8 @@ class StationSlot:
         self.needs_flip = bool(needs_flip)
         self.flipped = False
         self.flip_burn_elapsed = 0.0
+        self._flip_sound_played = False
+        self._burn_warn_played = False
         self.state = STATE_COOKING
 
     def instant_finish(self) -> bool:
@@ -176,6 +181,8 @@ class StationSlot:
         if self.state == STATE_COOKING and self.recipe_id:
             self.flipped = True
             self.flip_burn_elapsed = 0.0
+            self._flip_sound_played = True
+            self._burn_warn_played = False
             self.state = STATE_READY
             self.elapsed = 0.0
             self.servings = max(1, self.max_servings)
@@ -190,6 +197,8 @@ class StationSlot:
         self.servings = 0
         self.flipped = False
         self.flip_burn_elapsed = 0.0
+        self._flip_sound_played = False
+        self._burn_warn_played = False
 
     clear = reset
 

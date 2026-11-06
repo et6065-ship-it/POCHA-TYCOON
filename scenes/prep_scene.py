@@ -124,6 +124,7 @@ class PrepScene(BaseScene):
         self.inspected_character = self.game_mgr.selected_character
         self._sync_chapter_page_to_current()
         self._rebuild_click_targets()
+        sound_fx.play_bgm("prep")
 
     def _get_filtered_characters(self) -> List[str]:
         return [str(c["id"]) if isinstance(c, dict) else str(c) for c in get_characters_by_country(self.char_country_filter)]
@@ -331,7 +332,7 @@ class PrepScene(BaseScene):
 
             # 2) 모드 전환 토글 버튼 (월드 투어 -> 단일 메뉴 장인 -> 글로벌 통합 -> 월드 투어)
             if self.mode_toggle_rect.inflate(6, 6).collidepoint(mx, my):
-                sound_fx.play_click()
+                sound_fx.play_tab_switch()
                 mode_cycle = {"WORLD_TOUR": "SPECIALIST", "SPECIALIST": "GLOBAL_ENDLESS", "GLOBAL_ENDLESS": "WORLD_TOUR"}
                 new_mode = mode_cycle.get(self.game_mgr.mode, "WORLD_TOUR")
                 self.game_mgr.set_mode(new_mode)
@@ -355,14 +356,14 @@ class PrepScene(BaseScene):
             for tab_key, trect in self.tab_rects.items():
                 if trect.inflate(4, 6).collidepoint(mx, my):
                     if self.active_tab != tab_key:
-                        sound_fx.play_click()
+                        sound_fx.play_tab_switch()
                         self.active_tab = tab_key
                         self._rebuild_click_targets()
                     return
 
             # 4) 우측 하단 [오늘 영업 시작! (START DAY)] 버튼
             if self.start_day_btn_rect.inflate(6, 6).collidepoint(mx, my):
-                sound_fx.play_fanfare()
+                sound_fx.play_day_start()
                 self.game_mgr.ai_opponent_id = ""
                 self.game_mgr.save_game()
                 if self.scene_mgr:
@@ -384,13 +385,13 @@ class PrepScene(BaseScene):
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("title", show_loading=True)
             elif event.key == pygame.K_RETURN:
-                sound_fx.play_fanfare()
+                sound_fx.play_day_start()
                 self.game_mgr.ai_opponent_id = ""
                 self.game_mgr.save_game()
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
             elif event.key == pygame.K_TAB:
-                sound_fx.play_click()
+                sound_fx.play_tab_switch()
                 order = ["character", "chapter", "upgrade", "tournament"]
                 idx = (order.index(self.active_tab) + 1) % len(order)
                 self.active_tab = order[idx]
@@ -412,7 +413,7 @@ class PrepScene(BaseScene):
         cx, cy = center_pos
 
         if action_type == "filter_char_country":
-            sound_fx.play_click()
+            sound_fx.play_tab_switch()
             self.char_country_filter = str(payload)
             self.char_page = 0
             filtered = self._get_filtered_characters()
@@ -420,7 +421,7 @@ class PrepScene(BaseScene):
                 self.inspected_character = filtered[0]
 
         elif action_type == "char_page_delta":
-            sound_fx.play_click()
+            sound_fx.play_tab_switch()
             filtered = self._get_filtered_characters()
             total_pages = max(1, (len(filtered) + 5) // 6)
             self.char_page = (self.char_page + int(payload)) % total_pages
@@ -432,12 +433,12 @@ class PrepScene(BaseScene):
                 self.inspected_character = cid
 
         elif action_type == "chapter_page_delta":
-            sound_fx.play_click()
+            sound_fx.play_tab_switch()
             total_pages = max(1, (len(CHAPTER_ORDER) + 3) // 4)
             self.chapter_page = (self.chapter_page + int(payload)) % total_pages
 
         elif action_type == "specialist_page_delta":
-            sound_fx.play_click()
+            sound_fx.play_tab_switch()
             total_pages = max(1, (len(SPECIALIST_ORDER) + 3) // 4)
             self.specialist_page = (self.specialist_page + int(payload)) % total_pages
 
@@ -469,7 +470,7 @@ class PrepScene(BaseScene):
             )
 
         elif action_type == "global_page_delta":
-            sound_fx.play_click()
+            sound_fx.play_tab_switch()
             total_pages = max(1, (len(CHAPTER_ORDER) + 3) // 4)
             self.global_station_page = (self.global_station_page + int(payload)) % total_pages
 
@@ -557,7 +558,7 @@ class PrepScene(BaseScene):
         elif action_type == "set_global_station":
             slot_type, station_id = payload
             if self.game_mgr.set_global_loadout(slot_type, station_id):
-                sound_fx.play_click()
+                sound_fx.play_upgrade()
                 self.game_mgr.save_game()
                 st_name = STATIONS_CATALOG[station_id]["short_name"]
                 self.particles.emit_stars(cx, cy, count=6)
@@ -584,7 +585,7 @@ class PrepScene(BaseScene):
                 )
                 return
             if self.game_mgr.upgrade_station(up_key):
-                sound_fx.play_cash()
+                sound_fx.play_upgrade()
                 self.game_mgr.save_game()
                 lvl = self.game_mgr.get_station_level(up_key)
                 up_name = STATION_UPGRADES[up_key]["short_name"]
@@ -613,7 +614,7 @@ class PrepScene(BaseScene):
                 )
                 return
             if self.game_mgr.upgrade_interior(in_key):
-                sound_fx.play_cash()
+                sound_fx.play_upgrade()
                 self.game_mgr.save_game()
                 in_name = INTERIOR_UPGRADES[in_key]["short_name"]
                 self.particles.emit_stars(cx, cy, count=12)
@@ -630,7 +631,7 @@ class PrepScene(BaseScene):
 
         elif action_type == "start_tournament_match":
             opp_id = str(payload)
-            sound_fx.play_fanfare()
+            sound_fx.play_day_start()
             self.game_mgr.ai_opponent_id = opp_id
             self.game_mgr.save_game()
             if self.scene_mgr:

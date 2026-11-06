@@ -221,6 +221,9 @@ class GameManager:
         self.gold: int = 3000
         self.total_earned_gold: int = 0
         self.day: int = 1
+        self.endless_day: int = 1
+        self.last_played_day: int = 1
+        self.last_day_cleared: bool = False
         self.chapter_days: Dict[str, int] = {cid: 1 for cid in CHAPTER_ORDER}
 
         # 단일 메뉴 장인 모드(SPECIALIST) 상태
@@ -429,6 +432,8 @@ class GameManager:
         self.mode = mode_upper
         if mode_upper == "SPECIALIST":
             self.day = self.specialist_days.get(self.selected_specialist, 1)
+        elif mode_upper == "GLOBAL_ENDLESS":
+            self.day = max(1, int(getattr(self, "endless_day", 1)))
         elif mode_upper == "WORLD_TOUR":
             self.day = self.chapter_days.get(self.current_chapter, 1)
         return True
@@ -685,13 +690,6 @@ class GameManager:
         if resolved_slot == "dispenser" and float(passive.get("dispenser_speed_mult", 1.0)) > 1.0:
             mult *= float(passive["dispenser_speed_mult"])
 
-        # 액티브 스킬 버프: 조리 가속 계열 스킬 발동 중일 때 조리 속도 2배
-        if self.skill_active_timer > 0.0 and (
-            char.get("skill_id") == "k_pocha_rush"
-            or str(char.get("skill_effect", "")) in ("kr_rush", "instant_and_speed", "speed_and_freeze")
-        ):
-            mult *= 2.0
-
         return round(mult, 4)
 
     # 별칭 호환
@@ -723,13 +721,19 @@ class GameManager:
     ) -> float:
         """
         음식이 타기까지 걸리는 시간의 지연 배율을 반환한다.
-        - 기구 업그레이드 배율 반영
+        - 기구 업그레이드 배율 및 트레이(tray) 업그레이드 보온 배율 반영
         - 켄지(chef_jp) 패시브: 음식 타는 시간 50% 지연 (1.50배)
         """
         resolved_slot = self._resolve_slot_type(slot_type, station_id)
         lvl = self.get_station_level(resolved_slot)
         lvl_stats = get_station_level_stats(resolved_slot, lvl)
         mult = float(lvl_stats.get("burn_time_mult", 1.0))
+
+        if resolved_slot != "tray":
+            tray_lvl = self.get_station_level("tray")
+            if tray_lvl > 0:
+                tray_stats = get_station_level_stats("tray", tray_lvl)
+                mult *= float(tray_stats.get("burn_time_mult", 1.0))
 
         char = self.get_selected_character_data()
         passive = char["passive"]
@@ -797,9 +801,11 @@ class GameManager:
 
     def get_recipe_price(self, recipe_id: str) -> int:
         """
-        주인공 패시브가 반영된 레시피 판매 가격(원)을 계산하여 반환한다.
+        주인공 패시브 및 오늘의 인기 메뉴 축제 보너스가 반영된 레시피 판매 가격(원)을 계산하여 반환한다.
         - 김포차(chef_kr) 패시브: 한국(KR) 메뉴 판매가 +10%
+        - 글로벌 마스터 패시브: passive_desc에 '모든 메뉴'/'전체 메뉴'가 포함된 경우 국가 제한 없이 kr_price_bonus 적용
         - 디에고(chef_mx) 패시브: 토핑 메뉴(has_topping=True) 판매가 +20%
+        - 오늘의 야시장 축제 인기 메뉴(featured_id): +20% 축제 가격 보너스
         """
         rec = get_recipe(recipe_id)
         if not rec:
@@ -807,12 +813,33 @@ class GameManager:
         price = float(rec["price"])
         char = self.get_selected_character_data()
         passive = char["passive"]
+        passive_desc = str(char.get("passive_desc", ""))
 
-        if (rec["country"] == "KR" or rec["country"] == char.get("country")) and float(passive.get("kr_price_bonus", 1.0)) > 1.0:
-            price *= float(passive["kr_price_bonus"])
+        kr_bonus = float(passive.get("kr_price_bonus", 1.0))
+        if kr_bonus > 1.0:
+            is_global_menu_bonus = (
+                ("모든 메뉴" in passive_desc)
+                or ("전체 메뉴" in passive_desc)
+                or ("기본 메뉴" in passive_desc and not rec.get("has_topping", False))
+            )
+            if is_global_menu_bonus or rec["country"] == "KR" or rec["country"] == char.get("country"):
+                price *= kr_bonus
 
         if rec.get("has_topping", False) and float(passive.get("topping_price_mult", 1.0)) > 1.0:
             price *= float(passive["topping_price_mult"])
+
+        # 아성(chef_tw_kaohsiung) 액티브 스킬: 8초간 대량팬·그릴 판매가 1.5배
+        if (
+            self.skill_active_timer > 0.0
+            and self.selected_character == "chef_tw_kaohsiung"
+            and str(rec.get("slot_type", "")) in ("batch_pot", "grill")
+        ):
+            price *= 1.50
+
+        # 오늘의 야시장 축제 인기 메뉴(featured_id)일 경우 +20% 축제 가격 보너스
+        fest_info = self.get_daily_festival_info()
+        if fest_info.get("featured_id") == recipe_id:
+            price *= 1.20
 
         # 10원 단위 반올림
         return int(round(price / 10.0) * 10)
@@ -825,7 +852,7 @@ class GameManager:
         콤보 보너스 팁 배율을 반환한다.
         - 켄지(chef_jp) 패시브: 콤보 보너스 팁 +25% (1.25배)
         - 7080 감성 라디오(retro_radio) 인테리어: 콤보 보너스 팁 +25% (1.25배)
-        - 디에고 액티브 스킬(fiesta_fever) 발동 중: 서빙 팁 2배
+        - 디에고 액티브 스킬(fiesta_fever) 등 발동 중: 서빙 팁 배율 상승
         """
         mult = 1.0
         char = self.get_selected_character_data()
@@ -836,18 +863,27 @@ class GameManager:
         if self.get_interior_level("retro_radio") > 0:
             mult *= float(INTERIOR_UPGRADES["retro_radio"]["combo_tip_mult"])
 
-        if self.skill_active_timer > 0.0 and (
-            char.get("skill_id") == "fiesta_fever"
-            or str(char.get("skill_effect", "")) in ("mx_fiesta", "instant_and_tip", "heal_and_tip")
-        ):
-            mult *= 2.0
+        if self.skill_active_timer > 0.0:
+            if self.selected_character == "chef_in_kolkata":
+                mult *= 1.8
+            elif (
+                self.selected_character in ("chef_jp_hokkaido", "chef_cn_beijing")
+                or (
+                    self.selected_character not in ("chef_tw_kaohsiung", "chef_cn_shanghai")
+                    and (
+                        char.get("skill_id") == "fiesta_fever"
+                        or str(char.get("skill_effect", "")) in ("mx_fiesta", "instant_and_tip", "heal_and_tip")
+                    )
+                )
+            ):
+                mult *= 2.0
 
         return round(mult, 4)
 
     def get_pochasta_rank(self) -> AttrDict:
         """
         [데이브 더 다이버 '쿡스타' 벤치마킹] 포차스타(Pocha-sta) 글로벌 SNS 등급 및 팔로워 정보를 반환한다.
-        획득 별점 총합, 해금된 셰프 수, 누적 매출을 기반으로 산출한다.
+        획득 별점 총합, 해금된 셰프 수, 누적 매출을 기반으로 산출하며 등급별 VIP 등장 확률 보너스(0%~8%)를 부여한다.
         """
         total_stars = sum(int(v) for v in self.chapter_stars.values())
         unlocked_cnt = len(self.unlocked_characters)
@@ -855,14 +891,14 @@ class GameManager:
         followers = max(120, score * 18)
 
         if score >= 3500:
-            return AttrDict({"tier": "👑 다이아몬드 포차", "followers": followers, "badge_color": (118, 232, 255), "desc": "전세계 야시장의 살아있는 전설"})
+            return AttrDict({"tier": "👑 다이아몬드 포차", "followers": followers, "vip_bonus": 0.08, "badge_color": (118, 232, 255), "desc": "전세계 야시장의 살아있는 전설 (VIP 확률 +8%)"})
         elif score >= 2000:
-            return AttrDict({"tier": "💎 플래티넘 포차", "followers": followers, "badge_color": (198, 152, 255), "desc": "글로벌 미식가들의 성지"})
+            return AttrDict({"tier": "💎 플래티넘 포차", "followers": followers, "vip_bonus": 0.06, "badge_color": (198, 152, 255), "desc": "글로벌 미식가들의 성지 (VIP 확률 +6%)"})
         elif score >= 950:
-            return AttrDict({"tier": "🥇 골드 포차", "followers": followers, "badge_color": (255, 212, 68), "desc": "전국구 웨이팅 핫플레이스"})
+            return AttrDict({"tier": "🥇 골드 포차", "followers": followers, "vip_bonus": 0.04, "badge_color": (255, 212, 68), "desc": "전국구 웨이팅 핫플레이스 (VIP 확률 +4%)"})
         elif score >= 350:
-            return AttrDict({"tier": "🥈 실버 포차", "followers": followers, "badge_color": (205, 218, 235), "desc": "입소문 난 동네 야시장 맛집"})
-        return AttrDict({"tier": "🥉 브론즈 포차", "followers": followers, "badge_color": (218, 142, 88), "desc": "새롭게 떠오르는 루키 포장마차"})
+            return AttrDict({"tier": "🥈 실버 포차", "followers": followers, "vip_bonus": 0.02, "badge_color": (205, 218, 235), "desc": "입소문 난 동네 야시장 맛집 (VIP 확률 +2%)"})
+        return AttrDict({"tier": "🥉 브론즈 포차", "followers": followers, "vip_bonus": 0.0, "badge_color": (218, 142, 88), "desc": "새롭게 떠오르는 루키 포장마차"})
 
     def get_daily_festival_info(self) -> AttrDict:
         """
@@ -870,7 +906,7 @@ class GameManager:
         """
         active_recs = self.get_orderable_recipes(base_only=False)
         if not active_recs:
-            return AttrDict({"title": "야시장 개장일", "featured_name": "전 메뉴", "bonus_desc": "콤보 팁 활성화"})
+            return AttrDict({"title": "야시장 개장일", "featured_id": "", "featured_name": "전 메뉴", "bonus_desc": "콤보 팁 활성화"})
         idx = (int(self.day) * 3 + len(self.current_chapter)) % len(active_recs)
         featured = active_recs[idx]
         themes = [
@@ -884,7 +920,7 @@ class GameManager:
             "title": theme_title,
             "featured_id": featured["id"],
             "featured_name": featured["name"],
-            "bonus_desc": f"오늘의 인기 메뉴: {featured['name']}",
+            "bonus_desc": f"오늘의 인기 메뉴: {featured['name']} (판매가 +20%)",
         })
 
     def calculate_combo_tip(
@@ -932,7 +968,7 @@ class GameManager:
     def get_vip_spawn_chance(self) -> float:
         """
         관광객/VIP 손님 등장 확률(0.0 ~ 1.0)을 반환한다.
-        - 챕터 기본 VIP 확률 + 디에고(chef_mx) 패시브(+0.15) + 야시장 네온 입간판(+0.12)
+        - 챕터 기본 VIP 확률 + 디에고(chef_mx) 패시브(+0.15) + 야시장 네온 입간판(+0.12) + 포차스타 등급 보너스(+0~0.08)
         """
         ch = get_chapter(self.current_chapter)
         chance = float(ch.get("vip_chance", config.BASE_VIP_CHANCE))
@@ -943,7 +979,13 @@ class GameManager:
         if self.get_interior_level("neon_signboard") > 0:
             chance += float(INTERIOR_UPGRADES["neon_signboard"]["vip_spawn_bonus"])
 
+        pochasta = self.get_pochasta_rank()
+        chance += float(pochasta.get("vip_bonus", 0.0))
+
         return round(min(0.65, max(0.0, chance)), 4)
+
+    # 별칭 호환
+    get_vip_chance = get_vip_spawn_chance
 
     def get_target_gold(self, day: Optional[int] = None) -> int:
         """현재 모드, 챕터(또는 장인 전문점), 일차에 해당하는 일일 목표 매출액을 반환한다."""
@@ -997,6 +1039,13 @@ class GameManager:
         self.skill_cooldown = 0.0
         self.skill_active_timer = 0.0
 
+    def add_combo(self, amount: int = 1) -> int:
+        """연속 서빙 콤보를 추가하고 콤보 타이머 및 최고 콤보를 갱신한다."""
+        self.combo = max(0, self.combo) + max(1, int(amount))
+        self.max_combo = max(self.max_combo, self.combo)
+        self.combo_timer = config.COMBO_WINDOW
+        return self.combo
+
     def record_serve(
         self,
         recipe_id: str,
@@ -1006,9 +1055,7 @@ class GameManager:
         """
         손님에게 메뉴를 서빙했을 때 콤보 스택을 갱신하고 판매가 + 팁을 골드에 반영한다.
         """
-        self.combo = max(0, self.combo) + max(1, int(extra_combo))
-        self.max_combo = max(self.max_combo, self.combo)
-        self.combo_timer = config.COMBO_WINDOW
+        self.add_combo(extra_combo)
         self.served_customers += 1
 
         base_price = self.get_recipe_price(recipe_id)
@@ -1037,6 +1084,8 @@ class GameManager:
     def complete_day(self, earned_gold: Optional[int] = None) -> AttrDict:
         """
         하루 영업을 종료하고 목표 달성 여부, 획득 별점(0~3), 일차 증가를 처리한다.
+        - cleared == True (또는 GLOBAL_ENDLESS 모드)일 때만 다음 일차로 진행한다.
+        - GLOBAL_ENDLESS 모드에서는 chapter_days를 덮어쓰지 않고 endless_day에 별도 저장한다.
         """
         actual_earned = self.daily_gold if earned_gold is None else int(earned_gold)
         target = self.get_target_gold(self.day)
@@ -1051,11 +1100,17 @@ class GameManager:
             self.specialist_stars[self.selected_specialist] = max(prev_stars, stars)
 
         completed_day = self.day
-        self.day += 1
-        if self.mode == "SPECIALIST":
-            self.specialist_days[self.selected_specialist] = self.day
-        else:
-            self.chapter_days[self.current_chapter] = self.day
+        self.last_played_day = completed_day
+        self.last_day_cleared = bool(cleared)
+
+        if cleared or self.mode == "GLOBAL_ENDLESS":
+            self.day += 1
+            if self.mode == "SPECIALIST":
+                self.specialist_days[self.selected_specialist] = self.day
+            elif self.mode == "GLOBAL_ENDLESS":
+                self.endless_day = self.day
+            else:
+                self.chapter_days[self.current_chapter] = self.day
 
         return AttrDict(
             {
@@ -1101,6 +1156,9 @@ class GameManager:
             "gold": int(self.gold),
             "total_earned_gold": int(self.total_earned_gold),
             "day": int(self.day),
+            "endless_day": int(getattr(self, "endless_day", 1)),
+            "last_played_day": int(getattr(self, "last_played_day", self.day)),
+            "last_day_cleared": bool(getattr(self, "last_day_cleared", False)),
             "chapter_days": dict(self.chapter_days),
             "selected_specialist": getattr(self, "selected_specialist", "bungeo"),
             "specialist_days": dict(getattr(self, "specialist_days", {})),
@@ -1179,6 +1237,9 @@ class GameManager:
         self.gold = max(0, int(data.get("gold", 3000)))
         self.total_earned_gold = max(0, int(data.get("total_earned_gold", self.gold)))
         self.day = max(1, int(data.get("day", 1)))
+        self.endless_day = max(1, int(data.get("endless_day", 1)))
+        self.last_played_day = max(1, int(data.get("last_played_day", self.day)))
+        self.last_day_cleared = bool(data.get("last_day_cleared", False))
 
         raw_ch_days = data.get("chapter_days", {})
         if isinstance(raw_ch_days, dict):
@@ -1204,7 +1265,7 @@ class GameManager:
                 self.chapter_stars[cid] = max(0, min(val, 3))
 
     def save_game(self, filepath: Optional[str] = None) -> bool:
-        """현재 게임 진행 상태를 JSON 파일(또는 웹앱 브라우저 localStorage)로 저장한다."""
+        """현재 게임 진행 상태를 JSON 파일(원자적 임시 파일 교체) 또는 웹앱 브라우저 localStorage로 저장한다."""
         payload_str = json.dumps(self.to_dict(), ensure_ascii=False, indent=2)
         if sys.platform == "emscripten":
             try:
@@ -1216,11 +1277,15 @@ class GameManager:
         if not target_path:
             return sys.platform == "emscripten"
         try:
-            parent_dir = os.path.dirname(os.path.abspath(target_path))
+            abs_target = os.path.abspath(target_path)
+            parent_dir = os.path.dirname(abs_target)
             if parent_dir and not os.path.exists(parent_dir):
                 os.makedirs(parent_dir, exist_ok=True)
-            with open(target_path, "w", encoding="utf-8") as f:
+            tmp_path = f"{abs_target}.tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write(payload_str)
+                f.flush()
+            os.replace(tmp_path, abs_target)
             return True
         except Exception:
             return sys.platform == "emscripten"

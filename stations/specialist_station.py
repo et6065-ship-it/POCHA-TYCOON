@@ -240,6 +240,7 @@ class SpecialistStation:
                         if slot is not None:
                             return {
                                 "action": "start_cook",
+                                "slot_type": self.slot_type,
                                 "recipe_id": rid,
                                 "slot_index": slot.slot_index,
                             }
@@ -247,6 +248,7 @@ class SpecialistStation:
                     r_name = str(rec["name"]) if rec else rid
                     return {
                         "action": "select_recipe",
+                        "slot_type": self.slot_type,
                         "recipe_id": rid,
                         "message": f"🥣 [{r_name}] 속재료 선택 완료! 우측 빈 붕어틀(1~6)을 터치해 반죽을 부으세요!",
                     }
@@ -255,11 +257,13 @@ class SpecialistStation:
                 if slot is not None:
                     return {
                         "action": "start_cook",
+                        "slot_type": self.slot_type,
                         "recipe_id": rid,
                         "slot_index": slot.slot_index,
                     }
                 return {
                     "action": "no_empty_slot",
+                    "slot_type": self.slot_type,
                     "message": "6구 화로가 모두 조리 중입니다! 완성된 음식을 먼저 꺼내세요.",
                 }
 
@@ -273,6 +277,7 @@ class SpecialistStation:
                 slot.reset()
                 return {
                     "action": "trash_burnt",
+                    "slot_type": self.slot_type,
                     "recipe_id": old_rid,
                     "slot_index": slot.slot_index,
                 }
@@ -285,6 +290,7 @@ class SpecialistStation:
                         slot.reset()
                         return {
                             "action": "moved_to_tray",
+                            "slot_type": self.slot_type,
                             "recipe_id": rid,
                             "slot_index": slot.slot_index,
                         }
@@ -295,6 +301,7 @@ class SpecialistStation:
                     slot.reset()
                     return {
                         "action": "served",
+                        "slot_type": self.slot_type,
                         "recipe_id": rid,
                         "slot_index": slot.slot_index,
                         "serve_info": serve_info,
@@ -306,11 +313,13 @@ class SpecialistStation:
                         slot.reset()
                         return {
                             "action": "moved_to_tray",
+                            "slot_type": self.slot_type,
                             "recipe_id": rid,
                             "slot_index": slot.slot_index,
                         }
                     return {
                         "action": "tray_full",
+                        "slot_type": self.slot_type,
                         "recipe_id": rid,
                         "slot_index": slot.slot_index,
                         "message": "서빙 트레이가 가득 찼습니다!",
@@ -318,6 +327,7 @@ class SpecialistStation:
 
                 return {
                     "action": "no_customer",
+                    "slot_type": self.slot_type,
                     "recipe_id": rid,
                     "slot_index": slot.slot_index,
                     "message": "해당 메뉴를 주문한 손님이 없습니다!",
@@ -331,6 +341,7 @@ class SpecialistStation:
                     slot.reset()
                     return {
                         "action": "trash_dish",
+                        "slot_type": self.slot_type,
                         "recipe_id": old_rid,
                         "slot_index": slot.slot_index,
                     }
@@ -340,16 +351,24 @@ class SpecialistStation:
                         slot.flip_mold()
                         return {
                             "action": "flip_mold",
+                            "slot_type": self.slot_type,
                             "recipe_id": slot.recipe_id,
                             "slot_index": slot.slot_index,
                         }
                     return {
                         "action": "too_early_flip",
+                        "slot_type": self.slot_type,
                         "recipe_id": slot.recipe_id,
                         "slot_index": slot.slot_index,
                         "message": "🥣 아직 앞면 생반죽이 익는 중입니다! [🔄 지금 뒤집기!]가 뜨면 터치하세요!",
                     }
-                return None
+                return {
+                    "action": "cooking_in_progress",
+                    "slot_type": self.slot_type,
+                    "recipe_id": slot.recipe_id,
+                    "slot_index": slot.slot_index,
+                    "message": "🔥 아직 조리 중입니다! 완성(✨)되면 터치하세요!",
+                }
 
             if slot.state == STATE_IDLE:
                 if is_mold:
@@ -359,6 +378,7 @@ class SpecialistStation:
                     if cooked_slot is not None:
                         return {
                             "action": "start_cook",
+                            "slot_type": self.slot_type,
                             "recipe_id": rid,
                             "slot_index": cooked_slot.slot_index,
                         }
@@ -366,6 +386,7 @@ class SpecialistStation:
                 self.selected_slot_index = slot.slot_index
                 return {
                     "action": "select_target_slot",
+                    "slot_type": self.slot_type,
                     "slot_index": slot.slot_index,
                     "message": f"화로 #{slot.slot_index + 1}번 칸 선택됨! 좌측에서 넣을 맛 버튼을 터치하세요.",
                 }

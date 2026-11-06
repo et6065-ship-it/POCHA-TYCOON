@@ -146,6 +146,7 @@ class Customer:
         self.leave_timer: float = 0.0
         self.ready_to_remove: bool = False
         self._angry_event_emitted: bool = False
+        self._warn_sound_played: bool = False
 
     @classmethod
     def create_random(
@@ -234,36 +235,54 @@ class Customer:
         if not food_ids:
             food_ids = all_ids
 
+        # 오늘의 야시장 특선/인기 메뉴(featured_id)가 후보군에 있으면 선택 가중치 부여
+        featured_id = ""
+        if mgr and hasattr(mgr, "get_daily_festival_info"):
+            try:
+                fest_info = mgr.get_daily_festival_info()
+                if isinstance(fest_info, dict):
+                    featured_id = str(fest_info.get("featured_id", "") or "")
+            except Exception:
+                featured_id = ""
+
+        def _pick(pool: List[str]) -> str:
+            if not pool:
+                return "bungeoppang_redbean"
+            if featured_id and featured_id in pool and len(pool) > 1:
+                weighted_pool = list(pool) + [featured_id, featured_id]
+                return r.choice(weighted_pool)
+            return r.choice(pool)
+
         ctype = customer_type.lower()
         if ctype == "student":
             # 단품(1개) 주문 위주 (85% 1개, 15% 2개)
             if r.random() < 0.85 or len(all_ids) < 2:
-                return [r.choice(all_ids)]
-            return [r.choice(food_ids), r.choice(all_ids)]
+                return [_pick(all_ids)]
+            return [_pick(food_ids), _pick(all_ids)]
 
         if ctype == "worker":
             # 1~2개 주문 (음식 + 음료 조합 선호)
             if drink_ids and food_ids and r.random() < 0.70:
-                return [r.choice(food_ids), r.choice(drink_ids)]
+                return [_pick(food_ids), _pick(drink_ids)]
             if r.random() < 0.50:
-                return [r.choice(food_ids)]
-            return [r.choice(all_ids), r.choice(all_ids)]
+                return [_pick(food_ids)]
+            return [_pick(all_ids), _pick(all_ids)]
 
         if ctype == "tourist":
             # 외국인 관광객: 2개 메뉴 주문
-            first = r.choice(food_ids)
+            first = _pick(food_ids)
             others = [rid for rid in all_ids if rid != first] or all_ids
-            second = r.choice(others)
+            second = _pick(others)
             return [first, second]
 
         if ctype == "youtuber":
             # 맛집 유튜버 VIP: 토핑 메뉴 포함 2개 주문 선호
-            first = r.choice(topping_ids) if topping_ids else r.choice(food_ids)
+            first = _pick(topping_ids) if topping_ids else _pick(food_ids)
             others = [rid for rid in all_ids if rid != first] or all_ids
-            second = r.choice(others)
+            second = _pick(others)
             return [first, second]
 
-        return [r.choice(all_ids)]
+        return [_pick(all_ids)]
 
     @property
     def patience_ratio(self) -> float:
@@ -327,6 +346,8 @@ class Customer:
         if not order_completed:
             # 남은 주문이 있으면 인내심 25% 회복
             self.patience = min(self.max_patience, self.patience + self.max_patience * 0.25)
+            if self.patience_ratio >= 0.25:
+                self._warn_sound_played = False
         else:
             self.state = "SATISFIED"
             self.leave_timer = 0.55
@@ -387,6 +408,8 @@ class Customer:
         if self.state == "WAITING":
             heal_amount = self.max_patience * max(0.0, float(ratio))
             self.patience = min(self.max_patience, self.patience + heal_amount)
+            if self.patience_ratio >= 0.25:
+                self._warn_sound_played = False
         return self.patience
 
     def update(self, dt: float, patience_freeze: bool = False) -> Optional[str]:
@@ -438,11 +461,12 @@ class Customer:
         y_offset = int((self.enter_timer / 0.30) * 18) if self.enter_timer > 0 else 0
 
         # 좌측 하단부에 손님 캐릭터 배치, 우측/상단부에 대형 고대비 주문 말풍선 배치
+        # 상단 배너(y=68~98)와 겹치지 않도록 캐릭터 높이 및 말풍선/뱃지 상단 하한선을 조정
         char_w = min(96, int(self.rect.width * 0.36))
-        char_h = min(142, int(self.rect.height * 0.60))
+        char_h = min(132, int(self.rect.height * 0.54))
         char_rect = pygame.Rect(
             self.rect.x + 4,
-            self.rect.bottom - char_h - 22 + y_offset,
+            self.rect.bottom - char_h - 20 + y_offset,
             char_w,
             char_h,
         )
@@ -489,14 +513,15 @@ class Customer:
             )
         pygame.draw.rect(surface, (215, 212, 232), gauge_rect, width=2, border_radius=7)
 
-        # 손님 유형 뱃지 (캐릭터 머리 위/가슴 상단 — 13px 볼드 고대비)
+        # 손님 유형 뱃지 (캐릭터 머리 위/가슴 상단 — 13px 볼드 고대비, 상단 배너 침범 방지)
         badge_font = config.get_font(13, bold=True)
         badge_surf = badge_font.render(self.badge_text, True, config.WHITE)
         badge_w = badge_surf.get_width() + 14
         badge_h = 22
+        badge_y = max(config.CUSTOMER_AREA_TOP + 36, char_rect.top - 20)
         badge_rect = pygame.Rect(
             char_rect.centerx - badge_w // 2,
-            char_rect.top - 20,
+            badge_y,
             badge_w,
             badge_h,
         )
@@ -535,9 +560,11 @@ class Customer:
         bubble_w = max(154, self.rect.right - char_rect.right + 14)
         bubble_h = 14 + item_count * row_h
         bubble_x = max(self.rect.x + 74, self.rect.right - bubble_w - 2)
+        min_bubble_y = config.CUSTOMER_AREA_TOP + 36
+        max_bubble_y = max(min_bubble_y, self.rect.bottom - bubble_h - 4)
         bubble_y = max(
-            config.CUSTOMER_AREA_TOP + 4,
-            char_rect.top - 14,
+            min_bubble_y,
+            min(char_rect.top - 14, max_bubble_y),
         )
         bubble_rect = pygame.Rect(bubble_x, bubble_y, bubble_w, bubble_h)
 

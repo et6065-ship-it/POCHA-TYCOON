@@ -646,9 +646,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "kr_tteokbokki_pan",
             "kr_odeng_dispenser",
         ],
-        "base_target_gold": 18000,
-        "daily_target_growth": 4500,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "base_target_gold": 16000,
+        "daily_target_growth": 4800,
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (4.5, 7.5),
         "base_patience": 30.0,
         "vip_chance": 0.12,
@@ -683,9 +683,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "jp_yakisoba_pan",
             "jp_drink_dispenser",
         ],
-        "base_target_gold": 24000,
+        "base_target_gold": 22000,
         "daily_target_growth": 5500,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (4.2, 7.0),
         "base_patience": 28.0,
         "vip_chance": 0.15,
@@ -720,9 +720,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "mx_nacho_fryer",
             "mx_drink_dispenser",
         ],
-        "base_target_gold": 32000,
+        "base_target_gold": 30000,
         "daily_target_growth": 6500,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (3.8, 6.5),
         "base_patience": 26.5,
         "vip_chance": 0.18,
@@ -757,9 +757,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "tw_cubesteak_pan",
             "tw_drink_dispenser",
         ],
-        "base_target_gold": 40000,
+        "base_target_gold": 38000,
         "daily_target_growth": 8000,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (3.5, 6.0),
         "base_patience": 25.0,
         "vip_chance": 0.22,
@@ -794,9 +794,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "cn_mala_wok",
             "cn_drink_dispenser",
         ],
-        "base_target_gold": 42000,
+        "base_target_gold": 40000,
         "daily_target_growth": 8000,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (3.5, 5.8),
         "base_patience": 25.0,
         "vip_chance": 0.22,
@@ -831,9 +831,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "in_curry_pot",
             "in_drink_dispenser",
         ],
-        "base_target_gold": 45000,
+        "base_target_gold": 43000,
         "daily_target_growth": 8500,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (3.4, 5.6),
         "base_patience": 24.5,
         "vip_chance": 0.24,
@@ -868,9 +868,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "us_fryer_pot",
             "us_drink_dispenser",
         ],
-        "base_target_gold": 48000,
+        "base_target_gold": 46000,
         "daily_target_growth": 9000,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (3.3, 5.5),
         "base_patience": 24.5,
         "vip_chance": 0.25,
@@ -905,9 +905,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "ru_borscht_pot",
             "ru_drink_dispenser",
         ],
-        "base_target_gold": 50000,
+        "base_target_gold": 48000,
         "daily_target_growth": 9500,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (3.3, 5.4),
         "base_patience": 24.0,
         "vip_chance": 0.25,
@@ -942,9 +942,9 @@ _RAW_CHAPTERS: Dict[str, Dict[str, Any]] = {
             "br_feijoada_pot",
             "br_drink_dispenser",
         ],
-        "base_target_gold": 52000,
+        "base_target_gold": 50000,
         "daily_target_growth": 10000,
-        "star_thresholds": (1.0, 1.35, 1.75),
+        "star_thresholds": (1.0, 1.30, 1.65),
         "customer_spawn_interval": (3.2, 5.2),
         "base_patience": 24.0,
         "vip_chance": 0.26,
@@ -972,8 +972,8 @@ for _chid, _chdata in _RAW_CHAPTERS.items():
 # 챕터 & 조리 기구 카탈로그 헬퍼 함수
 # ==============================================================================
 def get_chapter(chapter_id: str) -> AttrDict:
-    """챕터 ID('KR', 'JP', 'MX', 'TW')로 챕터 데이터를 반환한다."""
-    return CHAPTERS.get(chapter_id.upper(), CHAPTERS["KR"])
+    """챕터 ID('KR', 'JP', 'MX', 'TW' 등)로 챕터 데이터를 반환한다."""
+    return CHAPTERS.get(str(chapter_id or "KR").upper(), CHAPTERS["KR"])
 
 
 def get_station_meta(station_id: str) -> Optional[AttrDict]:
@@ -1019,15 +1019,24 @@ def calculate_target_gold(
     return base + (day - 1) * growth
 
 
-def calculate_stars(earned_gold: int, target_gold: int) -> int:
-    """달성 매출액과 목표 매출액을 비교하여 획득 별 개수(0~3)를 반환한다."""
+def calculate_stars(
+    earned_gold: int,
+    target_gold: int,
+    chapter_id: Optional[str] = None,
+) -> int:
+    """달성 매출액과 목표 매출액을 챕터별 star_thresholds 기준으로 비교하여 획득 별 개수(0~3)를 반환한다."""
     if target_gold <= 0:
         return 3
+    ch = get_chapter(chapter_id) if chapter_id else CHAPTERS.get("KR")
+    thresholds = ch.get("star_thresholds", (1.0, 1.30, 1.65)) if ch else (1.0, 1.30, 1.65)
+    t1 = float(thresholds[0]) if len(thresholds) > 0 else 1.00
+    t2 = float(thresholds[1]) if len(thresholds) > 1 else 1.30
+    t3 = float(thresholds[2]) if len(thresholds) > 2 else 1.65
     ratio = earned_gold / float(target_gold)
-    if ratio >= 1.65:
+    if ratio >= t3:
         return 3
-    if ratio >= 1.30:
+    if ratio >= t2:
         return 2
-    if ratio >= 1.00:
+    if ratio >= t1:
         return 1
     return 0

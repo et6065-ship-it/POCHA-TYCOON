@@ -43,7 +43,7 @@ class TitleScene(BaseScene):
         self.world_tour_rect: pygame.Rect = pygame.Rect(340, 215, 290, 340)
         self.specialist_mode_rect: pygame.Rect = pygame.Rect(646, 215, 290, 340)
         self.global_mode_rect: pygame.Rect = pygame.Rect(952, 215, 294, 340)
-        self.duel_mode_rect: pygame.Rect = pygame.Rect(-9999, -9999, 0, 0)
+        self.duel_mode_rect: pygame.Rect = pygame.Rect(928, 648, 312, 46)
 
         # 하단 유틸리티 버튼 Rect 및 상단 9개국 배경 테마 프리뷰 버튼
         self.load_btn_rect: pygame.Rect = pygame.Rect(40, 648, 156, 46)
@@ -58,10 +58,13 @@ class TitleScene(BaseScene):
 
     def on_enter(self, **kwargs: Any) -> None:
         self.preview_country = self.game_mgr.current_chapter or "KR"
+        sound_fx.play_bgm("title")
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEMOTION:
             mx, my = event.pos
+            prev_card = self.hovered_card
+            prev_btn = self.hovered_btn
             self.hovered_card = None
             self.hovered_btn = None
             if self.world_tour_rect.collidepoint(mx, my):
@@ -83,6 +86,13 @@ class TitleScene(BaseScene):
                 self.hovered_btn = "ROTATE"
             elif self.fullscreen_btn_rect.collidepoint(mx, my):
                 self.hovered_btn = "FULLSCREEN"
+            elif self.duel_mode_rect.collidepoint(mx, my):
+                self.hovered_btn = "DUEL"
+
+            if (self.hovered_card and self.hovered_card != prev_card) or (
+                self.hovered_btn and self.hovered_btn != prev_btn
+            ):
+                sound_fx.play_hover()
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
@@ -91,12 +101,12 @@ class TitleScene(BaseScene):
             for cid, crect in self.country_btn_rects:
                 if crect.collidepoint(mx, my):
                     self.preview_country = cid
-                    sound_fx.play_click()
+                    sound_fx.play_tab_switch()
                     return
 
             # 1) 월드 투어 모드 카드 클릭
             if self.world_tour_rect.collidepoint(mx, my):
-                sound_fx.play_click()
+                sound_fx.play_day_start()
                 self.game_mgr.set_mode("WORLD_TOUR")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
@@ -104,7 +114,7 @@ class TitleScene(BaseScene):
 
             # 2) 단일 메뉴 장인 모드 카드 클릭
             if self.specialist_mode_rect.collidepoint(mx, my):
-                sound_fx.play_click()
+                sound_fx.play_day_start()
                 self.game_mgr.set_mode("SPECIALIST")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
@@ -112,10 +122,17 @@ class TitleScene(BaseScene):
 
             # 3) 글로벌 야시장 통합 모드 카드 클릭
             if self.global_mode_rect.collidepoint(mx, my):
-                sound_fx.play_click()
+                sound_fx.play_day_start()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
+                return
+
+            # 4) 1:1 네트워크 결투 로비 버튼 클릭
+            if self.duel_mode_rect.collidepoint(mx, my):
+                sound_fx.play_day_start()
+                if self.scene_mgr:
+                    self.scene_mgr.change_scene("duel_lobby", show_loading=True)
                 return
 
             # 프로필 카드 클릭 시 주인공 선택 탭으로 이동
@@ -151,7 +168,7 @@ class TitleScene(BaseScene):
 
             # 세이브 초기화 버튼
             if self.reset_btn_rect.collidepoint(mx, my):
-                sound_fx.play_burn()
+                sound_fx.play_trash()
                 self.game_mgr.reset_state()
                 self.game_mgr.save_game()
                 self.preview_country = "KR"
@@ -187,20 +204,24 @@ class TitleScene(BaseScene):
                 if self.scene_mgr:
                     self.scene_mgr.open_options()
             elif event.key in (pygame.K_1, pygame.K_RETURN, pygame.K_SPACE):
-                sound_fx.play_click()
+                sound_fx.play_day_start()
                 self.game_mgr.set_mode("WORLD_TOUR")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
             elif event.key == pygame.K_2:
-                sound_fx.play_click()
+                sound_fx.play_day_start()
                 self.game_mgr.set_mode("SPECIALIST")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
             elif event.key == pygame.K_3:
-                sound_fx.play_click()
+                sound_fx.play_day_start()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
+            elif event.key == pygame.K_4:
+                sound_fx.play_day_start()
+                if self.scene_mgr:
+                    self.scene_mgr.change_scene("duel_lobby", show_loading=True)
 
     def update(self, dt: float) -> None:
         self.time_tick += dt
@@ -505,7 +526,7 @@ class TitleScene(BaseScene):
         surface.blit(g1, (guide_rect.x + 18, guide_rect.y + 10))
         surface.blit(g2, (guide_rect.x + 18, guide_rect.y + 34))
 
-        # 세이브 불러오기 / 초기화 / 옵션 / 가로·세로 회전 / 브라우저 전체화면 버튼
+        # 세이브 불러오기 / 초기화 / 옵션 / 가로·세로 회전 / 브라우저 전체화면 / 1:1 결투 로비 버튼
         is_portrait = bool(getattr(self.scene_mgr, "is_portrait_mode", False))
         rot_label = "🔄 가로모드 전환" if is_portrait else "🔄 세로모드 전환"
         for key, rect, label, col in (
@@ -514,6 +535,7 @@ class TitleScene(BaseScene):
             ("OPTIONS", self.options_btn_rect, "⚙️ 사운드·화면 설정", config.GOLD),
             ("ROTATE", self.rotate_btn_rect, rot_label, config.NEON_GREEN),
             ("FULLSCREEN", self.fullscreen_btn_rect, "⛶ 전체화면 전환", config.POCHA_ORANGE),
+            ("DUEL", self.duel_mode_rect, "⚔️ 1:1 네트워크 결투 로비 [4]", (255, 110, 145)),
         ):
             is_hov = self.hovered_btn == key
             pygame.draw.rect(
@@ -527,11 +549,11 @@ class TitleScene(BaseScene):
             bt = bf.render(label, True, config.WHITE if is_hov else col)
             surface.blit(bt, (rect.centerx - bt.get_width() // 2, rect.centery - bt.get_height() // 2))
 
-        # 우측 하단 단축키 요약 (하단 버튼 우측 영역 x=935~1240 배치)
+        # 가이드 바 우측 상단 단축키 요약
         key_f = config.get_font(12, bold=True)
         k_txt = key_f.render(
-            "단축키: [Q/W/E/R/A/S] 조리 · [SPACE] 스킬 · [F10] 옵션",
+            "단축키: [1~4] 모드 · [Q/W/E/R/A/S] 조리 · [SPACE] 스킬 · [F10] 옵션",
             True,
             config.TEXT_SECONDARY,
         )
-        surface.blit(k_txt, (1240 - k_txt.get_width(), 664))
+        surface.blit(k_txt, (guide_rect.right - k_txt.get_width() - 18, guide_rect.y + 12))

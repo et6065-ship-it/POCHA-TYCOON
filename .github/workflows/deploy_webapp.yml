@@ -34,7 +34,8 @@ jobs:
 
       - name: Prepare clean WebApp bundle directory
         run: |
-          rm -f requirements.txt *.bat *.spec *.exe
+          rm -f requirements.txt *.bat *.sh *.desktop *.spec *.exe *.x86_64 build_executables.py 포차타이쿤
+          rm -rf assets/sounds
 
       - name: Build WebAssembly WebApp with Pygbag
         run: |
@@ -71,6 +72,40 @@ jobs:
           </style>
           <script>
           (function(){
+            window.__pochaAudioContexts = window.__pochaAudioContexts || [];
+            var OrigAudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (OrigAudioCtx && !window.__pochaCtxHooked) {
+              window.__pochaCtxHooked = true;
+              var PatchedCtx = function() {
+                var instance = new (Function.prototype.bind.apply(OrigAudioCtx, [null].concat(Array.prototype.slice.call(arguments))))();
+                window.__pochaAudioContexts.push(instance);
+                return instance;
+              };
+              PatchedCtx.prototype = OrigAudioCtx.prototype;
+              window.AudioContext = PatchedCtx;
+              if (window.webkitAudioContext) window.webkitAudioContext = PatchedCtx;
+            }
+
+            function unlockAllAudioContexts() {
+              for (var i = 0; i < window.__pochaAudioContexts.length; i++) {
+                var c = window.__pochaAudioContexts[i];
+                if (c && c.state === "suspended") {
+                  try { c.resume(); } catch (e) {}
+                }
+              }
+              if (window.SDL2 && window.SDL2.audioContext && window.SDL2.audioContext.state === "suspended") {
+                try { window.SDL2.audioContext.resume(); } catch (e) {}
+              }
+              if (window.__pochaAudio && typeof window.__pochaAudio.unlock === "function") {
+                try { window.__pochaAudio.unlock(); } catch (e) {}
+              }
+            }
+            var gestureEvents = ["pointerdown", "touchstart", "mousedown", "keydown", "click"];
+            for (var g = 0; g < gestureEvents.length; g++) {
+              window.addEventListener(gestureEvents[g], unlockAllAudioContexts, { capture: true, passive: true });
+              document.addEventListener(gestureEvents[g], unlockAllAudioContexts, { capture: true, passive: true });
+            }
+
             function suppressPygbagGreenBox() {
               if (window.MM) {
                 window.MM.ume = true;

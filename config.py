@@ -344,6 +344,41 @@ COUNTRY_COLORS: Dict[str, Dict[str, Tuple[int, int, int]]] = {
         "bg_top": (20, 18, 38),
         "bg_bottom": (62, 28, 48),
     },
+    "CN": {
+        "primary": (218, 46, 42),      # 대륙 홍등 크림슨
+        "secondary": (238, 132, 48),   # 사천 마라 오렌지
+        "accent": (255, 208, 58),      # 황실 골드
+        "bg_top": (24, 16, 34),
+        "bg_bottom": (64, 24, 32),
+    },
+    "IN": {
+        "primary": (242, 138, 36),     # 사프란 스파이스 오렌지
+        "secondary": (196, 62, 168),   # 바자르 마젠타
+        "accent": (255, 214, 64),      # 골든 커리 옐로우
+        "bg_top": (26, 18, 42),
+        "bg_bottom": (66, 32, 48),
+    },
+    "US": {
+        "primary": (56, 112, 218),     # 아메리칸 네온 블루
+        "secondary": (238, 68, 58),    # 다이너 체리 레드
+        "accent": (255, 208, 58),      # 브로드웨이 골드
+        "bg_top": (18, 24, 48),
+        "bg_bottom": (48, 32, 58),
+    },
+    "RU": {
+        "primary": (72, 128, 208),     # 시베리아 아이스 블루
+        "secondary": (212, 48, 58),    # 붉은광장 루비 레드
+        "accent": (255, 204, 68),      # 사모바르 골드
+        "bg_top": (16, 22, 44),
+        "bg_bottom": (42, 36, 62),
+    },
+    "BR": {
+        "primary": (42, 184, 86),      # 카니발 에메랄드 그린
+        "secondary": (52, 152, 218),   # 코파카바나 오션 블루
+        "accent": (252, 214, 42),      # 삼바 선샤인 옐로우
+        "bg_top": (18, 28, 40),
+        "bg_bottom": (46, 56, 38),
+    },
 }
 
 # 딕셔너리 형태 컬러 팔레트 (키 기반 조회 호환용)
@@ -460,81 +495,129 @@ _RESOLVED_FONT_PATH: Optional[str] = None
 _RESOLVED_FONT_BOLD_PATH: Optional[str] = None
 _FONT_SEARCH_DONE: bool = False
 
-# Malgun Gothic(맑은 고딕)에서 네모 박스(.notdef)로 깨지는 유니코드 이모지/기호를
-# 맑은 고딕이 100% 지원하는 KS X 1001 특수기호로 치환하는 테이블
+# NanumGothic / Malgun Gothic에서 네모 박스(.notdef)로 깨지는 유니코드 이모지/기호를
+# 폰트가 100% 지원하는 KS X 1001 특수기호 및 직관적인 태그로 치환하는 테이블
 _UNSUPPORTED_EMOJI_MAP: Dict[str, str] = {
     "\ufe0f": "",
     "\u200d": "",
+    # 9개국 국기 이모지
     "🇰🇷": "[KR]",
     "🇯🇵": "[JP]",
     "🇲🇽": "[MX]",
     "🇹🇼": "[TW]",
-    "👨‍🍳": "★",
+    "🇨🇳": "[CN]",
+    "🇮🇳": "[IN]",
+    "🇺🇸": "[US]",
+    "🇷🇺": "[RU]",
+    "🇧🇷": "[BR]",
+    # 원문자 및 조작 기호
+    "①": "(1)",
+    "②": "(2)",
+    "③": "(3)",
+    "④": "(4)",
+    "⑤": "(5)",
     "➔": "→",
     "⬅": "◀",
     "⇄": "↔",
-    "✓": "★",
-    "✔": "★",
-    "✦": "◆",
-    "⚡": "★",
+    "➕": "+",
+    "⌫": "←",
+    "⏭": "▶▶",
+    "⛶": "▣",
+    # 체크/완료/닫기/갱신 기호 다변화
+    "✓": "[V]",
+    "✔": "[V]",
+    "✅": "[V]",
+    "✕": "X",
+    "🔄": "⇄",
+    # 스파클/스킬/배지/상태 기호 다변화
+    "👨‍🍳": "◈",
+    "✦": "◇",
+    "✨": "❖",
+    "⚡": "▲",
     "⚙": "◈",
     "⏱": "●",
-    "🏮": "★",
+    "🏮": "◉",
     "🗺": "◆",
     "💰": "◈",
     "🔥": "♨",
     "🛠": "◆",
     "🔒": "[잠김]",
     "🔓": "[해금]",
-    "📅": "◆",
+    "📅": "▣",
     "🎯": "◎",
     "😊": "♥",
     "💢": "♨",
     "🏦": "◈",
     "💡": "※",
-    "🎊": "★",
-    "🎉": "★",
-    "🌟": "★",
+    "🎊": "♬",
+    "🎉": "♬",
+    "🌟": "☆",
     "🏆": "★",
+    "👑": "★",
+    "🥇": "[1위]",
+    "🥈": "[2위]",
+    "🥉": "[3위]",
+    "💎": "◆",
     "🎮": "◈",
-    "💾": "◈",
-    "🔄": "↔",
-    "🏠": "◈",
-    "🗑": "◈",
-    "🧋": "★",
-    "🌮": "★",
+    "💾": "▣",
+    "🏠": "▣",
+    "🏪": "▣",
+    "🗑": "×",
     "👨": "",
     "🍳": "",
-    "🧙": "★",
+    "🧙": "◈",
     "♂": "",
     "⚔": "◆",
     "⏳": "●",
     "⌛": "●",
     "⚠": "※",
-    "👑": "★",
+    "🚧": "※",
+    "💀": "×",
     "🤝": "♥",
+    "👍": "★",
     "💔": "♨",
     "📡": "◈",
-    "🌐": "◆",
-    "🥇": "★",
-    "🥈": "◆",
+    "🌐": "◎",
+    "🌍": "◎",
+    "🌙": "☆",
     "⚖": "↔",
-    "🖥": "◈",
+    "🖥": "▣",
+    "📱": "▣",
+    "📸": "▣",
+    "🎬": "▶",
+    "📋": "▣",
+    "💬": "※",
+    "👈": "◀",
     "🏳": "◀",
-    "✅": "★",
-    "✕": "X",
-    "🪟": "◈",
+    "🪟": "▣",
     "🔊": "♪",
     "🔇": "×",
     "🎵": "♪",
     "🔔": "♪",
     "🎚": "◈",
-    "✨": "★",
+    # 음식/조리기구 카테고리 기호 다변화
+    "🐟": "◈",
+    "🍢": "◆",
+    "🌶": "♨",
+    "🐙": "◉",
+    "🥘": "▣",
+    "🍲": "▣",
+    "🍗": "◆",
+    "🥢": "◈",
+    "🧀": "◆",
+    "🥑": "◆",
+    "🧋": "●",
+    "🥤": "●",
+    "💧": "●",
+    "🌮": "◆",
+    "🍱": "▣",
+    "🍴": "◈",
+    "🥣": "◉",
 }
 
 
 def sanitize_font_text(text: str) -> str:
-    """한글 시스템 폰트(malgun.ttf 등)에서 지원하지 않는 이모지를 안전한 기호로 변환한다."""
+    """한글 시스템 폰트(NanumGothic.ttf / malgun.ttf 등)에서 지원하지 않는 이모지를 안전한 기호로 변환한다."""
     if not text:
         return ""
     s = str(text)
@@ -543,8 +626,12 @@ def sanitize_font_text(text: str) -> str:
             s = s.replace(k, v)
     # 0x1F000 이상의 보충 평면 이모지가 남아 있으면 안전 기호로 대체
     if any(ord(ch) >= 0x1F000 for ch in s):
-        s = "".join("★" if ord(ch) >= 0x1F000 else ch for ch in s)
+        s = "".join("◈" if ord(ch) >= 0x1F000 else ch for ch in s)
     return s
+
+
+# 함수 별칭 호환
+sanitize_text = sanitize_font_text
 
 
 class SafeKoreanFont(pygame.font.Font):
@@ -555,6 +642,22 @@ class SafeKoreanFont(pygame.font.Font):
         self._render_cache: Dict[Tuple[str, bool, Tuple[int, ...], Optional[Tuple[int, ...]]], pygame.Surface] = {}
         self._size_cache: Dict[str, Tuple[int, int]] = {}
 
+    @staticmethod
+    def _normalize_rgb(
+        color: object,
+        default: Tuple[int, int, int] = (255, 255, 255),
+    ) -> Tuple[int, int, int]:
+        if isinstance(color, (tuple, list)) and len(color) >= 3:
+            try:
+                return (int(color[0]), int(color[1]), int(color[2]))
+            except Exception:
+                return default
+        try:
+            pg_col = pygame.Color(color)  # type: ignore[arg-type]
+            return (int(pg_col.r), int(pg_col.g), int(pg_col.b))
+        except Exception:
+            return default
+
     def render(  # type: ignore[override]
         self,
         text: str,
@@ -563,15 +666,15 @@ class SafeKoreanFont(pygame.font.Font):
         background: Optional[Tuple[int, ...]] = None,
     ) -> pygame.Surface:
         s = str(text) if text else ""
-        c_key = (int(color[0]), int(color[1]), int(color[2]))
-        b_key = (int(background[0]), int(background[1]), int(background[2])) if background is not None else None
+        c_key = self._normalize_rgb(color, default=(255, 255, 255))
+        b_key = self._normalize_rgb(background, default=(0, 0, 0)) if background is not None else None
         cache_key = (s, bool(antialias), c_key, b_key)
         cached = self._render_cache.get(cache_key)
         if cached is not None:
             return cached
 
         clean_text = sanitize_font_text(s)
-        if background is None:
+        if b_key is None:
             surf = super().render(clean_text, antialias, c_key)
         else:
             surf = super().render(clean_text, antialias, c_key, b_key)
@@ -665,8 +768,7 @@ def _find_korean_font_paths() -> Tuple[Optional[str], Optional[str]]:
 def get_font(size: int, bold: bool = False) -> pygame.font.Font:
     """
     지정된 크기와 굵기의 한글 지원 Pygame Font 객체를 캐싱하여 반환한다.
-    Windows 시스템 폰트(malgunbd.ttf, malgun.ttf, gulim.ttc, SysFont('malgungothic'))를
-    우선 탐색하여 한글 및 특수기호가 절대 깨지지 않도록 보장한다.
+    번들 폰트(NanumGothic) 및 시스템 폰트를 우선 탐색하며, 폴백 시에도 SafeKoreanFont로 감싸서 반환한다.
     """
     if not pygame.font.get_init():
         pygame.font.init()
@@ -690,11 +792,16 @@ def get_font(size: int, bold: bool = False) -> pygame.font.Font:
 
     if font_obj is None:
         try:
-            font_obj = pygame.font.SysFont(
-                ["malgungothic", "malgun gothic", "맑은 고딕", "gulim", "arial"],
-                size,
+            matched_sys = pygame.font.match_font(
+                ["malgungothic", "malgun gothic", "맑은 고딕", "nanumgothic", "gulim", "arial"],
                 bold=bold,
             )
+            if matched_sys and os.path.isfile(matched_sys):
+                font_obj = SafeKoreanFont(matched_sys, size)
+            else:
+                font_obj = SafeKoreanFont(None, size)
+            if bold:
+                font_obj.set_bold(True)
         except Exception:
             font_obj = SafeKoreanFont(None, size)
 
