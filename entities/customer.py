@@ -15,7 +15,7 @@ import config
 from core.art_renderer import draw_customer, draw_food_icon
 from core.game_manager import GameManager
 from data.characters import AttrDict
-from data.recipes import RECIPES
+from data.recipes import RECIPES, TOPPINGS
 
 
 CUSTOMER_TYPES: Dict[str, Dict[str, Any]] = {
@@ -611,15 +611,18 @@ class Customer:
             if is_done:
                 tag_txt, pill_bg = "★ 서빙완료!", (34, 158, 68)
             elif rec and rec.get("has_topping", False):
-                tag_txt, pill_bg = "★토핑조립", (222, 78, 28)
+                req_tops = rec.get("required_toppings", [])
+                top_names = [TOPPINGS[t]["short_name"] for t in req_tops if t in TOPPINGS]
+                top_label = "+".join(top_names) if top_names else "토핑조립"
+                tag_txt, pill_bg = f"★+{top_label}", (222, 78, 28)
             elif slot_type == "dispenser":
                 tag_txt, pill_bg = "🥤음료·즉시", (32, 132, 208)
             elif slot_type == "mold":
-                tag_txt, pill_bg = "🐟틀구이", (188, 102, 24)
+                tag_txt, pill_bg = "🐟틀구이·즉시", (188, 102, 24)
             elif slot_type == "grill":
-                tag_txt, pill_bg = "🔥그릴구이", (198, 52, 44)
+                tag_txt, pill_bg = "🔥직화구이", (198, 52, 44)
             elif slot_type == "batch_pot":
-                tag_txt, pill_bg = "🥘대량팬", (158, 48, 132)
+                tag_txt, pill_bg = "🥘육수·철판", (158, 48, 132)
             else:
                 tag_txt, pill_bg = "주문메뉴", (88, 78, 112)
 

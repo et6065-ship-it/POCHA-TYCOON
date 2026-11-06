@@ -46,6 +46,12 @@ from data.story import (
     get_unlocked_slots,
     is_slot_unlocked,
 )
+from data.specialist_menus import (
+    OPEN_SPECIALIST_ORDER,
+    SPECIALIST_MENUS,
+    SPECIALIST_ORDER,
+    get_specialist_menu,
+)
 
 
 class StationRef(str):
@@ -216,6 +222,11 @@ class GameManager:
         self.total_earned_gold: int = 0
         self.day: int = 1
         self.chapter_days: Dict[str, int] = {cid: 1 for cid in CHAPTER_ORDER}
+
+        # 단일 메뉴 장인 모드(SPECIALIST) 상태
+        self.selected_specialist: str = "bungeo"
+        self.specialist_days: Dict[str, int] = {sid: 1 for sid in SPECIALIST_ORDER}
+        self.specialist_stars: Dict[str, int] = {sid: 0 for sid in SPECIALIST_ORDER}
 
         # 기구 업그레이드 레벨 (0 ~ 3)
         self.station_levels: StationLevelDict = StationLevelDict(
@@ -411,12 +422,32 @@ class GameManager:
         return True
 
     def set_mode(self, mode: str) -> bool:
-        """게임 모드를 'WORLD_TOUR' 또는 'GLOBAL_ENDLESS'로 설정한다."""
+        """게임 모드를 'WORLD_TOUR', 'GLOBAL_ENDLESS', 또는 'SPECIALIST'로 설정한다."""
         mode_upper = mode.upper()
-        if mode_upper not in ("WORLD_TOUR", "GLOBAL_ENDLESS"):
+        if mode_upper not in ("WORLD_TOUR", "GLOBAL_ENDLESS", "SPECIALIST"):
             return False
         self.mode = mode_upper
+        if mode_upper == "SPECIALIST":
+            self.day = self.specialist_days.get(self.selected_specialist, 1)
+        elif mode_upper == "WORLD_TOUR":
+            self.day = self.chapter_days.get(self.current_chapter, 1)
         return True
+
+    def select_specialist(self, spec_id: str) -> bool:
+        """오픈된 단일 메뉴 장인 전문점을 선택하고 SPECIALIST 모드로 전환한다."""
+        key = str(spec_id or "").lower()
+        if key not in SPECIALIST_MENUS:
+            return False
+        if not bool(SPECIALIST_MENUS[key].get("is_open", False)):
+            return False
+        self.selected_specialist = key
+        self.mode = "SPECIALIST"
+        self.day = self.specialist_days.get(key, 1)
+        return True
+
+    def get_selected_specialist_data(self) -> AttrDict:
+        """현재 선택된 단일 메뉴 장인 전문점 메타데이터를 반환한다."""
+        return get_specialist_menu(getattr(self, "selected_specialist", "bungeo"))
 
     def set_global_loadout(
         self,
@@ -480,9 +511,14 @@ class GameManager:
 
     def get_active_recipes(self, base_only: bool = False) -> List[AttrDict]:
         """
-        현재 장착된 4개 조리 기구에서 생산/주문 가능한 모든 레시피(AttrDict) 리스트를 반환한다.
+        현재 장착된 4개 조리 기구(또는 단일 메뉴 장인 전문점)에서 생산/주문 가능한 모든 레시피(AttrDict) 리스트를 반환한다.
         base_only=True이면 토핑이 올라가지 않은 베이스 레시피만 반환한다.
         """
+        if str(self.mode).upper() == "SPECIALIST":
+            spec = self.get_selected_specialist_data()
+            rid_list = spec["base_recipes"] if base_only else spec["all_recipes"]
+            return [RECIPES[rid] for rid in rid_list if rid in RECIPES]
+
         recipes_list: List[AttrDict] = []
         for st_id in self.get_active_station_ids():
             station_recipes = get_recipes_by_station(st_id, base_only=base_only)
@@ -910,8 +946,13 @@ class GameManager:
         return round(min(0.65, max(0.0, chance)), 4)
 
     def get_target_gold(self, day: Optional[int] = None) -> int:
-        """현재 모드, 챕터, 일차에 해당하는 일일 목표 매출액을 반환한다."""
-        target_day = self.day if day is None else int(day)
+        """현재 모드, 챕터(또는 장인 전문점), 일차에 해당하는 일일 목표 매출액을 반환한다."""
+        target_day = max(1, self.day if day is None else int(day))
+        if str(self.mode).upper() == "SPECIALIST":
+            spec = self.get_selected_specialist_data()
+            base = int(spec.get("base_target_gold", 14000))
+            growth = int(spec.get("daily_target_growth", 3600))
+            return base + (target_day - 1) * growth
         return calculate_target_gold(self.current_chapter, target_day, mode=self.mode)
 
     def get_effective_stats(self) -> AttrDict:
@@ -1005,10 +1046,16 @@ class GameManager:
         if self.mode == "WORLD_TOUR":
             prev_stars = self.chapter_stars.get(self.current_chapter, 0)
             self.chapter_stars[self.current_chapter] = max(prev_stars, stars)
+        elif self.mode == "SPECIALIST":
+            prev_stars = self.specialist_stars.get(self.selected_specialist, 0)
+            self.specialist_stars[self.selected_specialist] = max(prev_stars, stars)
 
         completed_day = self.day
         self.day += 1
-        self.chapter_days[self.current_chapter] = self.day
+        if self.mode == "SPECIALIST":
+            self.specialist_days[self.selected_specialist] = self.day
+        else:
+            self.chapter_days[self.current_chapter] = self.day
 
         return AttrDict(
             {
@@ -1055,6 +1102,9 @@ class GameManager:
             "total_earned_gold": int(self.total_earned_gold),
             "day": int(self.day),
             "chapter_days": dict(self.chapter_days),
+            "selected_specialist": getattr(self, "selected_specialist", "bungeo"),
+            "specialist_days": dict(getattr(self, "specialist_days", {})),
+            "specialist_stars": dict(getattr(self, "specialist_stars", {})),
             "station_levels": {k: int(self.station_levels[k]) for k in STATION_UPGRADE_ORDER},
             "interior_levels": {k: int(self.interior_levels.get(k, 0)) for k in INTERIOR_UPGRADE_ORDER},
             "chapter_stars": {k: int(self.chapter_stars.get(k, 0)) for k in CHAPTER_ORDER},
@@ -1087,8 +1137,21 @@ class GameManager:
             self.apply_runtime_settings(apply_display=False)
 
         mode = str(data.get("mode", "WORLD_TOUR")).upper()
-        self.mode = mode if mode in ("WORLD_TOUR", "GLOBAL_ENDLESS") else "WORLD_TOUR"
+        self.mode = mode if mode in ("WORLD_TOUR", "GLOBAL_ENDLESS", "SPECIALIST") else "WORLD_TOUR"
         self.tournament_round_idx = max(0, min(5, int(data.get("tournament_round_idx", 0))))
+
+        sel_spec = str(data.get("selected_specialist", "bungeo")).lower()
+        self.selected_specialist = sel_spec if (sel_spec in SPECIALIST_MENUS and SPECIALIST_MENUS[sel_spec].get("is_open", False)) else "bungeo"
+        raw_spec_days = data.get("specialist_days", {})
+        if isinstance(raw_spec_days, dict):
+            for sid in SPECIALIST_ORDER:
+                if sid in raw_spec_days:
+                    self.specialist_days[sid] = max(1, int(raw_spec_days[sid]))
+        raw_spec_stars = data.get("specialist_stars", {})
+        if isinstance(raw_spec_stars, dict):
+            for sid in SPECIALIST_ORDER:
+                if sid in raw_spec_stars:
+                    self.specialist_stars[sid] = max(0, min(3, int(raw_spec_stars[sid])))
 
         ch = str(data.get("current_chapter", "KR")).upper()
         self.current_chapter = ch if ch in CHAPTERS else "KR"

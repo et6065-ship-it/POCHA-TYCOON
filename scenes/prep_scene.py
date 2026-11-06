@@ -34,7 +34,12 @@ from data.characters import (
     COUNTRY_LABELS,
     get_characters_by_country,
 )
-from data.recipes import RECIPES
+from data.recipes import RECIPES, TOPPINGS
+from data.specialist_menus import (
+    OPEN_SPECIALIST_ORDER,
+    SPECIALIST_MENUS,
+    SPECIALIST_ORDER,
+)
 from data.tournament import TOURNAMENT_32_ROSTER, TOURNAMENT_TIERS
 from data.upgrades import (
     INTERIOR_UPGRADE_ORDER,
@@ -76,8 +81,9 @@ class PrepScene(BaseScene):
         self.char_page: int = 0
         self.inspected_character: str = self.game_mgr.selected_character
 
-        # 탭 2 (9개국 월드투어 챕터 / 36종 글로벌 기구) 페이지 상태
+        # 탭 2 (9개국 월드투어 챕터 / 단일 메뉴 장인 종목 / 36종 글로벌 기구) 페이지 상태
         self.chapter_page: int = 0
+        self.specialist_page: int = 0
         self.global_station_page: int = 0
 
         # 상단 네비게이션 버튼 Rect
@@ -106,6 +112,9 @@ class PrepScene(BaseScene):
         if self.game_mgr.current_chapter in CHAPTER_ORDER:
             idx = CHAPTER_ORDER.index(self.game_mgr.current_chapter)
             self.chapter_page = idx // 4
+        if getattr(self.game_mgr, "selected_specialist", "bungeo") in SPECIALIST_ORDER:
+            s_idx = SPECIALIST_ORDER.index(self.game_mgr.selected_specialist)
+            self.specialist_page = s_idx // 4
 
     def on_enter(self, **kwargs: Any) -> None:
         if "initial_tab" in kwargs:
@@ -186,7 +195,30 @@ class PrepScene(BaseScene):
                 self._click_targets.append((insp_btn, "unlock_character", insp_id))
 
         elif self.active_tab == "chapter":
-            if self.game_mgr.mode == "GLOBAL_ENDLESS":
+            if self.game_mgr.mode == "SPECIALIST":
+                prev_r = pygame.Rect(area.right - 220, area.y + 12, 82, 30)
+                next_r = pygame.Rect(area.right - 102, area.y + 12, 82, 30)
+                self._click_targets.append((prev_r, "specialist_page_delta", -1))
+                self._click_targets.append((next_r, "specialist_page_delta", 1))
+
+                per_page = 4
+                total_pages = max(1, (len(SPECIALIST_ORDER) + per_page - 1) // per_page)
+                self.specialist_page = max(0, min(self.specialist_page, total_pages - 1))
+                vis_specs = SPECIALIST_ORDER[self.specialist_page * per_page : (self.specialist_page + 1) * per_page]
+
+                card_w, card_h, gap = 282, 434, 18
+                start_x, card_y = area.x + 22, area.y + 52
+                for idx, spec_id in enumerate(vis_specs):
+                    crect = pygame.Rect(start_x + idx * (card_w + gap), card_y, card_w, card_h)
+                    btn_rect = pygame.Rect(crect.x + 14, crect.bottom - 52, crect.width - 28, 40)
+                    spec_data = SPECIALIST_MENUS[spec_id]
+                    if spec_data.get("is_open", False):
+                        if self.game_mgr.selected_specialist != spec_id:
+                            self._click_targets.append((btn_rect, "select_specialist", spec_id))
+                        self._click_targets.append((crect, "select_specialist", spec_id))
+                    else:
+                        self._click_targets.append((crect, "preview_coming_soon_specialist", spec_id))
+            elif self.game_mgr.mode == "GLOBAL_ENDLESS":
                 prev_r = pygame.Rect(area.right - 220, area.y + 12, 82, 30)
                 next_r = pygame.Rect(area.right - 102, area.y + 12, 82, 30)
                 self._click_targets.append((prev_r, "global_page_delta", -1))
@@ -270,7 +302,12 @@ class PrepScene(BaseScene):
                         self._rebuild_click_targets()
                         return
                     elif self.active_tab == "chapter":
-                        act = "global_page_delta" if self.game_mgr.mode == "GLOBAL_ENDLESS" else "chapter_page_delta"
+                        if self.game_mgr.mode == "SPECIALIST":
+                            act = "specialist_page_delta"
+                        elif self.game_mgr.mode == "GLOBAL_ENDLESS":
+                            act = "global_page_delta"
+                        else:
+                            act = "chapter_page_delta"
                         self._handle_action(act, delta, (640, 360))
                         self._rebuild_click_targets()
                         return
@@ -292,17 +329,24 @@ class PrepScene(BaseScene):
                     self.scene_mgr.open_options()
                 return
 
-            # 2) 모드 전환 토글 버튼 (월드 투어 <-> 글로벌 야시장)
+            # 2) 모드 전환 토글 버튼 (월드 투어 -> 단일 메뉴 장인 -> 글로벌 통합 -> 월드 투어)
             if self.mode_toggle_rect.inflate(6, 6).collidepoint(mx, my):
                 sound_fx.play_click()
-                new_mode = "GLOBAL_ENDLESS" if self.game_mgr.mode == "WORLD_TOUR" else "WORLD_TOUR"
+                mode_cycle = {"WORLD_TOUR": "SPECIALIST", "SPECIALIST": "GLOBAL_ENDLESS", "GLOBAL_ENDLESS": "WORLD_TOUR"}
+                new_mode = mode_cycle.get(self.game_mgr.mode, "WORLD_TOUR")
                 self.game_mgr.set_mode(new_mode)
                 self._rebuild_click_targets()
+                mode_msgs = {
+                    "WORLD_TOUR": ("🗺️ 9개국 월드 투어 모드 전환!", config.POCHA_ORANGE),
+                    "SPECIALIST": ("🎯 단일 메뉴 장인 모드 전환! (1차 3종 오픈)", config.GOLD),
+                    "GLOBAL_ENDLESS": ("🏮 글로벌 야시장 통합 모드 전환!", config.NEON_CYAN),
+                }
+                m_txt, m_col = mode_msgs[new_mode]
                 self.particles.spawn_floating_text(
-                    "글로벌 야시장 통합 모드 전환!" if new_mode == "GLOBAL_ENDLESS" else "월드 투어 모드 전환!",
+                    m_txt,
                     self.mode_toggle_rect.centerx,
                     self.mode_toggle_rect.bottom + 10,
-                    color=config.NEON_CYAN if new_mode == "GLOBAL_ENDLESS" else config.POCHA_ORANGE,
+                    color=m_col,
                     size=18,
                 )
                 return
@@ -356,7 +400,12 @@ class PrepScene(BaseScene):
                 if self.active_tab == "character":
                     self._handle_action("char_page_delta", delta, (640, 360))
                 elif self.active_tab == "chapter":
-                    act = "global_page_delta" if self.game_mgr.mode == "GLOBAL_ENDLESS" else "chapter_page_delta"
+                    if self.game_mgr.mode == "SPECIALIST":
+                        act = "specialist_page_delta"
+                    elif self.game_mgr.mode == "GLOBAL_ENDLESS":
+                        act = "global_page_delta"
+                    else:
+                        act = "chapter_page_delta"
                     self._handle_action(act, delta, (640, 360))
 
     def _handle_action(self, action_type: str, payload: Any, center_pos: Tuple[int, int]) -> None:
@@ -386,6 +435,38 @@ class PrepScene(BaseScene):
             sound_fx.play_click()
             total_pages = max(1, (len(CHAPTER_ORDER) + 3) // 4)
             self.chapter_page = (self.chapter_page + int(payload)) % total_pages
+
+        elif action_type == "specialist_page_delta":
+            sound_fx.play_click()
+            total_pages = max(1, (len(SPECIALIST_ORDER) + 3) // 4)
+            self.specialist_page = (self.specialist_page + int(payload)) % total_pages
+
+        elif action_type == "select_specialist":
+            spec_id = str(payload)
+            if self.game_mgr.select_specialist(spec_id):
+                sound_fx.play_fanfare()
+                self.game_mgr.save_game()
+                sp = SPECIALIST_MENUS[spec_id]
+                self.particles.emit_stars(cx, cy, count=12)
+                self.particles.spawn_floating_text(
+                    f"{sp['emoji']} [{sp['name']}] 전문점 오픈 선택!",
+                    cx,
+                    cy - 18,
+                    color=config.GOLD,
+                    size=20,
+                )
+
+        elif action_type == "preview_coming_soon_specialist":
+            spec_id = str(payload)
+            sp = SPECIALIST_MENUS.get(spec_id, {})
+            sound_fx.play_click()
+            self.particles.spawn_floating_text(
+                f"🚧 [{sp.get('name', '전문점')}] 차후 업데이트에서 오픈 예정입니다!",
+                cx,
+                cy - 16,
+                color=config.NEON_CYAN,
+                size=18,
+            )
 
         elif action_type == "global_page_delta":
             sound_fx.play_click()
@@ -589,7 +670,9 @@ class PrepScene(BaseScene):
         if self.active_tab == "character":
             self._draw_character_tab(surface, content_rect)
         elif self.active_tab == "chapter":
-            if self.game_mgr.mode == "GLOBAL_ENDLESS":
+            if self.game_mgr.mode == "SPECIALIST":
+                self._draw_specialist_select_tab(surface, content_rect)
+            elif self.game_mgr.mode == "GLOBAL_ENDLESS":
                 self._draw_global_loadout_tab(surface, content_rect)
             else:
                 self._draw_world_tour_chapter_tab(surface, content_rect)
@@ -629,10 +712,18 @@ class PrepScene(BaseScene):
         # 모드 토글 버튼
         m_hov = self.mode_toggle_rect.collidepoint(mx, my)
         is_global = self.game_mgr.mode == "GLOBAL_ENDLESS"
-        m_col = config.NEON_CYAN if is_global else config.POCHA_ORANGE
+        is_spec = self.game_mgr.mode == "SPECIALIST"
+        if is_spec:
+            m_col = config.GOLD
+            m_label = "🎯 단일 메뉴 장인 (⇄)"
+        elif is_global:
+            m_col = config.NEON_CYAN
+            m_label = "🏮 글로벌 통합 (⇄)"
+        else:
+            m_col = config.POCHA_ORANGE
+            m_label = "🗺️ 9개국 투어 (⇄)"
         pygame.draw.rect(surface, (42, 38, 62) if not m_hov else (58, 52, 84), self.mode_toggle_rect, border_radius=10)
         pygame.draw.rect(surface, m_col, self.mode_toggle_rect, width=2, border_radius=10)
-        m_label = "🏮 글로벌 통합 (⇄)" if is_global else "🗺️ 9개국 투어 (⇄)"
         m_txt = config.get_font(14, bold=True).render(m_label, True, m_col)
         surface.blit(m_txt, m_txt.get_rect(center=self.mode_toggle_rect.center))
 
@@ -674,13 +765,16 @@ class PrepScene(BaseScene):
         mx, my = self._hover_pos
         tab_f = config.get_font(15, bold=True)
 
+        if self.game_mgr.mode == "SPECIALIST":
+            tab2_lbl = f"🎯 2. 단일 메뉴 장인 종목 ({len(OPEN_SPECIALIST_ORDER)}종 오픈)"
+        elif self.game_mgr.mode == "GLOBAL_ENDLESS":
+            tab2_lbl = "🏮 2. 글로벌 36종 기구 배치"
+        else:
+            tab2_lbl = f"🗺️ 2. 9개국 월드 투어 ({len(self.game_mgr.unlocked_chapters)}/9)"
+
         tab_labels = {
             "character": f"👨‍🍳 1. 32인 마스터 ({len(self.game_mgr.unlocked_characters)}/32)",
-            "chapter": (
-                "🏮 2. 글로벌 36종 기구 배치"
-                if self.game_mgr.mode == "GLOBAL_ENDLESS"
-                else f"🗺️ 2. 9개국 월드 투어 ({len(self.game_mgr.unlocked_chapters)}/9)"
-            ),
+            "chapter": tab2_lbl,
             "upgrade": "🛠️ 3. 기구·인테리어 상점",
             "tournament": "🏆 4. 32강 월드 그랑프리",
         }
@@ -926,6 +1020,186 @@ class PrepScene(BaseScene):
             ib_lbl = sub_f.render(lbl_s, True, config.WHITE if can_un else config.TEXT_SECONDARY)
             self._click_targets.append((insp_btn, "unlock_character", insp_id))
         surface.blit(ib_lbl, ib_lbl.get_rect(center=insp_btn.center))
+
+    # ------------------------------------------------------------------
+    # 탭 2-S: 단일 메뉴 장인 종목 선택 (1차 오픈 3종: 붕어빵·오뎅바·닭꼬치 장인 + 차후 오픈 예정 5종 프리뷰)
+    # ------------------------------------------------------------------
+    def _draw_specialist_select_tab(self, surface: pygame.Surface, area: pygame.Rect) -> None:
+        mx, my = self._hover_pos
+        title_f = config.get_font(16, bold=True)
+        name_f = config.get_font(19, bold=True)
+        sub_f = config.get_font(13, bold=True)
+        xs_f = config.get_font(11, bold=True)
+        body_f = config.get_font(12, bold=False)
+
+        guide = title_f.render(
+            "🎯 단일 메뉴 장인 모드 — 1차 즉시 오픈 3종(🐟붕어빵·🍢오뎅바·🔥닭꼬치) × 8가지 맛 바리에이션! (5종 차후 오픈 예정)",
+            True,
+            config.GOLD,
+        )
+        surface.blit(guide, (area.x + 22, area.y + 15))
+
+        per_page = 4
+        total_pages = max(1, (len(SPECIALIST_ORDER) + per_page - 1) // per_page)
+        self.specialist_page = max(0, min(self.specialist_page, total_pages - 1))
+        vis_specs = SPECIALIST_ORDER[self.specialist_page * per_page : (self.specialist_page + 1) * per_page]
+
+        prev_r = pygame.Rect(area.right - 236, area.y + 10, 78, 32)
+        next_r = pygame.Rect(area.right - 98, area.y + 10, 78, 32)
+        for r_btn, lbl_t, d_val in ((prev_r, "◀ 이전", -1), (next_r, "다음 ▶", 1)):
+            bh = r_btn.collidepoint(mx, my)
+            pygame.draw.rect(surface, (62, 54, 92) if bh else (42, 36, 64), r_btn, border_radius=8)
+            pygame.draw.rect(surface, config.GOLD, r_btn, width=1, border_radius=8)
+            bs = sub_f.render(lbl_t, True, config.WHITE)
+            surface.blit(bs, bs.get_rect(center=r_btn.center))
+            self._click_targets.append((r_btn, "specialist_page_delta", d_val))
+        pg_s = sub_f.render(f"{self.specialist_page + 1} / {total_pages}", True, config.GOLD)
+        surface.blit(pg_s, pg_s.get_rect(center=(area.right - 129, area.y + 26)))
+
+        card_w, card_h, gap = 282, 434, 18
+        start_x, card_y = area.x + 22, area.y + 52
+
+        for idx, spec_id in enumerate(vis_specs):
+            sp = SPECIALIST_MENUS[spec_id]
+            is_open = bool(sp.get("is_open", False))
+            selected = is_open and (self.game_mgr.selected_specialist == spec_id)
+            crect = pygame.Rect(start_x + idx * (card_w + gap), card_y, card_w, card_h)
+            c_hov = crect.collidepoint(mx, my)
+            accent = sp.get("accent_color", config.GOLD)
+
+            if is_open:
+                bg_col = (52, 44, 78) if selected else ((42, 36, 64) if c_hov else (32, 28, 48))
+                border_col = config.GOLD if selected else (accent if c_hov else (96, 86, 138))
+            else:
+                bg_col = (24, 22, 34)
+                border_col = (64, 58, 86)
+
+            pygame.draw.rect(surface, bg_col, crect, border_radius=16)
+            pygame.draw.rect(surface, border_col, crect, width=3 if selected else 2, border_radius=16)
+
+            # 상단 오픈 상태 배지
+            badge_rect = pygame.Rect(crect.x + 12, crect.y + 12, 148, 24)
+            if is_open:
+                pygame.draw.rect(surface, (42, 152, 86) if not selected else (238, 138, 32), badge_rect, border_radius=8)
+                b_txt = xs_f.render("★ 1차 OPEN · 플레이 가능", True, config.WHITE)
+            else:
+                pygame.draw.rect(surface, (68, 56, 88), badge_rect, border_radius=8)
+                b_txt = xs_f.render("🚧 차후 오픈 예정", True, (215, 205, 238))
+            surface.blit(b_txt, b_txt.get_rect(center=badge_rect.center))
+
+            # 우측 상단 Day & 별점 표시 (오픈된 종목만)
+            if is_open:
+                s_day = int(self.game_mgr.specialist_days.get(spec_id, 1))
+                s_star = int(self.game_mgr.specialist_stars.get(spec_id, 0))
+                day_lbl = xs_f.render(f"Day {s_day} · ★{s_star}", True, config.GOLD)
+                surface.blit(day_lbl, (crect.right - day_lbl.get_width() - 12, crect.y + 16))
+            else:
+                cs_lbl = xs_f.render("COMING SOON", True, config.TEXT_MUTED)
+                surface.blit(cs_lbl, (crect.right - cs_lbl.get_width() - 12, crect.y + 16))
+
+            # 전문점 타이틀 & 서브타이틀
+            t_surf = name_f.render(f"{sp['emoji']} {sp['name']}", True, config.WHITE if is_open else (188, 182, 210))
+            surface.blit(t_surf, (crect.x + 14, crect.y + 44))
+            sub_surf = xs_f.render(sp["subtitle"], True, accent if is_open else config.TEXT_SECONDARY)
+            surface.blit(sub_surf, (crect.x + 14, crect.y + 72))
+
+            # 전문점 설명 (2줄)
+            self._draw_wrapped_text(
+                surface,
+                sp["description"],
+                body_f,
+                config.TEXT_PRIMARY if is_open else config.TEXT_SECONDARY,
+                crect.x + 14,
+                crect.y + 94,
+                crect.width - 28,
+                line_spacing=17,
+            )
+
+            # 중앙 8가지 바리에이션 쇼케이스 박스 (y=134 ~ 336, 높이 202px)
+            MenuBox = pygame.Rect(crect.x + 12, crect.y + 134, crect.width - 24, 204)
+            pygame.draw.rect(surface, (20, 17, 32) if is_open else (16, 14, 24), MenuBox, border_radius=12)
+            pygame.draw.rect(surface, accent if is_open else (54, 48, 74), MenuBox, width=1, border_radius=12)
+
+            if is_open:
+                hdr_m = xs_f.render(f"🍴 전문 메뉴 바리에이션 8종 ({len(sp.get('base_recipes', []))}베이스 + {len(sp.get('topping_ids', []))}토핑)", True, config.GOLD)
+                surface.blit(hdr_m, (MenuBox.x + 10, MenuBox.y + 7))
+
+                all_rids = list(sp.get("all_recipes", []))[:8]
+                cell_w = (MenuBox.width - 16) // 2
+                cell_h = 41
+                for m_idx, rid in enumerate(all_rids):
+                    r_meta = RECIPES.get(rid, {})
+                    mc = m_idx % 2
+                    mr = m_idx // 2
+                    cell_r = pygame.Rect(MenuBox.x + 8 + mc * cell_w, MenuBox.y + 28 + mr * cell_h, cell_w - 4, cell_h - 4)
+                    is_topped = bool(r_meta.get("toppings"))
+                    pygame.draw.rect(
+                        surface,
+                        (44, 34, 64) if is_topped else (30, 26, 46),
+                        cell_r,
+                        border_radius=7,
+                    )
+                    pygame.draw.rect(
+                        surface,
+                        config.GOLD if is_topped else (68, 60, 96),
+                        cell_r,
+                        width=1,
+                        border_radius=7,
+                    )
+                    art_renderer.draw_food_icon(surface, (cell_r.x + 17, cell_r.centery), rid, size=26)
+                    r_short = str(r_meta.get("short_name", r_meta.get("name", rid)))[:10]
+                    r_price = int(r_meta.get("price", 1500))
+                    nm_f = xs_f if xs_f.size(r_short)[0] <= cell_r.width - 36 else config.get_font(10, bold=True)
+                    nm_s = nm_f.render(r_short, True, config.GOLD if is_topped else config.WHITE)
+                    pr_s = config.get_font(10, bold=True).render(f"{r_price:,}원", True, config.NEON_CYAN if is_topped else config.TEXT_SECONDARY)
+                    surface.blit(nm_s, (cell_r.x + 33, cell_r.y + 4))
+                    surface.blit(pr_s, (cell_r.x + 33, cell_r.y + 20))
+            else:
+                hdr_m = xs_f.render("📋 차후 오픈 예정 8가지 바리에이션 구성안", True, config.NEON_CYAN)
+                surface.blit(hdr_m, (MenuBox.x + 10, MenuBox.y + 8))
+                preview_list = list(sp.get("preview_flavors", []))[:8]
+                cell_w = (MenuBox.width - 16) // 2
+                cell_h = 40
+                for p_idx, p_name in enumerate(preview_list):
+                    mc = p_idx % 2
+                    mr = p_idx // 2
+                    cell_r = pygame.Rect(MenuBox.x + 8 + mc * cell_w, MenuBox.y + 30 + mr * cell_h, cell_w - 4, cell_h - 4)
+                    pygame.draw.rect(surface, (26, 23, 38), cell_r, border_radius=7)
+                    pygame.draw.rect(surface, (56, 50, 78), cell_r, width=1, border_radius=7)
+                    p_txt = f"• {p_name[:10]}"
+                    p_f = xs_f if xs_f.size(p_txt)[0] <= cell_r.width - 10 else config.get_font(10, bold=True)
+                    p_lbl = p_f.render(p_txt, True, (195, 190, 218))
+                    surface.blit(p_lbl, (cell_r.x + 6, cell_r.centery - p_lbl.get_height() // 2))
+
+            # 목표 골드 / 안내 라인
+            if is_open:
+                s_day = int(self.game_mgr.specialist_days.get(spec_id, 1))
+                t_gold = int(sp.get("base_target_gold", 14000)) + (s_day - 1) * int(sp.get("daily_target_growth", 3600))
+                tg_s = sub_f.render(f"🎯 Day {s_day} 목표 매출: {t_gold:,}원", True, config.GOLD)
+            else:
+                tg_s = sub_f.render("🔒 2차 업데이트에서 해금 예정", True, config.TEXT_MUTED)
+            surface.blit(tg_s, (crect.x + 16, crect.y + 348))
+
+            # 하단 선택 버튼
+            btn_rect = pygame.Rect(crect.x + 14, crect.bottom - 52, crect.width - 28, 40)
+            b_hov = btn_rect.collidepoint(mx, my)
+            if is_open:
+                if selected:
+                    pygame.draw.rect(surface, (44, 126, 76), btn_rect, border_radius=10)
+                    pygame.draw.rect(surface, config.NEON_GREEN, btn_rect, width=2, border_radius=10)
+                    b_lbl = sub_f.render("✔ 현재 선택된 장인 전문점", True, config.WHITE)
+                else:
+                    pygame.draw.rect(surface, (228, 122, 34) if b_hov else (58, 50, 86), btn_rect, border_radius=10)
+                    pygame.draw.rect(surface, config.GOLD if b_hov else accent, btn_rect, width=2, border_radius=10)
+                    b_lbl = sub_f.render(f"{sp['emoji']} 이 전문점으로 영업하기", True, config.WHITE)
+                    self._click_targets.append((btn_rect, "select_specialist", spec_id))
+                self._click_targets.append((crect, "select_specialist", spec_id))
+            else:
+                pygame.draw.rect(surface, (38, 34, 54), btn_rect, border_radius=10)
+                pygame.draw.rect(surface, (78, 70, 108), btn_rect, width=1, border_radius=10)
+                b_lbl = sub_f.render("🚧 차후 업데이트 오픈 예정", True, config.TEXT_SECONDARY)
+                self._click_targets.append((crect, "preview_coming_soon_specialist", spec_id))
+            surface.blit(b_lbl, b_lbl.get_rect(center=btn_rect.center))
 
     # ------------------------------------------------------------------
     # 탭 2-A: 9개국 월드 투어 챕터 선택 & 해금 (4카드 페이지네이션 + 오늘의 축제 배너)
@@ -1431,18 +1705,23 @@ class PrepScene(BaseScene):
         sub_f = config.get_font(13, bold=False)
 
         char_data = self.game_mgr.get_selected_character_data()
-        active_sts = self.game_mgr.get_active_station_metas()
-        unlocked_sts = [
-            active_sts[s]["short_name"]
-            for s in SLOT_TYPES
-            if self.game_mgr.is_slot_unlocked_in_story(s)
-        ]
-        st_names = " / ".join(unlocked_sts) if unlocked_sts else "붕어빵 틀"
         target = self.game_mgr.get_target_gold()
         reg_tag = char_data.get("region_name", char_data.get("country_name", "한국"))
 
-        line1 = f"👨‍🍳 출전 마스터: [{reg_tag}] {char_data['name']} ({char_data['skill_name']})   |   📅 Day {self.game_mgr.day} 목표 매출: {target:,}원"
-        line2 = f"🔥 오늘 가동 기구: {st_names}   (영업을 클리어하면 다음 조리 기구 및 세계 챕터가 해금됩니다!)"
+        if self.game_mgr.mode == "SPECIALIST":
+            sp = self.game_mgr.get_selected_specialist_data()
+            line1 = f"👨‍🍳 출전 마스터: [{reg_tag}] {char_data['name']}   |   🎯 장인 종목: {sp['emoji']} {sp['name']} (Day {self.game_mgr.day} 목표: {target:,}원)"
+            line2 = f"🔥 전문 조리대: {sp.get('input_panel_title', '')} + {sp.get('appliance_title', '')} + {sp.get('tray_title', '')}"
+        else:
+            active_sts = self.game_mgr.get_active_station_metas()
+            unlocked_sts = [
+                active_sts[s]["short_name"]
+                for s in SLOT_TYPES
+                if self.game_mgr.is_slot_unlocked_in_story(s)
+            ]
+            st_names = " / ".join(unlocked_sts) if unlocked_sts else "붕어빵 틀"
+            line1 = f"👨‍🍳 출전 마스터: [{reg_tag}] {char_data['name']} ({char_data['skill_name']})   |   📅 Day {self.game_mgr.day} 목표 매출: {target:,}원"
+            line2 = f"🔥 오늘 가동 기구: {st_names}   (영업을 클리어하면 다음 조리 기구 및 세계 챕터가 해금됩니다!)"
 
         s1 = bold_f.render(line1, True, config.GOLD)
         s2 = sub_f.render(line2, True, config.TEXT_PRIMARY)

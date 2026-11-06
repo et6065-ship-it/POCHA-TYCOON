@@ -43,6 +43,7 @@ from stations.batch_pot_station import BatchPotStation
 from stations.dispenser_station import DispenserStation
 from stations.grill_station import GrillStation
 from stations.mold_station import MoldStation
+from stations.specialist_station import SpecialistStation
 
 
 class PlayScene(BaseScene):
@@ -122,6 +123,10 @@ class PlayScene(BaseScene):
             self.grill_station,
             self.batch_pot_station,
         ]
+        self.specialist_station: SpecialistStation = SpecialistStation(
+            specialist_id=getattr(self.game_mgr, "selected_specialist", "bungeo"),
+            game_mgr=self.game_mgr,
+        )
 
         # 손님 대기 슬롯 초기화
         self.max_customer_slots: int = self.game_mgr.get_max_customer_slots()
@@ -208,6 +213,8 @@ class PlayScene(BaseScene):
         self.grill_station.reset_all()
         self.batch_pot_station.set_station_id(str(active_st["batch_pot"]))
         self.batch_pot_station.reset_all()
+        self.specialist_station.set_specialist_id(getattr(self.game_mgr, "selected_specialist", "bungeo"))
+        self.specialist_station.reset_all()
         self.assembly_tray.sync_slots_with_manager()
         self.assembly_tray.clear_all()
 
@@ -445,10 +452,15 @@ class PlayScene(BaseScene):
         # 2. 켄지 (chef_jp) 및 전체 기구 즉시 완성 계열 (복합 효과 포함)
         elif char_id == "chef_jp" or skill_effect in ("jp_instant", "instant_and_speed", "instant_and_tip", "instant_and_combo"):
             self.game_mgr.skill_active_timer = max(2.5, duration)
-            for st in self.station_list:
-                st.instant_finish_all()
-                self.particles.emit_flame(st.rect.centerx, st.rect.centery, count=10)
-                self.particles.emit_stars(st.rect.centerx, st.rect.centery, count=8)
+            if self.game_mgr.mode == "SPECIALIST":
+                self.specialist_station.instant_finish_all()
+                self.particles.emit_flame(self.specialist_station.appliance_rect.centerx, self.specialist_station.appliance_rect.centery, count=12)
+                self.particles.emit_stars(self.specialist_station.appliance_rect.centerx, self.specialist_station.appliance_rect.centery, count=10)
+            else:
+                for st in self.station_list:
+                    st.instant_finish_all()
+                    self.particles.emit_flame(st.rect.centerx, st.rect.centery, count=10)
+                    self.particles.emit_stars(st.rect.centerx, st.rect.centery, count=8)
             sound_fx.play_ready()
             extra_msg = "모든 조리 기구 즉시 완성!"
             if skill_effect == "instant_and_speed":
@@ -611,6 +623,19 @@ class PlayScene(BaseScene):
             if event.button != 1:
                 return
 
+            # 단일 메뉴 장인 모드(SPECIALIST)일 때 좌측 투입대 & 우측 6구 화로 클릭
+            if self.game_mgr.mode == "SPECIALIST":
+                if self.specialist_station.collide_point((mx, my)):
+                    res = self.specialist_station.handle_click(
+                        (mx, my),
+                        assembly_tray=self.assembly_tray,
+                        auto_serve_cb=self.try_auto_serve,
+                        customers=self.customers,
+                    )
+                    self._handle_station_feedback(res, (mx, my))
+                    return
+                return
+
             # 4대 조리 스테이션 클릭
             for st in self.station_list:
                 if st.rect.collidepoint(mx, my):
@@ -671,6 +696,32 @@ class PlayScene(BaseScene):
                 )
                 self._handle_station_feedback(res, s_rect.center)
             return
+
+        # 단일 메뉴 장인 모드일 때 [Q/W/E/R/A/S] 단축키로 6구 화로 수거 또는 1~6번 속재료 투입
+        if self.game_mgr.mode == "SPECIALIST":
+            spec_keys = [pygame.K_q, pygame.K_w, pygame.K_e, pygame.K_r, pygame.K_a, pygame.K_s]
+            if key in spec_keys:
+                for slot in self.specialist_station.slots:
+                    if slot.state in (STATE_READY, STATE_BURNT):
+                        res = self.specialist_station.handle_click(
+                            slot.rect.center,
+                            assembly_tray=self.assembly_tray,
+                            auto_serve_cb=self.try_auto_serve,
+                            customers=self.customers,
+                        )
+                        self._handle_station_feedback(res, slot.rect.center)
+                        return
+                k_idx = spec_keys.index(key)
+                if k_idx < len(self.specialist_station.recipe_buttons):
+                    btn_rect, _ = self.specialist_station.recipe_buttons[k_idx]
+                    res = self.specialist_station.handle_click(
+                        btn_rect.center,
+                        assembly_tray=self.assembly_tray,
+                        auto_serve_cb=self.try_auto_serve,
+                        customers=self.customers,
+                    )
+                    self._handle_station_feedback(res, btn_rect.center)
+                return
 
         # [Q], [W]: 몰드 기구 레시피 1 / 2 투입 또는 완성품 수거
         if key in (pygame.K_q, pygame.K_w):
@@ -782,7 +833,7 @@ class PlayScene(BaseScene):
             sound_fx.play_click()
             msg = str(res.get("message", "버리기 모드 전환"))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_ORANGE, size=16)
-        elif action in ("tray_full", "no_customer", "invalid_topping"):
+        elif action in ("tray_full", "no_customer", "invalid_topping", "no_empty_slot"):
             sound_fx.play_burn()
             msg = str(res.get("message", "주문한 손님이 없습니다!"))
             self.particles.spawn_floating_text(msg, px, py - 15, color=config.TEXT_WARNING, size=16)
@@ -866,28 +917,24 @@ class PlayScene(BaseScene):
             if cust.ready_to_remove:
                 self.customers[idx] = None
 
-        # 5. 4대 조리 스테이션 업데이트 및 상태 전이 사운드/파티클 감지 (해금된 기구만)
+        # 5. 조리 스테이션 업데이트 및 상태 전이 사운드/파티클 감지
         sel_eff = str(self.game_mgr.get_selected_character_data().get("skill_effect", "") or "")
         kr_rush_active = (
             self.game_mgr.skill_active_timer > 0.0
             and (self.game_mgr.selected_character == "chef_kr" or sel_eff in ("kr_rush", "instant_and_speed", "speed_and_freeze"))
         )
-        for st in self.station_list:
-            if not self.game_mgr.is_slot_unlocked_in_story(st.slot_type):
-                continue
-            prev_states = [s.state for s in st.slots]
-            # 김포차 액티브 스킬 지속 중에는 이미 진행 중인 조리 슬롯도 2배 속도로 가속
-            if kr_rush_active and st.slot_type in ("mold", "grill", "batch_pot"):
-                for s in st.slots:
+        if self.game_mgr.mode == "SPECIALIST":
+            prev_states = [s.state for s in self.specialist_station.slots]
+            if kr_rush_active:
+                for s in self.specialist_station.slots:
                     if s.state == STATE_COOKING:
                         s.elapsed += dt
-            st.update(dt)
-            for s_idx, slot in enumerate(st.slots):
+            self.specialist_station.update(dt)
+            for s_idx, slot in enumerate(self.specialist_station.slots):
                 prev_st = prev_states[s_idx] if s_idx < len(prev_states) else slot.state
                 if prev_st == STATE_COOKING and slot.state == STATE_READY:
-                    if st.slot_type != "dispenser":
-                        sound_fx.play_ready()
-                        self.particles.emit_stars(slot.rect.centerx, slot.rect.centery, count=5)
+                    sound_fx.play_ready()
+                    self.particles.emit_stars(slot.rect.centerx, slot.rect.centery, count=6)
                 elif prev_st == STATE_READY and slot.state == STATE_BURNT:
                     self.game_mgr.break_combo()
                     sound_fx.play_burn()
@@ -899,20 +946,56 @@ class PlayScene(BaseScene):
                         color=config.RED,
                         size=17,
                     )
+        else:
+            for st in self.station_list:
+                if not self.game_mgr.is_slot_unlocked_in_story(st.slot_type):
+                    continue
+                prev_states = [s.state for s in st.slots]
+                # 김포차 액티브 스킬 지속 중에는 이미 진행 중인 조리 슬롯도 2배 속도로 가속
+                if kr_rush_active and st.slot_type in ("mold", "grill", "batch_pot"):
+                    for s in st.slots:
+                        if s.state == STATE_COOKING:
+                            s.elapsed += dt
+                st.update(dt)
+                for s_idx, slot in enumerate(st.slots):
+                    prev_st = prev_states[s_idx] if s_idx < len(prev_states) else slot.state
+                    if prev_st == STATE_COOKING and slot.state == STATE_READY:
+                        if st.slot_type != "dispenser":
+                            sound_fx.play_ready()
+                            self.particles.emit_stars(slot.rect.centerx, slot.rect.centery, count=5)
+                    elif prev_st == STATE_READY and slot.state == STATE_BURNT:
+                        self.game_mgr.break_combo()
+                        sound_fx.play_burn()
+                        self.particles.emit_burn(slot.rect.centerx, slot.rect.centery, count=8)
+                        self.particles.spawn_floating_text(
+                            "🔥 음식이 탔습니다!",
+                            slot.rect.centerx,
+                            slot.rect.top,
+                            color=config.RED,
+                            size=17,
+                        )
 
         # 6. 조리 중인 슬롯의 주기적 연기/불꽃 파티클 방출
         self._ambient_particle_timer += dt
         if self._ambient_particle_timer >= 0.35:
             self._ambient_particle_timer = 0.0
-            for st in (self.mold_station, self.grill_station, self.batch_pot_station):
-                if not self.game_mgr.is_slot_unlocked_in_story(st.slot_type):
-                    continue
-                for slot in st.slots:
+            if self.game_mgr.mode == "SPECIALIST":
+                for slot in self.specialist_station.slots:
                     if slot.state == STATE_COOKING:
-                        if st.slot_type == "grill":
+                        if self.specialist_station.specialist_id == "skewer":
                             self.particles.emit_flame(slot.rect.centerx, slot.rect.centery, count=2)
                         else:
                             self.particles.emit_smoke(slot.rect.centerx, slot.rect.top + 10, count=1)
+            else:
+                for st in (self.mold_station, self.grill_station, self.batch_pot_station):
+                    if not self.game_mgr.is_slot_unlocked_in_story(st.slot_type):
+                        continue
+                    for slot in st.slots:
+                        if slot.state == STATE_COOKING:
+                            if st.slot_type == "grill":
+                                self.particles.emit_flame(slot.rect.centerx, slot.rect.centery, count=2)
+                            else:
+                                self.particles.emit_smoke(slot.rect.centerx, slot.rect.top + 10, count=1)
 
         # 6-B. 32강 토너먼트 AI 보스전 활성화 시 AI 라이벌 실시간 매출 시뮬레이션
         ai_opp = getattr(self.game_mgr, "ai_opponent_id", "")
@@ -1000,11 +1083,13 @@ class PlayScene(BaseScene):
         # 3. 중단 좌측 포차 마스터 아바타 & [SPACE] 액티브 스킬 패널
         self._draw_chef_skill_panel(surface)
 
-        # 스토리 모드일 때 [🎬 스토리] 버튼 & 현재 일차 목표 가이드 팁 배너 (또는 32강 AI 대결 바)
+        # 스토리 모드일 때 [🎬 스토리] 버튼 & 현재 일차 목표 가이드 팁 배너 (또는 32강 AI 대결 바 / 장인 모드 가이드 배너)
         if getattr(self.game_mgr, "ai_opponent_id", ""):
             self._draw_ai_tournament_hud(surface)
         elif self.game_mgr.mode == "WORLD_TOUR":
             self._draw_story_hud_helpers(surface)
+        elif self.game_mgr.mode == "SPECIALIST":
+            self._draw_specialist_hud_banner(surface)
 
         # 4. 하단 1인칭 포차 스테인리스/목재 카운터 & 5개 조리 스테이션 (y=345~720)
         self._draw_counter_and_stations(surface)
@@ -1077,6 +1162,25 @@ class PlayScene(BaseScene):
             tip_surf = xs_f.render(f"💡 {tip_text}", True, (235, 245, 255))
             surface.blit(tip_surf, (tip_rect.x + 12, tip_rect.y + 3))
 
+    def _draw_specialist_hud_banner(self, surface: pygame.Surface) -> None:
+        """단일 메뉴 장인 모드 전용 상단 워크플로우 안내 배너를 표시한다."""
+        spec = self.game_mgr.get_selected_specialist_data()
+        xs_f = config.get_font(13, bold=True)
+        tip_rect = pygame.Rect(198, 68, 1068, 28)
+        art_renderer.draw_alpha_overlay(surface, tip_rect, (22, 20, 42, 228), border_radius=8)
+        pygame.draw.rect(surface, spec.get("theme_accent", config.GOLD), tip_rect, width=2, border_radius=8)
+        msg = (
+            f"🎯 [{spec['emoji']} {spec['name']}] ① 좌측 속재료/베이스 터치 → "
+            "② 우측 6구 전문 화로 완성 터치(기본맛은 즉시 서빙 / ★토핑 주문은 중앙 트레이 이동) → ③ 특제 토핑 추가 후 서빙!"
+        )
+        for f_sz in (13, 12, 11):
+            f_try = config.get_font(f_sz, bold=True)
+            if f_try.size(msg)[0] <= tip_rect.width - 20:
+                xs_f = f_try
+                break
+        tip_surf = xs_f.render(msg, True, (245, 248, 255))
+        surface.blit(tip_surf, (tip_rect.x + 12, tip_rect.centery - tip_surf.get_height() // 2))
+
     def _draw_hud(self, surface: pygame.Surface) -> None:
         hud_rect = pygame.Rect(config.HUD_RECT)
         pygame.draw.rect(surface, (20, 17, 32), hud_rect)
@@ -1087,9 +1191,17 @@ class PlayScene(BaseScene):
         btn_f = config.get_font(15, bold=True)
 
         # 1) 현재 모드 / 국가 / Day 배지 (x=14~268)
-        ch_data = CHAPTERS.get(self.game_mgr.current_chapter, CHAPTERS["KR"])
-        mode_tag = "🏮 글로벌 통합" if self.game_mgr.mode == "GLOBAL_ENDLESS" else f"🗺️ [{ch_data['id']}] {ch_data['name'][:7]}"
+        if self.game_mgr.mode == "SPECIALIST":
+            spec = self.game_mgr.get_selected_specialist_data()
+            mode_tag = f"{spec['emoji']} {spec['name']}"
+        elif self.game_mgr.mode == "GLOBAL_ENDLESS":
+            mode_tag = "🏮 글로벌 통합"
+        else:
+            ch_data = CHAPTERS.get(self.game_mgr.current_chapter, CHAPTERS["KR"])
+            mode_tag = f"🗺️ [{ch_data['id']}] {ch_data['name'][:7]}"
         day_txt = title_f.render(f"{mode_tag} · Day {self.game_mgr.day}", True, config.WHITE)
+        if day_txt.get_width() > 252:
+            day_txt = config.get_font(15, bold=True).render(f"{mode_tag} · Day {self.game_mgr.day}", True, config.WHITE)
         surface.blit(day_txt, (16, 8))
 
         total_gold_txt = sub_f.render(f"💰 자산: {self.game_mgr.gold:,}원", True, config.GOLD)
@@ -1212,9 +1324,12 @@ class PlayScene(BaseScene):
 
         # 마스터 아바타
         av_rect = pygame.Rect(panel.centerx - 46, panel.y + 8, 92, 92)
-        any_cooking = any(
-            s.state == STATE_COOKING for st in self.station_list for s in st.slots
-        )
+        if self.game_mgr.mode == "SPECIALIST":
+            any_cooking = any(s.state == STATE_COOKING for s in self.specialist_station.slots)
+        else:
+            any_cooking = any(
+                s.state == STATE_COOKING for st in self.station_list for s in st.slots
+            )
         av_state = "SKILL" if skill_active else ("COOKING" if any_cooking else "IDLE")
         art_renderer.draw_chef_avatar(
             surface,
@@ -1350,6 +1465,11 @@ class PlayScene(BaseScene):
         # 카운터 상단 스테인리스 상판 엣지
         pygame.draw.rect(surface, config.POCHA_STAINLESS_DARK, (0, counter_rect.y, config.SCREEN_WIDTH, 8))
         pygame.draw.line(surface, config.POCHA_STAINLESS, (0, counter_rect.y + 1), (config.SCREEN_WIDTH, counter_rect.y + 1), 2)
+
+        if self.game_mgr.mode == "SPECIALIST":
+            self.specialist_station.draw(surface, time_tick=self.time_tick)
+            self.assembly_tray.draw(surface, time_tick=self.time_tick)
+            return
 
         # 4개 조리 스테이션 & 중앙 조립 트레이 렌더링 (모바일 시인성을 위해 상단 단축키 텍스트 오버레이 제거)
         self.mold_station.draw(surface, time_tick=self.time_tick)

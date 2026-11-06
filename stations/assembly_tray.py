@@ -106,13 +106,16 @@ class AssemblyTray:
         return self.dishes
 
     def _get_desired_slot_count(self) -> int:
+        if self.game_mgr and str(getattr(self.game_mgr, "mode", "")).upper() == "SPECIALIST":
+            base_cnt = int(self.game_mgr.get_tray_slot_count()) if hasattr(self.game_mgr, "get_tray_slot_count") else 3
+            return max(3, base_cnt)
         if self.game_mgr and hasattr(self.game_mgr, "get_tray_slot_count"):
             return max(2, int(self.game_mgr.get_tray_slot_count()))
         return config.BASE_TRAY_SLOTS
 
     def sync_slots_with_manager(self) -> None:
         """
-        GameManager의 트레이 업그레이드 레벨 및 현재 장착된 그릴/대량팬의
+        GameManager의 트레이 업그레이드 레벨 및 현재 장착된 그릴/대량팬(또는 단일 메뉴 장인 전문점)의
         토핑 목록에 맞춰 슬롯과 토핑 버튼 레이아웃을 동기화한다.
         """
         desired = self._get_desired_slot_count()
@@ -126,9 +129,14 @@ class AssemblyTray:
         if self.selected_slot >= len(self.dishes):
             self.selected_slot = max(0, len(self.dishes) - 1)
 
-        # 활성 스테이션의 토핑 목록 수집
+        # 활성 스테이션의 토핑 목록 수집 (단일 메뉴 장인 모드일 때는 해당 전문점 전용 토핑 사용)
         topping_ids: List[str] = []
-        if self.game_mgr and hasattr(self.game_mgr, "get_active_station_ids"):
+        if self.game_mgr and str(getattr(self.game_mgr, "mode", "")).upper() == "SPECIALIST":
+            spec = self.game_mgr.get_selected_specialist_data()
+            for tid in spec.get("topping_ids", []):
+                if tid in TOPPINGS and tid not in topping_ids:
+                    topping_ids.append(str(tid))
+        elif self.game_mgr and hasattr(self.game_mgr, "get_active_station_ids"):
             for st_id in self.game_mgr.get_active_station_ids():
                 for t_meta in get_station_toppings(st_id):
                     tid = str(t_meta["id"])
@@ -441,17 +449,14 @@ class AssemblyTray:
         pygame.draw.rect(surface, (62, 42, 32), header_rect, border_radius=8)
         pygame.draw.rect(surface, config.GOLD, header_rect, width=1, border_radius=8)
         title_font = config.get_font(15, bold=True)
-        title_surf = title_font.render(
-            f"🍱 조립 & 서빙 트레이 ({len(self.dishes)}칸 · 터치 자동서빙)",
-            True,
-            config.GOLD,
-        )
+        if self.game_mgr and str(getattr(self.game_mgr, "mode", "")).upper() == "SPECIALIST":
+            spec_title = str(self.game_mgr.get_selected_specialist_data().get("tray_title", "③ 토핑·소스 & 포장 서빙대"))
+            raw_title = f"{spec_title} ({len(self.dishes)}칸)"
+        else:
+            raw_title = f"🍱 조립 & 서빙 트레이 ({len(self.dishes)}칸 · 터치 자동서빙)"
+        title_surf = title_font.render(raw_title, True, config.GOLD)
         if title_surf.get_width() > header_rect.width - 10:
-            title_surf = config.get_font(14, bold=True).render(
-                f"🍱 조립 & 서빙 트레이 ({len(self.dishes)}칸 · 터치 서빙)",
-                True,
-                config.GOLD,
-            )
+            title_surf = config.get_font(13, bold=True).render(raw_title, True, config.GOLD)
         surface.blit(
             title_surf,
             (

@@ -1484,7 +1484,7 @@ class ArtRenderer:
         # 1. 대한민국 (KR)
         # ==================================================================
         if "bungeoppang" in rid:
-            # 꼬리 지느러미 + 통통한 붕어 몸통 + 비늘 격자 + 삐져나온 팥/슈크림 속살
+            # 꼬리 지느러미 + 통통한 붕어 몸통 + 비늘 격자 + 8가지 장인 속살/토핑
             for ty in range(8, 17):
                 span = abs(ty - 12) // 2 + 2
                 cls._px_rect(surf, 16, ty, span + 2, 1, (192, 118, 34))
@@ -1500,17 +1500,34 @@ class ArtRenderer:
             for sx in (10, 13):
                 for sy in (9, 12, 14):
                     cls._px(surf, sx, sy, (176, 98, 24))
-            # 뱃속 달콤한 팥앙금 or 바닐라 슈크림 하이라이트
-            fill_dark = (196, 142, 28) if "cream" in rid else (112, 24, 32)
-            fill_main = (255, 228, 82) if "cream" in rid else (156, 38, 46)
-            fill_hi = (255, 250, 192) if "cream" in rid else (238, 178, 182)
+            # 속재료별 컬러 차별화 (팥/슈크림/피자치즈/꿀고구마/초코/김치만두)
+            if "cream" in rid or "icecream" in rid:
+                fill_dark, fill_main, fill_hi = (196, 142, 28), (255, 228, 82), (255, 250, 192)
+            elif "pizza" in rid:
+                fill_dark, fill_main, fill_hi = (198, 38, 32), (255, 212, 58), (255, 88, 64)
+            elif "sweetpotato" in rid:
+                fill_dark, fill_main, fill_hi = (142, 42, 108), (248, 196, 48), (255, 242, 148)
+            elif "choco" in rid:
+                fill_dark, fill_main, fill_hi = (54, 26, 16), (108, 54, 32), (186, 118, 78)
+            elif "kimchi" in rid:
+                fill_dark, fill_main, fill_hi = (168, 32, 24), (238, 72, 38), (92, 214, 86)
+            else:
+                fill_dark, fill_main, fill_hi = (112, 24, 32), (156, 38, 46), (238, 178, 182)
             cls._px_ellipse(surf, 12, 13, 3.2, 2.4, fill_dark)
             cls._px_ellipse(surf, 12, 13, 2.3, 1.7, fill_main)
             cls._px(surf, 11, 12, fill_hi)
             cls._px(surf, 13, 13, fill_hi)
+            # 슈가파우더 or 바닐라 아이스크림 토핑 연출
+            if "sugar" in rid:
+                for px, py in ((7, 8), (9, 9), (11, 8), (13, 10), (15, 9), (8, 11)):
+                    cls._px(surf, px, py, (255, 255, 255))
+            elif "icecream" in rid:
+                cls._px_ellipse(surf, 11, 7, 3.2, 2.6, (252, 246, 228))
+                cls._px_ellipse(surf, 11, 6.5, 2.2, 1.8, (255, 255, 248))
+                cls._px_rect(surf, 10, 4, 2, 2, (232, 44, 62))
 
         elif "skewer" in rid and "lamb" not in rid and "picanha" not in rid:
-            # 대나무 꼬치대 + 숯불 닭꼬치 4덩이 + 소스/파채 토핑
+            # 대나무 꼬치대 + 숯불 닭꼬치 4덩이 + 원육/소스/파채/치즈 토핑
             cls._px_line(surf, 3, 20, 20, 3, (198, 158, 92), thick=2)
             cls._px_line(surf, 3, 20, 7, 16, (232, 198, 136), thick=1)
             base_dark, base_mid, base_hi = (168, 104, 48), (222, 158, 88), (248, 204, 142)
@@ -1518,19 +1535,36 @@ class ArtRenderer:
                 base_dark, base_mid, base_hi = (148, 24, 22), (218, 46, 36), (255, 118, 82)
             elif "teriyaki" in rid:
                 base_dark, base_mid, base_hi = (88, 38, 18), (146, 72, 32), (218, 138, 72)
+            elif "heart" in rid:
+                base_dark, base_mid, base_hi = (108, 38, 34), (164, 68, 56), (224, 128, 108)
+            elif "pork_tteok" in rid or "cheese_pork" in rid:
+                base_dark, base_mid, base_hi = (168, 78, 68), (232, 138, 118), (252, 244, 236)
             elif "raw" in rid:
                 base_dark, base_mid, base_hi = (198, 128, 124), (242, 178, 172), (255, 218, 214)
 
-            for cx_i, cy_i in ((8, 15), (11, 12), (14, 9), (17, 6)):
-                cls._px_ellipse(surf, cx_i, cy_i, 3.2, 2.5, base_dark)
-                cls._px_ellipse(surf, cx_i, cy_i - 0.5, 2.5, 1.8, base_mid)
-                cls._px(surf, cx_i - 1, cy_i - 1, base_hi)
+            for idx_k, (cx_i, cy_i) in enumerate(((8, 15), (11, 12), (14, 9), (17, 6))):
+                if "garlic" in rid and idx_k in (1, 3):
+                    # 구운 통마늘 알갱이
+                    cls._px_ellipse(surf, cx_i, cy_i, 2.6, 2.2, (218, 192, 132))
+                    cls._px_ellipse(surf, cx_i, cy_i - 0.5, 2.0, 1.6, (252, 246, 218))
+                elif ("pork_tteok" in rid or "cheese_pork" in rid) and idx_k in (1, 2):
+                    # 삼겹살 안쪽 하얀 가래떡 코어
+                    cls._px_ellipse(surf, cx_i, cy_i, 3.2, 2.5, base_dark)
+                    cls._px_rect(surf, cx_i - 2, cy_i - 1, 4, 3, (252, 246, 238))
+                else:
+                    cls._px_ellipse(surf, cx_i, cy_i, 3.2, 2.5, base_dark)
+                    cls._px_ellipse(surf, cx_i, cy_i - 0.5, 2.5, 1.8, base_mid)
+                    cls._px(surf, cx_i - 1, cy_i - 1, base_hi)
                 if "raw" not in rid:
                     cls._px_line(surf, cx_i - 1, cy_i - 1, cx_i + 1, cy_i + 1, (64, 28, 16))
             if "greenonion" in rid:
                 for gx, gy in ((8, 14), (9, 13), (11, 11), (12, 10), (14, 8), (15, 7), (16, 6)):
                     cls._px_rect(surf, gx - 1, gy - 1, 3, 1, (62, 198, 68))
                     cls._px(surf, gx, gy - 1, (168, 248, 142))
+            elif "cheese" in rid:
+                for gx, gy in ((9, 14), (11, 11), (14, 8), (16, 6)):
+                    cls._px_rect(surf, gx - 1, gy - 1, 3, 2, (255, 224, 62))
+                    cls._px(surf, gx, gy - 1, (255, 250, 196))
             else:
                 for sx, sy in ((9, 14), (12, 11), (15, 8)):
                     cls._px(surf, sx, sy, (255, 244, 196))
@@ -1560,17 +1594,47 @@ class ArtRenderer:
                 cls._px(surf, 13, 12, (255, 245, 198))
 
         elif "odeng" in rid:
-            # 종이컵 + 진한 어묵국물 + 꼬불꼬불 접힌 어묵꼬치
+            # 종이컵 + 맑은/빨간 어묵국물 + 8가지 수제 어묵꼬치/물떡/유부주머니/고명
             cls._px_rect(surf, 7, 10, 10, 10, (226, 222, 212))
             cls._px_rect(surf, 8, 10, 8, 9, (246, 242, 234))
-            cls._px_rect(surf, 7, 13, 10, 2, (218, 118, 48))
-            cls._px_ellipse(surf, 12, 10, 4.8, 1.8, (208, 156, 76))
-            # 대나무 꼬치와 접힌 삼각 어묵
+            band_col = (218, 52, 38) if ("red" in rid or "spicy" in rid) else (218, 118, 48)
+            broth_col = (218, 62, 42) if ("red" in rid or "spicy" in rid) else (208, 156, 76)
+            cls._px_rect(surf, 7, 13, 10, 2, band_col)
+            cls._px_ellipse(surf, 12, 10, 4.8, 1.8, broth_col)
             cls._px_line(surf, 12, 11, 16, 3, (192, 148, 82), thick=1)
-            for fy, fx in ((5, 13), (7, 11), (9, 12)):
-                cls._px_rect(surf, fx - 2, fy, 5, 2, (224, 168, 86))
-                cls._px_rect(surf, fx - 1, fy, 3, 1, (248, 206, 128))
-            cls._px(surf, 10, 10, (72, 196, 78))
+            if "tteok" in rid:
+                # 통통하고 뽀얀 부산 가래떡 물떡
+                cls._px_rect(surf, 10, 4, 5, 7, (232, 228, 218))
+                cls._px_rect(surf, 11, 4, 3, 6, (255, 252, 246))
+                if "wasabi" in rid:
+                    cls._px_rect(surf, 11, 5, 3, 2, (82, 42, 22))
+                    cls._px_rect(surf, 12, 4, 2, 2, (112, 218, 76))
+            elif "cheese" in rid:
+                # 통모짜 치즈 어묵바 + 노란 치즈 코어
+                cls._px_rect(surf, 10, 4, 5, 7, (224, 162, 72))
+                cls._px_rect(surf, 11, 5, 3, 4, (255, 226, 62))
+            elif "yubu" in rid:
+                # 복주머니 모양 당면 유부주머니 + 초록 미나리 끈
+                cls._px_ellipse(surf, 12, 8, 4.2, 3.4, (218, 158, 64))
+                cls._px_ellipse(surf, 12, 8, 3.0, 2.2, (246, 196, 98))
+                cls._px_rect(surf, 10, 5, 5, 1, (64, 198, 72))
+            elif "seafood" in rid:
+                # 문어·새우 핑크 어묵볼 3알
+                for by_i, bx_i in ((4, 15), (7, 13), (9, 11)):
+                    cls._px_ellipse(surf, bx_i, by_i, 2.2, 2.0, (238, 148, 148))
+                    cls._px(surf, bx_i - 1, by_i - 1, (255, 232, 228))
+            else:
+                # 정통 꼬불이 어묵 (맑은/빨간)
+                od_main = (224, 92, 58) if ("red" in rid or "spicy" in rid) else (224, 168, 86)
+                od_hi = (255, 156, 108) if ("red" in rid or "spicy" in rid) else (248, 206, 128)
+                for fy, fx in ((5, 13), (7, 11), (9, 12)):
+                    cls._px_rect(surf, fx - 2, fy, 5, 2, od_main)
+                    cls._px_rect(surf, fx - 1, fy, 3, 1, od_hi)
+            if "scallion" in rid:
+                for gx, gy in ((9, 9), (11, 10), (14, 9), (10, 8)):
+                    cls._px_rect(surf, gx, gy, 2, 2, (58, 208, 72))
+            else:
+                cls._px(surf, 10, 10, (72, 196, 78))
 
         elif "sikhye" in rid:
             # 투명 컵 + 황금빛 살얼음 식혜 + 동동 띄운 밥알 & 붉은 대추
@@ -2177,6 +2241,10 @@ class ArtRenderer:
             "bbq_glaze": ((88, 28, 20), (152, 56, 36), (232, 128, 76)),
             "dill_sourcream": ((168, 196, 182), (244, 250, 248), (62, 196, 98)),
             "farofa_powder": ((178, 132, 44), (236, 188, 78), (255, 238, 158)),
+            "sugar_powder": ((168, 184, 218), (228, 238, 255), (255, 255, 255)),
+            "vanilla_icecream": ((198, 168, 108), (252, 238, 188), (255, 252, 242)),
+            "odeng_scallion": ((32, 132, 48), (68, 208, 82), (186, 252, 162)),
+            "wasabi_soy": ((68, 38, 22), (108, 188, 62), (192, 248, 136)),
         }
         dark_c, mid_c, hi_c = palettes.get(tid, ((88, 92, 112), (148, 154, 176), (224, 228, 242)))
         cls._px_ellipse(surf, 8, 8, 6.2, 6.2, dark_c)

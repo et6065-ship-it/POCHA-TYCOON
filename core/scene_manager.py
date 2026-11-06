@@ -534,15 +534,17 @@ class SceneManager:
             return [
                 # 1) 상단 9개국 배경 미리보기 버튼 바 (원본 비율 유지)
                 (pygame.Rect(615, 14, 635, 38), pygame.Rect(12, 12, 696, 42), config.UI_BORDER),
-                # 2) 현재 포차 마스터 프로필 카드 (원본 정방형 비율 1:1 유지)
-                (pygame.Rect(36, 210, 342, 348), pygame.Rect(190, 192, 340, 336), config.UI_BORDER),
-                # 3) 게임 모드 1: 월드 투어 스토리 카드 (원본 1.16 비율 100% 유지)
-                (pygame.Rect(400, 210, 405, 348), pygame.Rect(12, 540, 342, 296), config.POCHA_ORANGE),
-                # 4) 게임 모드 2: 글로벌 통합 모드 카드 (원본 1.16 비율 100% 유지)
-                (pygame.Rect(835, 210, 405, 348), pygame.Rect(366, 540, 342, 296), config.NEON_CYAN),
-                # 5) 하단 유틸리티 1열 ([세이브 로드] · [초기화] · [사운드·화면 설정] 원본 비율 유지)
+                # 2) 현재 포차 마스터 프로필 카드 (2x2 그리드 좌상단 배치)
+                (pygame.Rect(34, 212, 290, 346), pygame.Rect(16, 192, 336, 314), config.UI_BORDER),
+                # 3) 게임 모드 1: 월드 투어 스토리 카드 (2x2 그리드 우상단 배치)
+                (pygame.Rect(340, 212, 290, 346), pygame.Rect(368, 192, 336, 314), config.POCHA_ORANGE),
+                # 4) 게임 모드 2: 단일 메뉴 장인 모드 카드 (2x2 그리드 좌하단 배치)
+                (pygame.Rect(646, 212, 290, 346), pygame.Rect(16, 520, 336, 314), config.GOLD),
+                # 5) 게임 모드 3: 글로벌 통합 모드 카드 (2x2 그리드 우하단 배치)
+                (pygame.Rect(952, 212, 294, 346), pygame.Rect(368, 520, 336, 314), config.NEON_CYAN),
+                # 6) 하단 유틸리티 1열 ([세이브 로드] · [초기화] · [사운드·화면 설정] 원본 비율 유지)
                 (pygame.Rect(36, 644, 524, 54), pygame.Rect(12, 948, 696, 72), config.UI_BORDER),
-                # 6) 하단 유틸리티 2열 ([가로모드 전환] · [전체화면 전환] 원본 비율 유지)
+                # 7) 하단 유틸리티 2열 ([가로모드 전환] · [전체화면 전환] 원본 비율 유지)
                 (pygame.Rect(564, 644, 360, 54), pygame.Rect(108, 1032, 504, 76), config.NEON_CYAN),
             ]
 
@@ -1064,13 +1066,20 @@ class SceneManager:
             btn_f = config.get_font(16, bold=True)
             sf = config.get_font(15, bold=True)
 
-            # 1열 좌측: 챕터·Day·자산
+            # 1열 좌측: 챕터/장인 종목·Day·자산
             hud_left = pygame.Rect(8, 10, 448, 52)
             pygame.draw.rect(portrait_surf, (26, 22, 44), hud_left, border_radius=10)
             pygame.draw.rect(portrait_surf, config.GOLD, hud_left, width=2, border_radius=10)
             ch_id = getattr(self.game_mgr, "current_chapter", "KR")
             day_n = getattr(self.game_mgr, "day", 1)
-            h_txt = hf.render(f"🏮 [{ch_id}] Day {day_n}  |  💰 {self.game_mgr.gold:,}원", True, config.GOLD)
+            if getattr(self.game_mgr, "mode", "") == "SPECIALIST" and hasattr(self.game_mgr, "get_selected_specialist_data"):
+                sp = self.game_mgr.get_selected_specialist_data()
+                h_str = f"{sp['emoji']} {sp['name']} · Day {day_n}  |  💰 {self.game_mgr.gold:,}원"
+            else:
+                h_str = f"🏮 [{ch_id}] Day {day_n}  |  💰 {self.game_mgr.gold:,}원"
+            h_txt = hf.render(h_str, True, config.GOLD)
+            if h_txt.get_width() > hud_left.width - 20:
+                h_txt = config.get_font(15, bold=True).render(h_str, True, config.GOLD)
             portrait_surf.blit(h_txt, (hud_left.x + 14, hud_left.centery - h_txt.get_height() // 2))
 
             # 1열 우측: 1:1 네이티브 [⚙️ 옵션] & [🏪 준비/상점] 버튼
@@ -1121,6 +1130,7 @@ class SceneManager:
             sc = self.current_scene
             active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
             is_global = self.game_mgr.mode == "GLOBAL_ENDLESS"
+            is_spec = self.game_mgr.mode == "SPECIALIST"
             top_f = config.get_font(16, bold=True)
             gold_f = config.get_font(18, bold=True)
             tab_f = config.get_font(15, bold=True)
@@ -1136,8 +1146,15 @@ class SceneManager:
             pygame.draw.rect(portrait_surf, config.UI_BORDER, b_back, width=2, border_radius=10)
             portrait_surf.blit(top_f.render("◀ 타이틀로", True, config.WHITE), top_f.render("◀ 타이틀로", True, config.WHITE).get_rect(center=b_back.center))
 
-            m_col = config.NEON_CYAN if is_global else config.POCHA_ORANGE
-            m_lbl = "🏮 글로벌 통합 (⇄)" if is_global else "🗺️ 9개국 투어 (⇄)"
+            if is_spec:
+                m_col = config.GOLD
+                m_lbl = "🎯 단일 메뉴 장인 (⇄)"
+            elif is_global:
+                m_col = config.NEON_CYAN
+                m_lbl = "🏮 글로벌 통합 (⇄)"
+            else:
+                m_col = config.POCHA_ORANGE
+                m_lbl = "🗺️ 9개국 투어 (⇄)"
             pygame.draw.rect(portrait_surf, (44, 38, 66), b_mode, border_radius=10)
             pygame.draw.rect(portrait_surf, m_col, b_mode, width=2, border_radius=10)
             ms = top_f.render(m_lbl, True, m_col)
@@ -1158,9 +1175,15 @@ class SceneManager:
             # 4대 메인 탭 버튼 바 (가로 압축 없이 100% 선명한 1:1 네이티브 한글 탭 렌더링!)
             tab_bar_bg = pygame.Rect(8, 66, 704, 50)
             pygame.draw.rect(portrait_surf, (16, 14, 26), tab_bar_bg, border_radius=10)
+            if is_spec:
+                tab2_lbl = "2. 장인 종목(3종 오픈)"
+            elif is_global:
+                tab2_lbl = "2. 36종 기구"
+            else:
+                tab2_lbl = f"2. 9개국 투어({len(self.game_mgr.unlocked_chapters)}/9)"
             portrait_tabs = [
                 ("character", pygame.Rect(8, 66, 170, 50), f"1. 마스터({len(self.game_mgr.unlocked_characters)}/32)"),
-                ("chapter", pygame.Rect(182, 66, 180, 50), "2. 36종 기구" if is_global else f"2. 9개국 투어({len(self.game_mgr.unlocked_chapters)}/9)"),
+                ("chapter", pygame.Rect(182, 66, 180, 50), tab2_lbl),
                 ("upgrade", pygame.Rect(366, 66, 170, 50), "3. 기구·인테리어"),
                 ("tournament", pygame.Rect(540, 66, 172, 50), "4. 32강 그랑프리"),
             ]

@@ -38,10 +38,11 @@ class TitleScene(BaseScene):
         self.hovered_btn: Optional[str] = None
         self.preview_country: str = self.game_mgr.current_chapter or "KR"
 
-        # UI 영역 Rect 정의 (1280 x 720) — 프로필 카드 + 2대 메인 게임 모드 카드 (1:1 대전 카드 숨김)
-        self.profile_card_rect: pygame.Rect = pygame.Rect(40, 215, 340, 340)
-        self.world_tour_rect: pygame.Rect = pygame.Rect(404, 215, 406, 340)
-        self.global_mode_rect: pygame.Rect = pygame.Rect(834, 215, 406, 340)
+        # UI 영역 Rect 정의 (1280 x 720) — 프로필 카드 + 3대 메인 게임 모드 카드 (월드투어 / 단일메뉴 장인 / 글로벌 통합)
+        self.profile_card_rect: pygame.Rect = pygame.Rect(34, 215, 290, 340)
+        self.world_tour_rect: pygame.Rect = pygame.Rect(340, 215, 290, 340)
+        self.specialist_mode_rect: pygame.Rect = pygame.Rect(646, 215, 290, 340)
+        self.global_mode_rect: pygame.Rect = pygame.Rect(952, 215, 294, 340)
         self.duel_mode_rect: pygame.Rect = pygame.Rect(-9999, -9999, 0, 0)
 
         # 하단 유틸리티 버튼 Rect 및 상단 9개국 배경 테마 프리뷰 버튼
@@ -65,6 +66,8 @@ class TitleScene(BaseScene):
             self.hovered_btn = None
             if self.world_tour_rect.collidepoint(mx, my):
                 self.hovered_card = "WORLD_TOUR"
+            elif self.specialist_mode_rect.collidepoint(mx, my):
+                self.hovered_card = "SPECIALIST"
             elif self.global_mode_rect.collidepoint(mx, my):
                 self.hovered_card = "GLOBAL_ENDLESS"
             elif self.profile_card_rect.collidepoint(mx, my):
@@ -99,7 +102,15 @@ class TitleScene(BaseScene):
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
                 return
 
-            # 2) 글로벌 야시장 통합 모드 카드 클릭
+            # 2) 단일 메뉴 장인 모드 카드 클릭
+            if self.specialist_mode_rect.collidepoint(mx, my):
+                sound_fx.play_click()
+                self.game_mgr.set_mode("SPECIALIST")
+                if self.scene_mgr:
+                    self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
+                return
+
+            # 3) 글로벌 야시장 통합 모드 카드 클릭
             if self.global_mode_rect.collidepoint(mx, my):
                 sound_fx.play_click()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
@@ -182,6 +193,11 @@ class TitleScene(BaseScene):
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
             elif event.key == pygame.K_2:
                 sound_fx.play_click()
+                self.game_mgr.set_mode("SPECIALIST")
+                if self.scene_mgr:
+                    self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
+            elif event.key == pygame.K_3:
+                sound_fx.play_click()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
@@ -210,7 +226,7 @@ class TitleScene(BaseScene):
         # 3. 좌측 현재 주인공 & 진행도 요약 카드
         self._draw_profile_card(surface)
 
-        # 4. 중앙/우측 게임 모드 선택 카드 2종 (스토리 모드 & 글로벌 통합 모드)
+        # 4. 중앙/우측 게임 모드 선택 카드 3종 (스토리 모드 / 단일 메뉴 장인 모드 / 글로벌 통합 모드)
         self._draw_mode_card(
             surface,
             rect=self.world_tour_rect,
@@ -230,9 +246,26 @@ class TitleScene(BaseScene):
 
         self._draw_mode_card(
             surface,
+            rect=self.specialist_mode_rect,
+            mode_key="SPECIALIST",
+            badge_text="MODE 2 · ★ NEW 장인 모드",
+            title_text="단일 메뉴 장인 모드",
+            subtitle_text="Single-Food Artisan (1차 3종 오픈)",
+            desc_lines=[
+                "🐟붕어빵·🍢오뎅바·🔥닭꼬치 장인 오픈!",
+                "단 하나의 음식 × 8가지 다채로운 맛·토핑",
+                "좌측 속재료 → 6구 전문 화로 → 토핑 서빙",
+            ],
+            food_icons=["bungeoppang_pizza", "bungeoppang_icecream", "odeng_red_spicy", "skewer_cheese_pork"],
+            accent_color=(255, 205, 58),
+            button_label="단일 메뉴 장인 입장 [2]",
+        )
+
+        self._draw_mode_card(
+            surface,
             rect=self.global_mode_rect,
             mode_key="GLOBAL_ENDLESS",
-            badge_text="MODE 2 · CUSTOM LOADOUT",
+            badge_text="MODE 3 · CUSTOM LOADOUT",
             title_text="글로벌 통합 모드",
             subtitle_text="Global Night Market Endless",
             desc_lines=[
@@ -242,7 +275,7 @@ class TitleScene(BaseScene):
             ],
             food_icons=["skewer_greenonion", "yakisoba_egg", "nacho_cheese", "boba_milktea"],
             accent_color=config.NEON_CYAN,
-            button_label="글로벌 통합 입장 [2]",
+            button_label="글로벌 통합 입장 [3]",
         )
 
         # 5. 하단 조작 가이드 및 세이브/화면 전환 버튼
@@ -434,8 +467,14 @@ class TitleScene(BaseScene):
 
         # 설명 텍스트 라인
         for idx, line in enumerate(desc_lines):
-            d_surf = desc_font.render(f"• {line}", True, config.TEXT_PRIMARY if idx == 0 else config.TEXT_SECONDARY)
-            surface.blit(d_surf, (draw_rect.x + 18, draw_rect.y + 196 + idx * 24))
+            txt_line = f"• {line}"
+            active_df = desc_font
+            for f_sz in (13, 12, 11):
+                active_df = config.get_font(f_sz, bold=False)
+                if active_df.size(txt_line)[0] <= draw_rect.width - 28:
+                    break
+            d_surf = active_df.render(txt_line, True, config.TEXT_PRIMARY if idx == 0 else config.TEXT_SECONDARY)
+            surface.blit(d_surf, (draw_rect.x + 14, draw_rect.y + 196 + idx * 24))
 
         # 하단 액션 버튼
         btn_rect = pygame.Rect(draw_rect.x + 18, draw_rect.bottom - 54, draw_rect.width - 36, 40)
