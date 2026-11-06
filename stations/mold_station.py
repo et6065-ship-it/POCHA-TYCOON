@@ -144,6 +144,10 @@ class MoldStation(BaseStation):
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             if btn_rect.collidepoint(pos):
                 self.selected_recipe_index = idx
+                sel_s = getattr(self, "selected_slot_index", None)
+                if sel_s is not None and 0 <= sel_s < len(self.slots) and self.slots[sel_s].state == STATE_IDLE:
+                    self.selected_slot_index = None
+                    return self._start_slot_cooking(sel_s, rid)
                 for s_idx, slot in enumerate(self.slots):
                     if slot.state == STATE_IDLE:
                         return self._start_slot_cooking(s_idx, rid)
@@ -159,9 +163,27 @@ class MoldStation(BaseStation):
                 continue
 
             if slot.state == STATE_IDLE:
-                return self._start_slot_cooking(s_idx, self.selected_recipe_id)
+                # 빈 틀을 터치했을 때 자동으로 팥(기본 맛)이 들어가지 않도록 차단하고, 해당 칸을 투입 대상 슬롯으로 지정!
+                self.selected_slot_index = s_idx
+                return {
+                    "action": "select_target_slot",
+                    "station": self.station_id,
+                    "slot_index": s_idx,
+                    "message": "👇 하단에서 넣을 속재료 버튼을 터치하세요!",
+                }
 
             if slot.state == STATE_COOKING:
+                cancel_badge = pygame.Rect(slot.rect.right - 28, slot.rect.y + 3, 25, 24)
+                trash_active = bool(assembly_tray is not None and getattr(assembly_tray, "trash_mode", False))
+                if cancel_badge.inflate(6, 6).collidepoint(pos) or trash_active:
+                    old_rid = slot.recipe_id
+                    slot.reset()
+                    return {
+                        "action": "trash_dish",
+                        "station": self.station_id,
+                        "slot_index": s_idx,
+                        "recipe_id": old_rid,
+                    }
                 return {
                     "action": "cooking_in_progress",
                     "station": self.station_id,
@@ -231,8 +253,21 @@ class MoldStation(BaseStation):
         t = float(time_tick) if isinstance(time_tick, (int, float)) else 0.0
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}구")
 
-        for slot in self.slots:
-            slot.draw_slot_box(surface, time_tick=t, empty_label="➕ 터치 조리")
+        for s_idx, slot in enumerate(self.slots):
+            is_target = getattr(self, "selected_slot_index", None) == s_idx and slot.state == STATE_IDLE
+            slot.draw_slot_box(
+                surface,
+                time_tick=t,
+                empty_label="👇 맛 선택!" if is_target else "👇 하단 맛 선택",
+            )
+            if is_target:
+                pygame.draw.rect(surface, config.NEON_CYAN, slot.rect, width=3, border_radius=10)
+            elif slot.state == STATE_COOKING:
+                cancel_badge = pygame.Rect(slot.rect.right - 25, slot.rect.y + 4, 21, 21)
+                pygame.draw.rect(surface, (198, 42, 46), cancel_badge, border_radius=6)
+                pygame.draw.rect(surface, config.WHITE, cancel_badge, width=1, border_radius=6)
+                xt = config.get_font(12, bold=True).render("✕", True, config.WHITE)
+                surface.blit(xt, xt.get_rect(center=cancel_badge.center))
 
         # 하단 레시피 선택/투입 버튼 렌더링 (고시인성 15px 볼드 + 3px 하이라이트 보더 + 38px 아이콘)
         font_btn = config.get_font(15, bold=True)

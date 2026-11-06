@@ -665,7 +665,30 @@ class SceneManager:
     # 이벤트 처리 (옵션 모달 우선 가로채기 지원)
     # ==========================================================================
     def handle_event(self, event: pygame.event.Event) -> None:
+        now_ticks = pygame.time.get_ticks()
+        # 모바일 브라우저/SDL에서 터치 1회에 FINGER* 이벤트와 합성 MOUSE* 이벤트가 중복 발생하는 현상 원천 차단
+        if event.type in (pygame.FINGERDOWN, pygame.FINGERUP, pygame.FINGERMOTION):
+            self._last_touch_event_ticks = now_ticks
+        elif event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
+            last_touch_t = int(getattr(self, "_last_touch_event_ticks", -9999))
+            if not getattr(event, "touch", False) and (now_ticks - last_touch_t) < 500:
+                return
+
         mapped_event = self._remap_event_to_logical(event)
+
+        # 동일 좌표 영역에서 110ms 이내에 연속 발생하는 터치 바운스(중복 클릭) 방지
+        if mapped_event.type == pygame.MOUSEBUTTONDOWN and getattr(mapped_event, "button", 1) == 1:
+            pos = getattr(mapped_event, "pos", (-999, -999))
+            last_click_t = int(getattr(self, "_last_click_ticks", -9999))
+            last_click_p = getattr(self, "_last_click_pos", (-999, -999))
+            if (
+                (now_ticks - last_click_t) < 110
+                and abs(pos[0] - last_click_p[0]) < 28
+                and abs(pos[1] - last_click_p[1]) < 28
+            ):
+                return
+            self._last_click_ticks = now_ticks
+            self._last_click_pos = pos
 
         # F10 단축키: 언제든 옵션 모달 열기/닫기, F11 단축키: 전체화면 전환
         if mapped_event.type == pygame.KEYDOWN:

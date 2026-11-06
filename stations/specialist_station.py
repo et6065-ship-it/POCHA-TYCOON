@@ -126,8 +126,14 @@ class SpecialistStation:
         return self.input_rect.inflate(6, 6).collidepoint(pos) or self.appliance_rect.inflate(6, 6).collidepoint(pos)
 
     def start_cooking_recipe(self, recipe_id: str) -> Optional[StationSlot]:
-        """빈 화로 슬롯을 찾아 지정한 베이스 레시피 조리를 시작한다."""
-        empty_slot = next((s for s in self.slots if s.state == STATE_IDLE), None)
+        """선택된 빈 화로 슬롯(없으면 첫 번째 빈 슬롯)을 찾아 지정한 베이스 레시피 조리를 시작한다."""
+        empty_slot: Optional[StationSlot] = None
+        sel_idx = getattr(self, "selected_slot_index", None)
+        if sel_idx is not None and 0 <= sel_idx < len(self.slots) and self.slots[sel_idx].state == STATE_IDLE:
+            empty_slot = self.slots[sel_idx]
+            self.selected_slot_index = None
+        if empty_slot is None:
+            empty_slot = next((s for s in self.slots if s.state == STATE_IDLE), None)
         if empty_slot is None:
             return None
         cook_t = self.game_mgr.get_cook_time(recipe_id, slot_type=self.slot_type)
@@ -252,18 +258,27 @@ class SpecialistStation:
                     "message": "해당 메뉴를 주문한 손님이 없습니다!",
                 }
 
+            if slot.state == STATE_COOKING:
+                cancel_badge = pygame.Rect(slot.rect.right - 30, slot.rect.y + 3, 26, 24)
+                trash_active = bool(assembly_tray is not None and getattr(assembly_tray, "trash_mode", False))
+                if cancel_badge.inflate(8, 8).collidepoint(pos) or trash_active:
+                    old_rid = slot.recipe_id
+                    slot.reset()
+                    return {
+                        "action": "trash_dish",
+                        "recipe_id": old_rid,
+                        "slot_index": slot.slot_index,
+                    }
+                return None
+
             if slot.state == STATE_IDLE:
-                # 빈 슬롯을 직접 터치하면 1번 대표 베이스 메뉴 즉시 투입
-                base_rids = self.spec_data.get("base_recipes", [])
-                if base_rids:
-                    first_rid = str(base_rids[0])
-                    started = self.start_cooking_recipe(first_rid)
-                    if started is not None:
-                        return {
-                            "action": "start_cook",
-                            "recipe_id": first_rid,
-                            "slot_index": started.slot_index,
-                        }
+                # 빈 슬롯을 터치했을 때 자동으로 1번 메뉴(팥)가 들어가지 않도록 차단하고, 해당 칸을 투입 대상 슬롯으로 선택!
+                self.selected_slot_index = slot.slot_index
+                return {
+                    "action": "select_target_slot",
+                    "slot_index": slot.slot_index,
+                    "message": f"화로 #{slot.slot_index + 1}번 칸 선택됨! 좌측에서 넣을 맛 버튼을 터치하세요.",
+                }
 
         return None
 
@@ -366,27 +381,42 @@ class SpecialistStation:
             self._draw_slot_hardware_bg(surface, sr, idx, slot, time_tick)
 
             if slot.state == STATE_IDLE:
+                is_target = getattr(self, "selected_slot_index", None) == idx
+                if is_target:
+                    pygame.draw.rect(surface, config.NEON_CYAN, sr, width=3, border_radius=10)
                 idle_lbl = (
                     f"붕어틀 #{idx + 1}"
                     if self.specialist_id == "bungeo"
                     else (f"오뎅칸 #{idx + 1}" if self.specialist_id == "odeng" else f"참숯구 #{idx + 1}")
                 )
-                s1 = name_f.render(idle_lbl, True, (192, 188, 214))
-                s2 = config.get_font(12, bold=True).render("좌측 메뉴 터치", True, (138, 134, 162))
+                s1 = name_f.render(idle_lbl, True, config.NEON_CYAN if is_target else (192, 188, 214))
+                s2 = config.get_font(12, bold=True).render(
+                    "👈 좌측 맛 선택!" if is_target else "좌측 메뉴 터치",
+                    True,
+                    config.GOLD if is_target else (138, 134, 162),
+                )
                 surface.blit(s1, s1.get_rect(center=(sr.centerx, sr.centery - 10)))
                 surface.blit(s2, s2.get_rect(center=(sr.centerx, sr.centery + 12)))
                 continue
 
             rec = RECIPES.get(slot.recipe_id or "")
             short_nm = str(rec["name"]) if rec else str(slot.recipe_id)
-            if len(short_nm) > 8:
-                short_nm = short_nm[:8]
+            if len(short_nm) > 7:
+                short_nm = short_nm[:7]
 
-            # 상단 메뉴명 배지
-            top_tag = pygame.Rect(sr.x + 6, sr.y + 5, sr.width - 12, 20)
+            # 상단 메뉴명 배지 (조리 중일 때는 우측 상단 [✕] 취소 버튼과 겹치지 않게 폭 조정)
+            tag_w = (sr.width - 36) if slot.state == STATE_COOKING else (sr.width - 12)
+            top_tag = pygame.Rect(sr.x + 6, sr.y + 5, tag_w, 20)
             pygame.draw.rect(surface, (18, 16, 28), top_tag, border_radius=5)
             nt = config.get_font(12, bold=True).render(short_nm, True, config.WHITE)
             surface.blit(nt, nt.get_rect(center=top_tag.center))
+
+            if slot.state == STATE_COOKING:
+                cancel_badge = pygame.Rect(sr.right - 26, sr.y + 4, 22, 22)
+                pygame.draw.rect(surface, (198, 42, 46), cancel_badge, border_radius=6)
+                pygame.draw.rect(surface, config.WHITE, cancel_badge, width=1, border_radius=6)
+                xt = config.get_font(12, bold=True).render("✕", True, config.WHITE)
+                surface.blit(xt, xt.get_rect(center=cancel_badge.center))
 
             # 중앙 대형 음식 아이콘 (58px)
             bob = int(math.sin(time_tick * 7.0 + idx) * 3) if slot.state == STATE_READY else 0

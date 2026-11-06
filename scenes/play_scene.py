@@ -837,6 +837,10 @@ class PlayScene(BaseScene):
             sound_fx.play_burn()
             msg = str(res.get("message", "주문한 손님이 없습니다!"))
             self.particles.spawn_floating_text(msg, px, py - 15, color=config.TEXT_WARNING, size=16)
+        elif action == "select_target_slot":
+            sound_fx.play_click()
+            msg = str(res.get("message", "넣을 속재료 버튼을 터치하세요!"))
+            self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
         elif action == "select_slot":
             # 트레이에서 접시를 클릭했는데 매칭되는 손님이 없는 경우 안내
             sound_fx.play_click()
