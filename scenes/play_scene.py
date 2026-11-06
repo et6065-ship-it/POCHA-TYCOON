@@ -559,7 +559,7 @@ class PlayScene(BaseScene):
                 sound_fx.play_click()
                 self.game_mgr.save_game()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep")
+                    self.scene_mgr.change_scene("prep", show_loading=True)
                 return
 
             # 스토리 모드 [🎬 스토리] 다시보기 버튼
@@ -644,7 +644,7 @@ class PlayScene(BaseScene):
         if key == pygame.K_ESCAPE:
             sound_fx.play_click()
             if self.scene_mgr:
-                self.scene_mgr.change_scene("prep")
+                self.scene_mgr.change_scene("prep", show_loading=True)
             return
 
         # [1]~[5]: 조립 트레이 접시 1~5번 빠른 자동 서빙
@@ -930,7 +930,7 @@ class PlayScene(BaseScene):
         summary = self.game_mgr.complete_day()
         self.game_mgr.save_game()
         if self.scene_mgr:
-            self.scene_mgr.change_scene("result", result_data=summary)
+            self.scene_mgr.change_scene("result", result_data=summary, show_loading=True)
 
     # ==================================================================
     # 화면 렌더링 (draw)

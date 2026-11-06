@@ -180,15 +180,15 @@ class ResultScene(BaseScene):
             if self.prep_btn_rect.collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep")
+                    self.scene_mgr.change_scene("prep", show_loading=True)
             elif self.retry_btn_rect.collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("play", show_cutscene=True)
+                    self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
             elif self.title_btn_rect.collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("title")
+                    self.scene_mgr.change_scene("title", show_loading=True)
 
         elif event.type == pygame.KEYDOWN:
             if self.active_cutscene is not None:
@@ -201,15 +201,15 @@ class ResultScene(BaseScene):
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep")
+                    self.scene_mgr.change_scene("prep", show_loading=True)
             elif event.key == pygame.K_r:
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("play", show_cutscene=True)
+                    self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
             elif event.key == pygame.K_ESCAPE:
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("title")
+                    self.scene_mgr.change_scene("title", show_loading=True)
 
     def update(self, dt: float) -> None:
         self.time_tick += dt

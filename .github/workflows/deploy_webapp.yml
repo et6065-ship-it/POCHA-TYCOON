@@ -40,6 +40,154 @@ jobs:
         run: |
           pygbag --build --app_name "pocha_tycoon" --title "World Street Food Pocha Tycoon" .
 
+      - name: Customize WebApp Boot Loader with Progressive Street-Food Cooking Bar
+        run: |
+          python - << 'EOF'
+          import pathlib
+
+          index_path = pathlib.Path("build/web/index.html")
+          if index_path.exists():
+              html = index_path.read_text(encoding="utf-8")
+              boot_snippet = """
+          <style>
+            html, body { background: #0c0a16 !important; margin: 0; padding: 0; overflow: hidden; }
+            #pocha-boot-loader {
+              position: fixed; inset: 0; z-index: 99999;
+              background: radial-gradient(circle at 50% 35%, #231b3c 0%, #0c0a16 80%);
+              display: flex; flex-direction: column; align-items: center; justify-content: center;
+              font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; color: #fff;
+              transition: opacity 0.45s ease;
+            }
+            .pocha-boot-card {
+              width: min(90vw, 560px); background: rgba(24, 20, 42, 0.94);
+              border: 3px solid #ffa834; border-radius: 22px; padding: 26px 24px;
+              box-shadow: 0 16px 48px rgba(0,0,0,0.65), 0 0 28px rgba(255,168,52,0.25);
+              text-align: center;
+            }
+            .pocha-boot-badge {
+              display: inline-block; background: #ff7e29; color: #fff; font-weight: 800;
+              font-size: 13px; padding: 5px 14px; border-radius: 999px; margin-bottom: 12px;
+              letter-spacing: 0.5px;
+            }
+            .pocha-boot-art {
+              height: 112px; margin: 8px auto 14px; border-radius: 16px;
+              background: linear-gradient(180deg, #161229 0%, #261e42 100%);
+              border: 1px solid rgba(255,215,100,0.35);
+              display: flex; align-items: center; justify-content: center; gap: 18px;
+              font-size: 46px; position: relative; overflow: hidden;
+            }
+            .pocha-boot-icon {
+              display: inline-block; animation: pochaBounce 0.9s infinite alternate ease-in-out;
+              filter: drop-shadow(0 6px 10px rgba(0,0,0,0.5));
+            }
+            .pocha-boot-icon:nth-child(2) { animation-delay: 0.2s; font-size: 54px; }
+            .pocha-boot-icon:nth-child(3) { animation-delay: 0.4s; }
+            @keyframes pochaBounce {
+              from { transform: translateY(4px) scale(0.96); }
+              to   { transform: translateY(-7px) scale(1.06); }
+            }
+            .pocha-boot-msg {
+              font-size: 21px; font-weight: 800; color: #ffe678; margin: 8px 0 6px;
+              text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+            }
+            .pocha-boot-sub {
+              font-size: 13px; color: #c9c2df; margin-bottom: 16px;
+            }
+            .pocha-bar-wrap {
+              width: 100%; height: 24px; background: #120f20;
+              border: 2px solid #ffa834; border-radius: 999px; overflow: hidden;
+              position: relative; box-shadow: inset 0 2px 6px rgba(0,0,0,0.7);
+            }
+            .pocha-bar-fill {
+              height: 100%; width: 12%;
+              background: linear-gradient(90deg, #ff6b2b 0%, #ffc93c 60%, #fff199 100%);
+              border-radius: 999px; transition: width 0.35s ease;
+            }
+            .pocha-bar-pct {
+              position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+              font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 4px #000;
+            }
+          </style>
+          <div id="pocha-boot-loader">
+            <div class="pocha-boot-card">
+              <div class="pocha-boot-badge" id="pocha-boot-badge">POCHA KITCHEN READY · 1 / 10</div>
+              <div class="pocha-boot-art" id="pocha-boot-art">
+                <span class="pocha-boot-icon">🐟</span>
+                <span class="pocha-boot-icon">🔥</span>
+                <span class="pocha-boot-icon">🥐</span>
+              </div>
+              <div class="pocha-boot-msg" id="pocha-boot-msg">🐟 황금빛 붕어빵 굽는 중...</div>
+              <div class="pocha-boot-sub" id="pocha-boot-sub">팥앙금과 슈크림을 꼬리까지 꽉꽉 채워 무쇠 틀을 뒤집고 있습니다!</div>
+              <div class="pocha-bar-wrap">
+                <div class="pocha-bar-fill" id="pocha-bar-fill"></div>
+                <div class="pocha-bar-pct" id="pocha-bar-pct">10% · 붕어빵 틀 예열 중</div>
+              </div>
+            </div>
+          </div>
+          <script>
+          (function(){
+            var themes = [
+              {msg:"🐟 황금빛 붕어빵 굽는 중...", sub:"팥앙금과 슈크림을 꼬리까지 꽉꽉 채워 무쇠 틀을 뒤집고 있습니다!", icons:["🐟","🔥","🥐"], color:"#ffa834"},
+              {msg:"🍢 뜨끈한 오뎅 국물 내는 중...", sub:"멸치와 다시마로 깊고 시원한 포장마차 육수를 우리고 있습니다!", icons:["🍢","🍲","🍶"], color:"#46dcff"},
+              {msg:"🔥 참숯 피우고 대파 닭꼬치 굽는 중...", sub:"특제 매콤 양념장을 발라 참숯 직화 그릴 위에서 노릇하게 굽는 중!", icons:["🍢","🔥","🌶️"], color:"#ff6438"},
+              {msg:"🌶️ 무쇠 철판에 매콤 떡볶이 조리는 중...", sub:"쫄깃한 밀떡과 어묵에 모짜렐라 치즈 폭포를 듬뿍 얹고 있습니다!", icons:["🥘","🌶️","🧀"], color:"#ff5252"},
+              {msg:"🐙 오사카 무쇠판에 타코야키 굴리는 중...", sub:"문어 조각을 넣고 이쑤시개로 휙휙 돌려 동그랗게 빚어내는 중!", icons:["🐙","🥢","🥞"], color:"#ffb93c"},
+              {msg:"🌮 멕시코 화로에 타코 또띠아 굽는 중...", sub:"고소한 옥수수 또띠아에 살사 소스와 과카몰리를 듬뿍 올리는 중!", icons:["🌮","🥑","🌶️"], color:"#52e66e"},
+              {msg:"🧋 대만 야시장 흑당 버블티 삶는 중...", sub:"쫀득한 타피오카 펄을 흑당 시럽에 졸여 시원한 밀크티에 담는 중!", icons:["🧋","🧊","🥞"], color:"#dc8cff"},
+              {msg:"🥘 사천 마라탕 육수 끓이고 양꼬치 굽는 중...", sub:"얼얼한 마라 홍탕 육수와 쯔란 솔솔 뿌린 양꼬치를 준비 중!", icons:["🥘","🍢","🥟"], color:"#ff4c4c"},
+              {msg:"🍗 화덕 달궈 탄두리 치킨 & 버거 굽는 중...", sub:"전통 진흙 화덕 탄두르와 비프 스매시 그릴의 불꽃을 올리는 중!", icons:["🍗","🍔","🌭"], color:"#ffb432"},
+              {msg:"🏮 포장마차 알전구 켜고 손님 맞이 준비 중...", sub:"전 세계 9개국 야시장 거리마다 따뜻한 네온 간판이 켜집니다!", icons:["🏮","✨","🍜"], color:"#ffe65a"}
+            ];
+            var idx = 0, pct = 12;
+            var timer = setInterval(function(){
+              idx = (idx + 1) % themes.length;
+              pct = Math.min(96, pct + 9);
+              var t = themes[idx];
+              var b = document.getElementById("pocha-boot-badge");
+              var m = document.getElementById("pocha-boot-msg");
+              var s = document.getElementById("pocha-boot-sub");
+              var a = document.getElementById("pocha-boot-art");
+              var f = document.getElementById("pocha-bar-fill");
+              var p = document.getElementById("pocha-bar-pct");
+              if (!m) { clearInterval(timer); return; }
+              b.textContent = "POCHA KITCHEN READY · " + (idx + 1) + " / 10";
+              b.style.background = t.color;
+              m.textContent = t.msg;
+              s.textContent = t.sub;
+              a.innerHTML = '<span class="pocha-boot-icon">' + t.icons[0] + '</span>' +
+                            '<span class="pocha-boot-icon">' + t.icons[1] + '</span>' +
+                            '<span class="pocha-boot-icon">' + t.icons[2] + '</span>';
+              f.style.width = pct + "%";
+              p.textContent = pct + "% · " + t.msg;
+            }, 950);
+            var checkReady = setInterval(function(){
+              var box = document.getElementById("box");
+              var loader = document.getElementById("pocha-boot-loader");
+              if (!loader) { clearInterval(checkReady); clearInterval(timer); return; }
+              if ((box && box.style.display === "none") || window.__pocha_ready) {
+                loader.style.opacity = "0";
+                setTimeout(function(){ if(loader && loader.parentNode) loader.parentNode.removeChild(loader); }, 480);
+                clearInterval(checkReady); clearInterval(timer);
+              }
+            }, 300);
+            setTimeout(function(){
+              var loader = document.getElementById("pocha-boot-loader");
+              if (loader) {
+                loader.style.opacity = "0";
+                setTimeout(function(){ if(loader && loader.parentNode) loader.parentNode.removeChild(loader); }, 480);
+              }
+              clearInterval(checkReady); clearInterval(timer);
+            }, 9500);
+          })();
+          </script>
+          """
+              if "</body>" in html:
+                  html = html.replace("</body>", boot_snippet + "\n</body>")
+              else:
+                  html += boot_snippet
+              index_path.write_text(html, encoding="utf-8")
+          EOF
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:

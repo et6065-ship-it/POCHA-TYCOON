@@ -283,7 +283,7 @@ class PrepScene(BaseScene):
             if self.back_btn_rect.inflate(6, 6).collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("title")
+                    self.scene_mgr.change_scene("title", show_loading=True)
                 return
 
             # 1-B) 옵션 설정 버튼
@@ -322,7 +322,7 @@ class PrepScene(BaseScene):
                 self.game_mgr.ai_opponent_id = ""
                 self.game_mgr.save_game()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("play", show_cutscene=True)
+                    self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
                 return
 
             # 5) 탭 내부 동적 버튼 처리 (모바일 터치 여유 판정)
@@ -338,13 +338,13 @@ class PrepScene(BaseScene):
             if event.key == pygame.K_ESCAPE:
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("title")
+                    self.scene_mgr.change_scene("title", show_loading=True)
             elif event.key == pygame.K_RETURN:
                 sound_fx.play_fanfare()
                 self.game_mgr.ai_opponent_id = ""
                 self.game_mgr.save_game()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("play", show_cutscene=True)
+                    self.scene_mgr.change_scene("play", show_cutscene=True, show_loading=True)
             elif event.key == pygame.K_TAB:
                 sound_fx.play_click()
                 order = ["character", "chapter", "upgrade", "tournament"]
@@ -553,7 +553,7 @@ class PrepScene(BaseScene):
             self.game_mgr.ai_opponent_id = opp_id
             self.game_mgr.save_game()
             if self.scene_mgr:
-                self.scene_mgr.change_scene("play", show_cutscene=False)
+                self.scene_mgr.change_scene("play", show_cutscene=False, show_loading=True)
 
     def update(self, dt: float) -> None:
         self.time_tick += dt

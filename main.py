@@ -59,6 +59,8 @@ async def main(max_frames: int = 0) -> None:
         target_ip = sys.argv[idx + 1] if (idx + 1) < len(sys.argv) else f"127.0.0.1:{config.DEFAULT_DUEL_PORT}"
         pygame.display.set_caption(f"{config.WINDOW_TITLE} - [2P 결투 클라이언트]")
         scene_mgr.change_scene("duel_lobby", auto_join_ip=target_ip)
+    elif max_frames == 0:
+        scene_mgr.start_loading(duration=1.15)
 
     running = True
     frame_count = 0

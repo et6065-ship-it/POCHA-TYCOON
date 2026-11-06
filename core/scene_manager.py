@@ -7,6 +7,7 @@ core/scene_manager.py
 
 from __future__ import annotations
 
+import math
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 import pygame
 
@@ -14,6 +15,133 @@ import config
 from core import art_renderer
 from core.effects import sound_fx
 from core.game_manager import GameManager, game_manager
+
+
+# ==============================================================================
+# 프로그래시브 포차 로딩 멘트 10종 & 매칭 음식/조리기구 일러스트 테마
+# ==============================================================================
+LOADING_THEMES: List[Dict[str, Any]] = [
+    {
+        "step": 1,
+        "short": "붕어빵 굽는중",
+        "message": "🐟 황금빛 붕어빵 굽는 중...",
+        "sub": "무쇠 붕어빵 틀을 달구고 달콤한 통단팥·슈크림 반죽을 붓고 있습니다!",
+        "tip": "TIP: 초록색(READY) 게이지가 떴을 때 꺼내면 바삭한 황금 붕어빵 완성!",
+        "foods": ("bungeoppang_redbean", "bungeoppang_cream"),
+        "country": "KR",
+        "appliance": "mold_bungeo",
+        "station_title": "황금 붕어빵 2구 무쇠 틀",
+        "accent": (255, 168, 52),
+    },
+    {
+        "step": 2,
+        "short": "오뎅 국물 내는중",
+        "message": "🍢 뜨끈한 오뎅 국물 내는 중...",
+        "sub": "멸치와 다시마, 무를 푹 우려내 진한 포장마차 어묵 육수를 끓이고 있습니다!",
+        "tip": "TIP: 음료·국물 디스펜서는 자동으로 충전되며 터치 즉시 서빙됩니다!",
+        "foods": ("odeng_soup", "sikhye"),
+        "country": "KR",
+        "appliance": "pot_odeng",
+        "station_title": "포차 뜨끈 어묵·식혜 온장고",
+        "accent": (255, 214, 92),
+    },
+    {
+        "step": 3,
+        "short": "닭꼬치 굽는중",
+        "message": "🔥 참숯 피우고 대파 닭꼬치 굽는 중...",
+        "sub": "타오르는 직화 숯불 위에 닭꼬치를 올리고 특제 소스를 발라 초벌 중입니다!",
+        "tip": "TIP: 구운 꼬치를 트레이에 옮긴 뒤 매운양념·데리야키·파채 토핑을 얹어보세요!",
+        "foods": ("skewer_greenonion", "skewer_spicy"),
+        "country": "KR",
+        "appliance": "grill_skewer",
+        "station_title": "직화 참숯 대파 닭꼬치 그릴",
+        "accent": (255, 96, 64),
+    },
+    {
+        "step": 4,
+        "short": "떡볶이 조리는중",
+        "message": "🌶️ 무쇠 철판에 매콤 떡볶이 조리는 중...",
+        "sub": "고추장 비법 양념에 쫄깃한 쌀떡과 어묵을 넣고 보글보글 졸이고 있습니다!",
+        "tip": "TIP: 대량 조리 팬은 한 번 조리로 3~5인분을 연속해서 덜어낼 수 있습니다!",
+        "foods": ("tteokbokki_cheese", "tteokbokki_gimmari"),
+        "country": "KR",
+        "appliance": "pan_tteokbokki",
+        "station_title": "포차 대형 무쇠 떡볶이 철판",
+        "accent": (255, 68, 92),
+    },
+    {
+        "step": 5,
+        "short": "타코야키 굴리는중",
+        "message": "🐙 오사카 무쇠판에 타코야키 굴리는 중...",
+        "sub": "도톤보리 야타이 무쇠판에서 문어가 큼직하게 든 타코야키를 동글동글 굴리는 중!",
+        "tip": "TIP: 가쓰오부시와 마요네즈 토핑을 얹으면 일본 야시장 단골손님 대만족!",
+        "foods": ("takoyaki_mayo", "yakisoba_egg"),
+        "country": "JP",
+        "appliance": "mold_takoyaki",
+        "station_title": "오사카 도톤보리 타코야키 주물판",
+        "accent": (255, 112, 184),
+    },
+    {
+        "step": 6,
+        "short": "타코 또띠아 굽는중",
+        "message": "🌮 멕시코 화로에 타코 또띠아 굽는 중...",
+        "sub": "고소한 옥수수 또띠아를 굽고 신선한 살사 소스와 과카몰리를 다지고 있습니다!",
+        "tip": "TIP: 연속 서빙 콤보(COMBO)가 높아질수록 손님들이 두둑한 팁을 남깁니다!",
+        "foods": ("taco_salsa", "taco_guac"),
+        "country": "MX",
+        "appliance": "grill_taco",
+        "station_title": "멕시코 피에스타 타코 화로 철판",
+        "accent": (72, 238, 142),
+    },
+    {
+        "step": 7,
+        "short": "흑당 버블티 삶는중",
+        "message": "🧋 대만 야시장 흑당 버블티 삶는 중...",
+        "sub": "스린 야시장 비법 흑당 시럽에 쫀득한 타피오카 펄을 뭉근하게 졸이는 중!",
+        "tip": "TIP: 맛집 유튜버(VIP) 주문을 완성하면 12초간 골드 보너스 피버 타임 발동!",
+        "foods": ("boba_milktea", "jipai_mala"),
+        "country": "TW",
+        "appliance": "pot_boba",
+        "station_title": "타이베이 스린 흑당 버블 솥",
+        "accent": (245, 186, 102),
+    },
+    {
+        "step": 8,
+        "short": "마라탕 육수 끓이는중",
+        "message": "🥘 사천 마라탕 육수 끓이고 양꼬치 굽는 중...",
+        "sub": "얼얼한 화자오 마라 육수를 우려내고 양꼬치에 고소한 쯔란을 뿌리는 중입니다!",
+        "tip": "TIP: 잘못 조합한 접시는 접시 우측 상단 [X] 배지를 터치해 즉시 비울 수 있어요!",
+        "foods": ("malatang_beef", "yangchuan_cumin"),
+        "country": "CN",
+        "appliance": "pot_mala",
+        "station_title": "청두 사천 마라 홍탕 대형 가마솥",
+        "accent": (255, 78, 78),
+    },
+    {
+        "step": 9,
+        "short": "탄두리 화덕 달구는중",
+        "message": "🍗 화덕 달궈 탄두리 치킨 & 버거 굽는 중...",
+        "sub": "황토 화덕에서 향신료 가득 탄두리 치킨과 육즙 가득 스매시 버거를 굽는 중!",
+        "tip": "TIP: 포차 마스터마다 고유 패시브와 위기 탈출 액티브 스킬을 보유하고 있습니다!",
+        "foods": ("tandoori_masala", "smash_burger_bacon"),
+        "country": "IN",
+        "appliance": "oven_tandoor",
+        "station_title": "전통 탄두르 화덕 & 스매시 그릴",
+        "accent": (255, 188, 48),
+    },
+    {
+        "step": 10,
+        "short": "포장마차 전구 켜는중",
+        "message": "🏮 포장마차 알전구 켜고 손님 맞이 준비 중...",
+        "sub": "천막 간판에 불을 밝히고 전 세계 야시장 미식가들을 맞이할 준비를 마쳤습니다!",
+        "tip": "TIP: 32강 월드 포차 그랑프리에서 전 세계 32인 마스터를 꺾고 우승에 도전하세요!",
+        "foods": ("churrasco_garlic", "shashlik_onion"),
+        "country": "BR",
+        "appliance": "pocha_tent",
+        "station_title": "월드 스트리트 나이트마켓 포차 오픈!",
+        "accent": (64, 232, 255),
+    },
+]
 
 
 class BaseScene:
@@ -80,11 +208,42 @@ class SceneManager:
         self._opt_status_timer: float = 0.0
         self._setup_options_rects()
 
+        # 프로그래시브 로딩 화면 상태 (10종 멘트 & 매칭 조리 일러스트 로딩 바)
+        self.loading_active: bool = False
+        self.loading_progress: float = 0.0
+        self.loading_duration: float = 1.10
+        self.loading_theme_idx: int = 0
+        self._loading_rotation_counter: int = 0
+        self._loading_tick: float = 0.0
+
         config.sync_browser_display_and_fullscreen(None)
         self._register_default_scenes()
 
         if initial_scene:
-            self.change_scene(initial_scene)
+            self.change_scene(initial_scene, show_loading=False)
+
+    def start_loading(
+        self,
+        duration: float = 1.10,
+        theme_index: Optional[int] = None,
+    ) -> None:
+        """
+        10종 프로그래시브 조리 멘트와 어울리는 음식·조리기구 일러스트 로딩 바 화면을 시작한다.
+        로딩 화면이 나올 때마다 다음 테마로 순환하며, 진행률(0~100%)에 따라 프로그래시브 멘트가 변화한다.
+        """
+        self.loading_active = True
+        self.loading_progress = 0.0
+        self.loading_duration = max(0.25, float(duration))
+        if theme_index is not None:
+            self.loading_theme_idx = int(theme_index) % len(LOADING_THEMES)
+        else:
+            self.loading_theme_idx = self._loading_rotation_counter % len(LOADING_THEMES)
+            self._loading_rotation_counter = (self._loading_rotation_counter + 1) % len(LOADING_THEMES)
+
+    def finish_loading(self) -> None:
+        """진행 중인 로딩 오버레이를 즉시 완료 처리한다."""
+        self.loading_active = False
+        self.loading_progress = 1.0
 
     @property
     def is_portrait_mode(self) -> bool:
@@ -261,7 +420,8 @@ class SceneManager:
         self.options_open = False
         self._dragging_slider = None
 
-        if self.current_scene is not None and hasattr(self.current_scene, "on_exit"):
+        had_prev_scene = self.current_scene is not None
+        if had_prev_scene and hasattr(self.current_scene, "on_exit"):
             try:
                 self.current_scene.on_exit()
             except Exception:
@@ -284,6 +444,12 @@ class SceneManager:
 
         self.current_scene = scene_obj
         self.current_scene_name = key
+
+        if bool(kwargs.get("show_loading", False)):
+            self.start_loading(
+                duration=float(kwargs.get("loading_duration", 1.05)),
+                theme_index=kwargs.get("loading_theme"),
+            )
         return self.current_scene
 
     switch_scene = change_scene
@@ -317,7 +483,8 @@ class SceneManager:
         """
         sc = self.current_scene
         has_modal = (
-            self.options_open
+            self.loading_active
+            or self.options_open
             or getattr(sc, "active_cutscene", None) is not None
             or bool(getattr(sc, "paused", False))
             or bool(getattr(sc, "show_roster_modal", False))
@@ -475,6 +642,11 @@ class SceneManager:
             if mapped_event.key == pygame.K_F11:
                 self.toggle_fullscreen()
                 return
+
+        if self.loading_active:
+            if mapped_event.type in (pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN) and self.loading_progress >= 0.35:
+                self.finish_loading()
+            return
 
         if self.options_open:
             self._handle_options_event(mapped_event)
@@ -665,10 +837,17 @@ class SceneManager:
             pass
 
     def update(self, dt: float) -> None:
-        """현재 활성 씬의 update(dt)를 호출한다. (옵션 모달이 열려 있으면 인게임 타이머 일시정지)"""
+        """현재 활성 씬의 update(dt)를 호출한다. (옵션 모달 또는 로딩 중이면 인게임 타이머 일시정지)"""
         self._poll_browser_viewport_orientation(dt)
         if self._opt_status_timer > 0.0:
             self._opt_status_timer = max(0.0, self._opt_status_timer - dt)
+
+        if self.loading_active:
+            self._loading_tick += dt
+            self.loading_progress += dt / max(0.25, self.loading_duration)
+            if self.loading_progress >= 1.0:
+                self.finish_loading()
+            return
 
         if self.options_open:
             return
@@ -763,6 +942,8 @@ class SceneManager:
 
         if target_size == logical_size:
             self.current_scene.draw(surface)
+            if self.loading_active:
+                self._draw_loading_overlay(surface)
             if self.options_open:
                 self._draw_options_modal(surface)
             return
@@ -770,6 +951,8 @@ class SceneManager:
         if self._logical_surface is None or self._logical_surface.get_size() != logical_size:
             self._logical_surface = pygame.Surface(logical_size)
         self.current_scene.draw(self._logical_surface)
+        if self.loading_active:
+            self._draw_loading_overlay(self._logical_surface)
         if self.options_open:
             self._draw_options_modal(self._logical_surface)
 
@@ -977,3 +1160,276 @@ class SceneManager:
         if self._opt_status_timer > 0.0 and self._opt_status_msg:
             msg_s = sub_f.render(f"✨ {self._opt_status_msg}", True, config.NEON_GREEN)
             surface.blit(msg_s, (p.x + 320, self.opt_save_close_btn.centery - msg_s.get_height() // 2))
+
+    # ==========================================================================
+    # 프로그래시브 10종 로딩 화면 & 매칭 조리기구/음식 일러스트 로딩 바 렌더링
+    # ==========================================================================
+    def get_current_loading_theme(self) -> Dict[str, Any]:
+        """현재 로딩 화면의 테마(10종 중 1개)를 반환한다."""
+        idx = int(self.loading_theme_idx) % len(LOADING_THEMES)
+        return LOADING_THEMES[idx]
+
+    def _draw_loading_appliance_illustration(
+        self,
+        surface: pygame.Surface,
+        stage_rect: pygame.Rect,
+        theme: Dict[str, Any],
+        progress: float,
+    ) -> None:
+        """
+        로딩 멘트(붕어빵 굽는중, 오뎅 국물 내는중 등 10종)에 어울리는
+        조리 기구 & 음식 일러스트 장면을 렌더링한다.
+        """
+        t = self._loading_tick
+        accent = theme.get("accent", config.POCHA_ORANGE)
+        app_type = str(theme.get("appliance", "mold_bungeo"))
+        country_id = str(theme.get("country", "KR"))
+        foods = theme.get("foods", ("bungeoppang_redbean", "bungeoppang_cream"))
+
+        # 1) 국가별 야시장 배경 + 따뜻한 다크 비네팅
+        art_renderer.draw_country_background(
+            surface,
+            stage_rect,
+            country_id=country_id,
+            interior_levels={"lighting": 2, "signboard": 2, "prop": 2, "seating": 1},
+            time_tick=t,
+        )
+        art_renderer.draw_alpha_overlay(surface, stage_rect, (14, 10, 26, 155), border_radius=16)
+        pygame.draw.rect(surface, accent, stage_rect, width=3, border_radius=16)
+
+        # 2) 좌측: 포차 마스터 조리 애니메이션 + 말풍선
+        chef_id = getattr(self.game_mgr, "selected_character", "chef_kr") or "chef_kr"
+        chef_box = pygame.Rect(stage_rect.x + 34, stage_rect.y + 62, 136, 136)
+        pygame.draw.rect(surface, (28, 22, 46), chef_box.inflate(12, 12), border_radius=16)
+        pygame.draw.rect(surface, config.GOLD, chef_box.inflate(12, 12), width=2, border_radius=16)
+        art_renderer.draw_chef_avatar(
+            surface,
+            chef_box,
+            character_id=chef_id,
+            state="COOKING",
+            time_tick=t * 1.6,
+        )
+        badge_f = config.get_font(13, bold=True)
+        c_lbl = badge_f.render("👨‍🍳 조리 준비 중!", True, config.GOLD)
+        surface.blit(c_lbl, c_lbl.get_rect(center=(chef_box.centerx, chef_box.bottom + 20)))
+
+        # 3) 중앙~우측: 테마별 전용 조리기구 & 음식 일러스트 데스크
+        counter_rect = pygame.Rect(stage_rect.x + 206, stage_rect.y + 38, stage_rect.width - 236, stage_rect.height - 58)
+        pygame.draw.rect(surface, (26, 20, 38), counter_rect, border_radius=16)
+        pygame.draw.rect(surface, (78, 66, 108), counter_rect, width=2, border_radius=16)
+
+        # 상단 기구 타이틀 배지
+        st_title = str(theme.get("station_title", "포차 조리 스테이션"))
+        st_pill = pygame.Rect(counter_rect.centerx - 150, counter_rect.y + 10, 300, 28)
+        pygame.draw.rect(surface, (42, 34, 64), st_pill, border_radius=14)
+        pygame.draw.rect(surface, accent, st_pill, width=1, border_radius=14)
+        st_txt = badge_f.render(f"🔥 {st_title}", True, accent)
+        surface.blit(st_txt, st_txt.get_rect(center=st_pill.center))
+
+        # 중앙 조리대 그래픽 (기구 종류별 맞춤 일러스트)
+        cx, cy = counter_rect.centerx, counter_rect.centery + 18
+        plate_r = pygame.Rect(cx - 175, cy - 58, 350, 118)
+
+        if app_type in ("mold_bungeo", "mold_takoyaki"):
+            # 무쇠 구이 틀 (붕어빵 2구 틀 / 타코야키 주물판)
+            pygame.draw.rect(surface, (48, 44, 58), plate_r, border_radius=14)
+            pygame.draw.rect(surface, (110, 104, 128), plate_r, width=3, border_radius=14)
+            # 하단 불꽃 화구
+            for fx in range(plate_r.x + 36, plate_r.right - 28, 34):
+                flick = int(math.sin(t * 9.0 + fx) * 4)
+                pygame.draw.circle(surface, (255, 92, 36), (fx, plate_r.bottom + 4), 7 + flick // 2)
+                pygame.draw.circle(surface, (255, 215, 70), (fx, plate_r.bottom + 4), 4)
+            if app_type == "mold_takoyaki":
+                for r_i in range(2):
+                    for c_i in range(5):
+                        wx = plate_r.x + 45 + c_i * 64
+                        wy = plate_r.y + 34 + r_i * 48
+                        pygame.draw.circle(surface, (30, 26, 36), (wx, wy), 18)
+                        pygame.draw.circle(surface, (218, 152, 74), (wx, wy), 13)
+            else:
+                for slot_i in range(2):
+                    sr = pygame.Rect(plate_r.x + 22 + slot_i * 162, plate_r.y + 14, 144, 90)
+                    pygame.draw.rect(surface, (32, 28, 40), sr, border_radius=12)
+                    pygame.draw.rect(surface, config.GOLD, sr, width=1, border_radius=12)
+
+        elif app_type in ("pot_odeng", "pot_boba", "pot_mala"):
+            # 육수/국물 온장고 및 대형 가마솥 (오뎅 국물 / 흑당 버블 / 사천 마라탕)
+            pygame.draw.rect(surface, (66, 72, 88), plate_r, border_radius=16)
+            pygame.draw.rect(surface, (168, 178, 200), plate_r, width=3, border_radius=16)
+            broth_col = (
+                (212, 162, 78)
+                if app_type == "pot_odeng"
+                else ((98, 52, 32) if app_type == "pot_boba" else (196, 44, 38))
+            )
+            inner_r = plate_r.inflate(-22, -22)
+            pygame.draw.rect(surface, broth_col, inner_r, border_radius=12)
+            # 보글보글 기포 연출
+            for b_i in range(7):
+                bx = inner_r.x + 28 + b_i * 44
+                by = inner_r.centery + int(math.sin(t * 6.0 + b_i * 1.3) * 14)
+                rad = 5 + int((math.sin(t * 8.0 + b_i) + 1) * 2.5)
+                pygame.draw.circle(surface, (255, 238, 188), (bx, by), rad, width=2)
+
+        elif app_type in ("grill_skewer", "grill_taco", "oven_tandoor"):
+            # 참숯 직화 그릴 & 화로 (닭꼬치 / 멕시코 타코 / 인도 탄두리)
+            pygame.draw.rect(surface, (58, 32, 30), plate_r, border_radius=14)
+            pygame.draw.rect(surface, (255, 118, 62), plate_r, width=3, border_radius=14)
+            # 타오르는 참숯 & 석쇠 창살
+            ember_r = plate_r.inflate(-18, -20)
+            pygame.draw.rect(surface, (128, 32, 24), ember_r, border_radius=10)
+            for e_i in range(8):
+                ex = ember_r.x + 24 + e_i * 38
+                ey = ember_r.centery + int(math.cos(t * 5.0 + e_i) * 12)
+                pygame.draw.circle(surface, (255, 132, 42), (ex, ey), 14)
+                pygame.draw.circle(surface, (255, 220, 95), (ex, ey), 7)
+            for gx in range(plate_r.x + 24, plate_r.right - 20, 22):
+                pygame.draw.line(surface, (190, 195, 210), (gx, plate_r.y + 8), (gx, plate_r.bottom - 8), 2)
+
+        elif app_type == "pan_tteokbokki":
+            # 포차 대형 무쇠 떡볶이 철판
+            pygame.draw.rect(surface, (36, 32, 44), plate_r, border_radius=14)
+            pygame.draw.rect(surface, (255, 88, 96), plate_r, width=3, border_radius=14)
+            sauce_r = plate_r.inflate(-20, -20)
+            pygame.draw.rect(surface, (198, 38, 42), sauce_r, border_radius=10)
+            for b_i in range(6):
+                bx = sauce_r.x + 34 + b_i * 48
+                by = sauce_r.centery + int(math.sin(t * 7.0 + b_i) * 12)
+                pygame.draw.circle(surface, (255, 192, 92), (bx, by), 8)
+
+        else:
+            # 포장마차 알전구 천막 오픈 연출 (진행률에 따라 알전구 순차 점등!)
+            pygame.draw.rect(surface, (38, 28, 56), plate_r, border_radius=14)
+            pygame.draw.rect(surface, config.NEON_CYAN, plate_r, width=2, border_radius=14)
+            lit_bulbs = max(1, int(round(progress * 8)))
+            for b_i in range(8):
+                bx = plate_r.x + 28 + b_i * 42
+                by = plate_r.y + 22
+                is_lit = b_i < lit_bulbs
+                if is_lit:
+                    pygame.draw.circle(surface, (255, 210, 90), (bx, by), 13)
+                    pygame.draw.circle(surface, (255, 250, 210), (bx, by), 7)
+                else:
+                    pygame.draw.circle(surface, (75, 70, 92), (bx, by), 8)
+
+        # 4) 조리 기구 위에 놓인 큼직한 대표 음식 아이콘 2종 애니메이션
+        for idx, fid in enumerate(foods[:2]):
+            bob = int(math.sin(t * 5.5 + idx * 1.6) * 5)
+            fx = cx - 78 + idx * 156
+            fy = cy + bob
+            art_renderer.draw_food_icon(surface, (fx, fy), str(fid), size=76)
+
+        # 5) 모락모락 피어오르는 김(Steam) & 반짝이는 불꽃 파티클
+        for s_i in range(6):
+            phase = (t * 1.8 + s_i * 0.35) % 1.0
+            sx = cx - 125 + s_i * 50 + int(math.sin(t * 4.0 + s_i) * 8)
+            sy = int(plate_r.y + 10 - phase * 46)
+            rad = max(3, int((1.0 - phase) * 11))
+            pygame.draw.circle(surface, (235, 238, 248), (sx, sy), rad, width=2)
+
+    def _draw_loading_overlay(self, surface: pygame.Surface) -> None:
+        """
+        1280x720 논리 화면 위에 10종 프로그래시브 조리 멘트와
+        어울리는 일러스트 & 로딩 바 화면을 렌더링한다.
+        """
+        p_ratio = max(0.0, min(1.0, float(self.loading_progress)))
+        pct = int(round(p_ratio * 100))
+        theme = self.get_current_loading_theme()
+        accent = theme.get("accent", config.POCHA_ORANGE)
+        foods = theme.get("foods", ("bungeoppang_redbean", "bungeoppang_cream"))
+
+        # 전체 배경 다크 나이트마켓 오버레이
+        surface.fill((12, 10, 22))
+        card = pygame.Rect(110, 36, 1060, 648)
+        pygame.draw.rect(surface, (22, 18, 38), card, border_radius=22)
+        pygame.draw.rect(surface, accent, card, width=3, border_radius=22)
+        pygame.draw.rect(surface, config.GOLD, card.inflate(-10, -10), width=1, border_radius=18)
+
+        title_f = config.get_font(28, bold=True)
+        msg_f = config.get_font(24, bold=True)
+        sub_f = config.get_font(15, bold=True)
+        tip_f = config.get_font(14, bold=False)
+        xs_f = config.get_font(12, bold=True)
+
+        # 1) 상단 헤더
+        hdr_s = title_f.render("🏮 전세계 길거리 음식 포차 타이쿤 — 영업 준비 중", True, config.GOLD)
+        surface.blit(hdr_s, hdr_s.get_rect(center=(card.centerx, card.y + 34)))
+
+        # 2) 중단: 멘트에 어울리는 맞춤 조리기구 & 음식 일러스트 스테이지
+        stage_rect = pygame.Rect(card.x + 44, card.y + 66, card.width - 88, 286)
+        self._draw_loading_appliance_illustration(surface, stage_rect, theme, p_ratio)
+
+        # 3) 프로그래시브 메인 조리 멘트 & 상세 설명
+        step_num = int(theme.get("step", 1))
+        main_msg = str(theme.get("message", "🐟 황금빛 붕어빵 굽는 중..."))
+        sub_msg = str(theme.get("sub", "맛있는 길거리 음식을 정성껏 조리하고 있습니다!"))
+
+        msg_surf = msg_f.render(f"[{step_num}/10]  {main_msg}", True, config.WHITE)
+        sub_surf = sub_f.render(sub_msg, True, accent)
+        msg_rect = msg_surf.get_rect(center=(card.centerx, stage_rect.bottom + 34))
+        surface.blit(msg_surf, msg_rect)
+        art_renderer.draw_food_icon(surface, (msg_rect.left - 28, msg_rect.centery), str(foods[0]), size=34)
+        art_renderer.draw_food_icon(surface, (msg_rect.right + 28, msg_rect.centery), str(foods[-1]), size=34)
+        surface.blit(sub_surf, sub_surf.get_rect(center=(card.centerx, stage_rect.bottom + 66)))
+
+        # 4) 테마 매칭 네온 로딩 바 (게이지 끝에 매칭 음식 아이콘이 통통 튀며 이동 + 우측 독립 퍼센트 배지)
+        bar_rect = pygame.Rect(card.x + 60, stage_rect.bottom + 96, card.width - 264, 36)
+        pct_box = pygame.Rect(bar_rect.right + 16, bar_rect.y, 128, 36)
+        pygame.draw.rect(surface, (14, 12, 24), bar_rect, border_radius=18)
+
+        fill_w = max(24, int(round(bar_rect.width * p_ratio)))
+        fill_rect = pygame.Rect(bar_rect.x, bar_rect.y, fill_w, bar_rect.height)
+        pygame.draw.rect(surface, accent, fill_rect, border_radius=18)
+
+        # 게이지 내부 사선 하이라이트 패턴
+        stripe_offset = int(self._loading_tick * 60) % 28
+        for sx in range(bar_rect.x + stripe_offset, fill_rect.right - 10, 28):
+            pygame.draw.line(
+                surface,
+                (255, 255, 255),
+                (sx, bar_rect.y + 5),
+                (min(fill_rect.right - 6, sx + 10), bar_rect.bottom - 5),
+                2,
+            )
+
+        pygame.draw.rect(surface, config.GOLD, bar_rect, width=2, border_radius=18)
+
+        # 게이지 진행 끝부분(Tip)에 매칭 음식 아이콘 커서 렌더링!
+        cursor_x = max(bar_rect.x + 20, min(bar_rect.right - 16, fill_rect.right))
+        cursor_y = bar_rect.centery + int(math.sin(self._loading_tick * 10.0) * 3)
+        pygame.draw.circle(surface, (28, 22, 44), (cursor_x, cursor_y), 24)
+        pygame.draw.circle(surface, config.GOLD, (cursor_x, cursor_y), 24, width=2)
+        art_renderer.draw_food_icon(surface, (cursor_x, cursor_y), str(foods[0]), size=34)
+
+        # 우측 독립 퍼센트 배지 박스 (아이콘 커서와 겹치지 않음)
+        pygame.draw.rect(surface, (28, 22, 46), pct_box, border_radius=18)
+        pygame.draw.rect(surface, accent, pct_box, width=2, border_radius=18)
+        pct_surf = sub_f.render(f"LOADING {pct}%", True, config.GOLD)
+        surface.blit(pct_surf, pct_surf.get_rect(center=pct_box.center))
+
+        # 5) 10개 프로그래시브 조리 멘트 미니 스텝 트랙 (10종 한눈에 보기)
+        track_y = bar_rect.bottom + 24
+        col_w = (card.width - 100) // 5
+        for idx, t_item in enumerate(LOADING_THEMES):
+            col = idx % 5
+            row = idx // 5
+            chip_r = pygame.Rect(card.x + 50 + col * col_w, track_y + row * 34, col_w - 8, 28)
+            is_cur = idx == (self.loading_theme_idx % len(LOADING_THEMES))
+            chip_bg = t_item["accent"] if is_cur else (34, 28, 52)
+            chip_fg = (18, 14, 26) if is_cur else config.TEXT_SECONDARY
+            pygame.draw.rect(surface, chip_bg, chip_r, border_radius=8)
+            pygame.draw.rect(
+                surface,
+                config.WHITE if is_cur else config.UI_BORDER,
+                chip_r,
+                width=2 if is_cur else 1,
+                border_radius=8,
+            )
+            short_txt = xs_f.render(f"{idx + 1}. {t_item['short']}", True, chip_fg)
+            surface.blit(short_txt, short_txt.get_rect(center=chip_r.center))
+
+        # 6) 하단 포차 운영 꿀팁 배너
+        tip_rect = pygame.Rect(card.x + 50, card.bottom - 56, card.width - 100, 38)
+        pygame.draw.rect(surface, (30, 24, 48), tip_rect, border_radius=10)
+        pygame.draw.rect(surface, config.UI_BORDER, tip_rect, width=1, border_radius=10)
+        tip_s = tip_f.render(f"💡 {theme.get('tip', '')}", True, config.NEON_CYAN)
+        surface.blit(tip_s, tip_s.get_rect(center=tip_rect.center))

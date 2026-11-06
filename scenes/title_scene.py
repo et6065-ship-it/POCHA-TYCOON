@@ -96,7 +96,7 @@ class TitleScene(BaseScene):
                 sound_fx.play_click()
                 self.game_mgr.set_mode("WORLD_TOUR")
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep", initial_tab="chapter")
+                    self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
                 return
 
             # 2) 글로벌 야시장 통합 모드 카드 클릭
@@ -104,14 +104,14 @@ class TitleScene(BaseScene):
                 sound_fx.play_click()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep", initial_tab="chapter")
+                    self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
                 return
 
             # 프로필 카드 클릭 시 주인공 선택 탭으로 이동
             if self.profile_card_rect.collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep", initial_tab="character")
+                    self.scene_mgr.change_scene("prep", initial_tab="character", show_loading=True)
                 return
 
             # 세이브 불러오기 버튼
@@ -179,12 +179,12 @@ class TitleScene(BaseScene):
                 sound_fx.play_click()
                 self.game_mgr.set_mode("WORLD_TOUR")
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep", initial_tab="chapter")
+                    self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
             elif event.key == pygame.K_2:
                 sound_fx.play_click()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
-                    self.scene_mgr.change_scene("prep", initial_tab="chapter")
+                    self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
 
     def update(self, dt: float) -> None:
         self.time_tick += dt

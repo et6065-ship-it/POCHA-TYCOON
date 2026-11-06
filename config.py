@@ -80,6 +80,7 @@ def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> No
                 cvs.style.maxHeight = '100vh';
                 cvs.style.backgroundColor = '#0c0a16';
             }
+            window.__pocha_ready = true;
         })();
         """
         platform.window.eval(js_code)
