@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import pygame
 
 import config
-from core.art_renderer import draw_food_icon
+from core.art_renderer import draw_bungeo_tycoon_mold_slot, draw_food_icon
 from data.recipes import RECIPES, get_recipes_by_station
 from entities.dish import Dish
 from stations.base_station import (
@@ -113,6 +113,7 @@ class MoldStation(BaseStation):
             cook_time=cook_t,
             burn_time=burn_t,
             can_burn=True,
+            needs_flip=True,
         )
         return {
             "action": "start_cook",
@@ -129,10 +130,11 @@ class MoldStation(BaseStation):
         auto_serve_cb: Optional[Callable[..., Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        몰드 스테이션 클릭 인터랙션을 처리한다.
-        1) 하단 레시피 버튼 클릭: 해당 레시피 선택 + 빈 슬롯이 있으면 즉시 조리 시작.
-        2) 슬롯 클릭:
-           - IDLE: 현재 선택된 레시피로 조리 시작.
+        『붕어빵 타이쿤』 3단계 몰드 스테이션 클릭 인터랙션을 처리한다.
+        1) 하단 레시피 버튼 클릭: 손에 쥘 속재료(팥/슈크림 등) 선택.
+        2) 위쪽 몰드 슬롯 클릭:
+           - IDLE: 현재 선택된 속재료+반죽을 그 칸에 직접 붓기(needs_flip=True).
+           - COOKING: 앞면이 익었으면(can_flip_now) 반죽틀 뒤집기(flip_mold).
            - READY: auto_serve_cb 우선 호출하여 자동 서빙 -> 없으면 assembly_tray에 보관.
            - BURNT: 탄 음식 폐기.
         """
@@ -140,7 +142,7 @@ class MoldStation(BaseStation):
         if not self.rect.collidepoint(pos):
             return None
 
-        # 1. 하단 레시피 선택/투입 버튼 확인
+        # 1. 하단 속재료 선택 버튼 확인
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             if btn_rect.collidepoint(pos):
                 self.selected_recipe_index = idx
@@ -148,13 +150,13 @@ class MoldStation(BaseStation):
                 if sel_s is not None and 0 <= sel_s < len(self.slots) and self.slots[sel_s].state == STATE_IDLE:
                     self.selected_slot_index = None
                     return self._start_slot_cooking(sel_s, rid)
-                for s_idx, slot in enumerate(self.slots):
-                    if slot.state == STATE_IDLE:
-                        return self._start_slot_cooking(s_idx, rid)
+                rec = RECIPES.get(rid)
+                r_name = str(rec["name"]) if rec else rid
                 return {
                     "action": "select_recipe",
                     "station": self.station_id,
                     "recipe_id": rid,
+                    "message": f"🥣 [{r_name}] 속 선택! 위쪽 빈 틀(1~{len(self.slots)})을 터치해 부으세요!",
                 }
 
         # 2. 몰드 슬롯 클릭 확인
@@ -163,14 +165,8 @@ class MoldStation(BaseStation):
                 continue
 
             if slot.state == STATE_IDLE:
-                # 빈 틀을 터치했을 때 자동으로 팥(기본 맛)이 들어가지 않도록 차단하고, 해당 칸을 투입 대상 슬롯으로 지정!
-                self.selected_slot_index = s_idx
-                return {
-                    "action": "select_target_slot",
-                    "station": self.station_id,
-                    "slot_index": s_idx,
-                    "message": "👇 하단에서 넣을 속재료 버튼을 터치하세요!",
-                }
+                # 『붕어빵 타이쿤』 1단계: 빈 틀을 직접 터치하면 현재 선택한 속재료+반죽을 그 칸에 붓는다!
+                return self._start_slot_cooking(s_idx, self.selected_recipe_id)
 
             if slot.state == STATE_COOKING:
                 cancel_badge = pygame.Rect(slot.rect.right - 28, slot.rect.y + 3, 25, 24)
@@ -183,6 +179,23 @@ class MoldStation(BaseStation):
                         "station": self.station_id,
                         "slot_index": s_idx,
                         "recipe_id": old_rid,
+                    }
+                # 『붕어빵 타이쿤』 2단계: 앞면이 익었을 때 터치하면 반죽틀 뒤집기!
+                if getattr(slot, "needs_flip", False) and not getattr(slot, "flipped", False):
+                    if slot.can_flip_now:
+                        slot.flip_mold()
+                        return {
+                            "action": "flip_mold",
+                            "station": self.station_id,
+                            "slot_index": s_idx,
+                            "recipe_id": slot.recipe_id,
+                        }
+                    return {
+                        "action": "too_early_flip",
+                        "station": self.station_id,
+                        "slot_index": s_idx,
+                        "recipe_id": slot.recipe_id,
+                        "message": "🥣 아직 앞면 생반죽이 익는 중입니다! [🔄 뒤집기!]가 뜨면 터치하세요!",
                     }
                 return {
                     "action": "cooking_in_progress",
@@ -253,28 +266,29 @@ class MoldStation(BaseStation):
         t = float(time_tick) if isinstance(time_tick, (int, float)) else 0.0
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}구")
 
+        sel_rec = RECIPES.get(self.selected_recipe_id)
+        sel_nm = str(sel_rec["name"]) if sel_rec else "단팥"
         for s_idx, slot in enumerate(self.slots):
             is_target = getattr(self, "selected_slot_index", None) == s_idx and slot.state == STATE_IDLE
-            slot.draw_slot_box(
+            rec = RECIPES.get(slot.recipe_id or "")
+            r_nm = str(rec["name"]) if rec else ""
+            draw_bungeo_tycoon_mold_slot(
                 surface,
+                slot.rect,
+                s_idx,
+                slot,
+                recipe_name=r_nm,
+                selected_recipe_name=sel_nm,
+                is_targeted=is_target,
                 time_tick=t,
-                empty_label="👇 맛 선택!" if is_target else "👇 하단 맛 선택",
             )
-            if is_target:
-                pygame.draw.rect(surface, config.NEON_CYAN, slot.rect, width=3, border_radius=10)
-            elif slot.state == STATE_COOKING:
-                cancel_badge = pygame.Rect(slot.rect.right - 25, slot.rect.y + 4, 21, 21)
-                pygame.draw.rect(surface, (198, 42, 46), cancel_badge, border_radius=6)
-                pygame.draw.rect(surface, config.WHITE, cancel_badge, width=1, border_radius=6)
-                xt = config.get_font(12, bold=True).render("✕", True, config.WHITE)
-                surface.blit(xt, xt.get_rect(center=cancel_badge.center))
 
         # 하단 레시피 선택/투입 버튼 렌더링 (고시인성 15px 볼드 + 3px 하이라이트 보더 + 38px 아이콘)
         font_btn = config.get_font(15, bold=True)
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             is_sel = idx == self.selected_recipe_index
-            bg_col = (235, 118, 32) if is_sel else (54, 72, 116)
-            border_col = config.GOLD if is_sel else (136, 152, 198)
+            bg_col = (18, 128, 152) if is_sel else (54, 72, 116)
+            border_col = config.NEON_CYAN if is_sel else (136, 152, 198)
             pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
             pygame.draw.rect(surface, border_col, btn_rect, width=3 if is_sel else 2, border_radius=10)
 
@@ -283,13 +297,14 @@ class MoldStation(BaseStation):
 
             rec = RECIPES.get(rid)
             r_name = str(rec["name"]) if rec else rid
+            lbl_str = f"✔ {r_name}" if is_sel else r_name
             active_f = font_btn
             for f_sz in (14, 13, 12, 11):
-                if active_f.size(r_name)[0] <= btn_rect.width - 8:
+                if active_f.size(lbl_str)[0] <= btn_rect.width - 8:
                     break
                 active_f = config.get_font(f_sz, bold=True)
-            sh_surf = active_f.render(r_name, True, (18, 12, 24))
-            txt_surf = active_f.render(r_name, True, config.WHITE)
+            sh_surf = active_f.render(lbl_str, True, (18, 12, 24))
+            txt_surf = active_f.render(lbl_str, True, config.WHITE)
             tx = btn_rect.centerx - txt_surf.get_width() // 2
             ty = btn_rect.bottom - 22
             surface.blit(sh_surf, (tx + 1, ty + 1))

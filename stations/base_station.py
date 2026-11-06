@@ -70,6 +70,9 @@ class StationSlot:
         self.can_burn: bool = bool(can_burn)
         self.servings: int = 0
         self.max_servings: int = 1
+        self.needs_flip: bool = False
+        self.flipped: bool = False
+        self.flip_burn_elapsed: float = 0.0
 
     @property
     def timer(self) -> float:
@@ -106,10 +109,41 @@ class StationSlot:
         return 1.0
 
     @property
+    def is_flip_ready(self) -> bool:
+        """반죽틀(needs_flip=True)에서 앞면이 다 익어 터치해 뒤집어야 하는 타이밍인지 반환한다."""
+        return (
+            self.state == STATE_COOKING
+            and self.needs_flip
+            and not self.flipped
+            and self.elapsed >= (self.cook_time * 0.5 - 0.01)
+        )
+
+    @property
+    def can_flip_now(self) -> bool:
+        """반죽틀에서 앞면이 어느 정도(30% 이상) 익어 뒤집기 터치가 가능한지 반환한다."""
+        return (
+            self.state == STATE_COOKING
+            and self.needs_flip
+            and not self.flipped
+            and self.elapsed >= (self.cook_time * 0.30)
+        )
+
+    def flip_mold(self) -> bool:
+        """반죽틀을 뒤집어 뒷면 굽기 단계(50% -> 100%)로 진입한다."""
+        if self.state == STATE_COOKING and self.needs_flip and not self.flipped:
+            self.flipped = True
+            self.elapsed = max(self.elapsed, self.cook_time * 0.5)
+            self.flip_burn_elapsed = 0.0
+            return True
+        return False
+
+    @property
     def burn_progress(self) -> float:
-        """완성 후 타기까지의 진행률(0.0 ~ 1.0)을 반환한다."""
+        """뒤집기 지연 또는 완성 후 타기까지의 진행률(0.0 ~ 1.0)을 반환한다."""
         if self.state == STATE_BURNT:
             return 1.0
+        if self.is_flip_ready and self.can_burn:
+            return max(0.0, min(1.0, self.flip_burn_elapsed / max(0.05, self.burn_time)))
         if self.state == STATE_READY and self.can_burn:
             return max(0.0, min(1.0, self.elapsed / max(0.05, self.burn_time)))
         return 0.0
@@ -121,6 +155,7 @@ class StationSlot:
         burn_time: float = 9.0,
         can_burn: Optional[bool] = None,
         servings: int = 1,
+        needs_flip: bool = False,
     ) -> None:
         """슬롯에서 지정된 레시피의 조리를 시작한다."""
         self.recipe_id = str(recipe_id)
@@ -131,11 +166,16 @@ class StationSlot:
         self.max_servings = max(1, int(servings))
         self.servings = self.max_servings
         self.elapsed = 0.0
+        self.needs_flip = bool(needs_flip)
+        self.flipped = False
+        self.flip_burn_elapsed = 0.0
         self.state = STATE_COOKING
 
     def instant_finish(self) -> bool:
         """조리 중인 슬롯을 즉시 완성(READY) 상태로 전환한다."""
         if self.state == STATE_COOKING and self.recipe_id:
+            self.flipped = True
+            self.flip_burn_elapsed = 0.0
             self.state = STATE_READY
             self.elapsed = 0.0
             self.servings = max(1, self.max_servings)
@@ -148,16 +188,34 @@ class StationSlot:
         self.recipe_id = None
         self.elapsed = 0.0
         self.servings = 0
+        self.flipped = False
+        self.flip_burn_elapsed = 0.0
 
     clear = reset
 
     def update(self, dt: float) -> Optional[str]:
         """
         시간 경과(dt)에 따라 조리 및 탄 상태를 업데이트한다.
-        상태 전이가 발생하면 새로운 상태 문자열(STATE_READY, STATE_BURNT)을 반환한다.
+        - needs_flip=True이고 아직 뒤집지 않은 경우(not flipped):
+          앞면(50%)까지 익은 뒤 뒤집기 대기 상태(is_flip_ready)가 되며, 제때 안 뒤집으면 타버린다(STATE_BURNT).
+        - 뒤집은 후(flipped=True)에는 100%까지 익어 황금빛 완성(STATE_READY)이 된다.
         """
         dt = max(0.0, float(dt))
         if self.state == STATE_COOKING:
+            if self.needs_flip and not self.flipped:
+                half_t = self.cook_time * 0.5
+                if self.elapsed < half_t:
+                    self.elapsed = min(half_t, self.elapsed + dt)
+                else:
+                    self.elapsed = half_t
+                    if self.can_burn:
+                        self.flip_burn_elapsed += dt
+                        if self.flip_burn_elapsed >= self.burn_time:
+                            self.state = STATE_BURNT
+                            self.elapsed = 0.0
+                            return STATE_BURNT
+                return None
+
             self.elapsed += dt
             if self.elapsed >= self.cook_time:
                 self.state = STATE_READY

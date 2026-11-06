@@ -841,6 +841,19 @@ class PlayScene(BaseScene):
             sound_fx.play_click()
             msg = str(res.get("message", "넣을 속재료 버튼을 터치하세요!"))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
+        elif action == "select_recipe":
+            sound_fx.play_click()
+            msg = str(res.get("message", "🥣 속재료 선택 완료! 빈 틀을 터치해 부으세요!"))
+            self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
+        elif action == "flip_mold":
+            sound_fx.play_sizzle()
+            self.particles.emit_smoke(px, py - 8, count=5)
+            self.particles.emit_stars(px, py - 6, count=4)
+            self.particles.spawn_floating_text("🔄 철컥! 뒤집기!", px, py - 16, color=config.GOLD, size=18)
+        elif action == "too_early_flip":
+            sound_fx.play_click()
+            msg = str(res.get("message", "🥣 아직 앞면이 익는 중입니다!"))
+            self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_YELLOW, size=15)
         elif action == "select_slot":
             # 트레이에서 접시를 클릭했는데 매칭되는 손님이 없는 경우 안내
             sound_fx.play_click()
@@ -1173,10 +1186,16 @@ class PlayScene(BaseScene):
         tip_rect = pygame.Rect(198, 68, 1068, 28)
         art_renderer.draw_alpha_overlay(surface, tip_rect, (22, 20, 42, 228), border_radius=8)
         pygame.draw.rect(surface, spec.get("theme_accent", config.GOLD), tip_rect, width=2, border_radius=8)
-        msg = (
-            f"🎯 [{spec['emoji']} {spec['name']}] ① 좌측 속재료/베이스 터치 → "
-            "② 우측 6구 전문 화로 완성 터치(기본맛은 즉시 서빙 / ★토핑 주문은 중앙 트레이 이동) → ③ 특제 토핑 추가 후 서빙!"
-        )
+        if spec.get("id") == "bungeo":
+            msg = (
+                f"🎯 [{spec['emoji']} {spec['name']}] ① 좌측 속재료 선택 후 우측 빈 틀 터치(반죽+속 붓기) → "
+                "② 앞면 익으면 터치해 '뒤집기(🔄)' → ③ 황금빛 완성(✨) 시 터치해 꺼내기!"
+            )
+        else:
+            msg = (
+                f"🎯 [{spec['emoji']} {spec['name']}] ① 좌측 속재료/베이스 터치 → "
+                "② 우측 6구 전문 화로 완성 터치(기본맛은 즉시 서빙 / ★토핑 주문은 중앙 트레이 이동) → ③ 특제 토핑 추가 후 서빙!"
+            )
         for f_sz in (13, 12, 11):
             f_try = config.get_font(f_sz, bold=True)
             if f_try.size(msg)[0] <= tip_rect.width - 20:

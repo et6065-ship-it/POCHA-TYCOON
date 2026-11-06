@@ -2502,6 +2502,508 @@ class ArtRenderer:
 
         return next_btn_rect, skip_rect
 
+    # ------------------------------------------------------------------
+    # 『붕어빵 타이쿤』 정통 주물 반죽틀 슬롯 & 화력 펌프 렌더러
+    # ------------------------------------------------------------------
+    @classmethod
+    def _draw_tycoon_fish_shape(
+        cls,
+        surface: pygame.Surface,
+        cx: int,
+        cy: int,
+        rx: int,
+        ry: int,
+        body_col: tuple[int, int, int],
+        rim_col: tuple[int, int, int],
+        detail_col: tuple[int, int, int],
+        *,
+        is_cavity: bool = False,
+        is_batter: bool = False,
+        is_burnt: bool = False,
+        is_golden: bool = False,
+        filling_key: str = "",
+        time_tick: float = 0.0,
+    ) -> None:
+        """붕어빵 타이쿤 특유의 통통한 붕어 실루엣(머리·지느러미·꼬리·비늘·속재료)을 그린다."""
+        # 꼬리 지느러미 다각형 (우측)
+        tail_pts = [
+            (cx + int(rx * 0.42), cy),
+            (cx + int(rx * 1.05), cy - int(ry * 0.78)),
+            (cx + int(rx * 0.92), cy),
+            (cx + int(rx * 1.05), cy + int(ry * 0.78)),
+        ]
+        # 등 지느러미 & 배 지느러미
+        dorsal_pts = [
+            (cx - int(rx * 0.18), cy - int(ry * 0.72)),
+            (cx + int(rx * 0.08), cy - int(ry * 1.08)),
+            (cx + int(rx * 0.28), cy - int(ry * 0.68)),
+        ]
+        ventral_pts = [
+            (cx - int(rx * 0.10), cy + int(ry * 0.70)),
+            (cx + int(rx * 0.12), cy + int(ry * 1.04)),
+            (cx + int(rx * 0.28), cy + int(ry * 0.66)),
+        ]
+
+        # 몸통 타원 영역 (좌측으로 약간 치우침)
+        body_rect = pygame.Rect(
+            cx - int(rx * 0.96),
+            cy - int(ry * 0.82),
+            int(rx * 1.56),
+            int(ry * 1.64),
+        )
+
+        # 외곽 테두리/그림자 먼저 그리기
+        shadow_offset = -2 if is_cavity else 2
+        shadow_col = (20, 22, 26) if is_cavity else (34, 24, 16)
+        sh_body = body_rect.move(0, shadow_offset)
+        pygame.draw.ellipse(surface, shadow_col, sh_body)
+
+        # 지느러미 + 꼬리 채우기
+        pygame.draw.polygon(surface, body_col, dorsal_pts)
+        pygame.draw.polygon(surface, rim_col, dorsal_pts, 2)
+        pygame.draw.polygon(surface, body_col, ventral_pts)
+        pygame.draw.polygon(surface, rim_col, ventral_pts, 2)
+        pygame.draw.polygon(surface, body_col, tail_pts)
+        pygame.draw.polygon(surface, rim_col, tail_pts, 2)
+
+        # 몸통 채우기 & 테두리
+        pygame.draw.ellipse(surface, body_col, body_rect)
+        pygame.draw.ellipse(surface, rim_col, body_rect, 2 if not is_golden else 3)
+
+        if is_cavity:
+            # 빈 주물 틀 내부 음각 라인
+            inner_rect = body_rect.inflate(-10, -8)
+            pygame.draw.ellipse(surface, detail_col, inner_rect, 1)
+            # 꼬리 결
+            pygame.draw.line(
+                surface, detail_col,
+                (cx + int(rx * 0.55), cy - int(ry * 0.22)),
+                (cx + int(rx * 0.92), cy - int(ry * 0.44)), 1
+            )
+            pygame.draw.line(
+                surface, detail_col,
+                (cx + int(rx * 0.55), cy + int(ry * 0.22)),
+                (cx + int(rx * 0.92), cy + int(ry * 0.44)), 1
+            )
+            return
+
+        if is_batter:
+            # 1단계: 하얀 생반죽 + 가운데 속재료 듬뿍 토핑 (컴투스 붕어빵 타이쿤 감성!)
+            inner_cream = body_rect.inflate(-8, -6)
+            pygame.draw.ellipse(surface, (254, 250, 238), inner_cream)
+            # 기포 디테일 2~3개
+            pygame.draw.circle(surface, (232, 214, 182), (cx - int(rx * 0.48), cy - int(ry * 0.24)), 3)
+            pygame.draw.circle(surface, (232, 214, 182), (cx + int(rx * 0.28), cy + int(ry * 0.26)), 2)
+
+            # 속재료(팥/슈크림/피자치즈/고구마/초코/김치) 표현
+            fx = cx - int(rx * 0.12)
+            fy = cy + 1
+            frx = max(10, int(rx * 0.38))
+            fry = max(8, int(ry * 0.42))
+            f_rect = pygame.Rect(fx - frx, fy - fry, frx * 2, fry * 2)
+
+            if "cream" in filling_key:
+                pygame.draw.ellipse(surface, (242, 188, 34), f_rect.inflate(2, 2))
+                pygame.draw.ellipse(surface, (255, 226, 78), f_rect)
+                pygame.draw.ellipse(surface, (255, 248, 192), f_rect.inflate(-8, -6))
+            elif "pizza" in filling_key:
+                pygame.draw.ellipse(surface, (224, 58, 36), f_rect.inflate(2, 2))
+                pygame.draw.ellipse(surface, (255, 208, 68), f_rect.inflate(-4, -3))
+                # 파슬리 & 페퍼로니 점
+                pygame.draw.circle(surface, (196, 38, 32), (fx - 5, fy - 2), 4)
+                pygame.draw.circle(surface, (62, 186, 78), (fx + 5, fy + 2), 3)
+            elif "sweetpotato" in filling_key:
+                pygame.draw.ellipse(surface, (152, 58, 126), f_rect.inflate(3, 3))
+                pygame.draw.ellipse(surface, (250, 194, 44), f_rect)
+                pygame.draw.ellipse(surface, (255, 232, 128), f_rect.inflate(-8, -6))
+            elif "choco" in filling_key:
+                pygame.draw.ellipse(surface, (68, 32, 18), f_rect.inflate(2, 2))
+                pygame.draw.ellipse(surface, (108, 56, 32), f_rect)
+                pygame.draw.arc(surface, (168, 102, 64), f_rect.inflate(-6, -4), 0.4, 3.8, 2)
+            elif "kimchi" in filling_key:
+                pygame.draw.ellipse(surface, (192, 38, 28), f_rect.inflate(2, 2))
+                pygame.draw.ellipse(surface, (238, 74, 48), f_rect)
+                pygame.draw.circle(surface, (68, 194, 82), (fx - 4, fy + 2), 3)
+                pygame.draw.circle(surface, (255, 220, 180), (fx + 5, fy - 2), 3)
+            else:
+                # 기본 단팥(redbean): 원작 스크린샷처럼 하얀 반죽 위 빨간 하트/타원 팥앙금!
+                pygame.draw.circle(surface, (186, 34, 42), (fx - int(frx * 0.32), fy - 2), int(fry * 0.78))
+                pygame.draw.circle(surface, (186, 34, 42), (fx + int(frx * 0.32), fy - 2), int(fry * 0.78))
+                pygame.draw.polygon(
+                    surface,
+                    (186, 34, 42),
+                    [
+                        (fx - int(frx * 0.85), fy),
+                        (fx + int(frx * 0.85), fy),
+                        (fx, fy + int(fry * 0.95)),
+                    ],
+                )
+                pygame.draw.circle(surface, (242, 96, 102), (fx - int(frx * 0.35), fy - 4), max(2, int(fry * 0.28)))
+            return
+
+        # 2단계(뒤집힌 후 노릇한 붕어빵) / 3단계(황금 완성) / 탄 상태(숯검댕이)
+        # 상단 하이라이트 곡선
+        hl_col = (255, 242, 156) if is_golden else ((78, 82, 94) if is_burnt else (250, 186, 88))
+        hl_rect = pygame.Rect(body_rect.x + 8, body_rect.y + 5, int(body_rect.width * 0.65), int(body_rect.height * 0.42))
+        pygame.draw.arc(surface, hl_col, hl_rect, 0.5, 2.6, 2)
+
+        # 눈 (좌측 머리 부분)
+        eye_x = cx - int(rx * 0.56)
+        eye_y = cy - int(ry * 0.16)
+        if is_burnt:
+            # 탄 붕어빵: X자 눈
+            pygame.draw.line(surface, (185, 190, 202), (eye_x - 4, eye_y - 4), (eye_x + 4, eye_y + 4), 2)
+            pygame.draw.line(surface, (185, 190, 202), (eye_x + 4, eye_y - 4), (eye_x - 4, eye_y + 4), 2)
+        else:
+            pygame.draw.circle(surface, (42, 24, 12), (eye_x, eye_y), max(3, int(ry * 0.20)))
+            pygame.draw.circle(surface, (255, 255, 255), (eye_x - 1, eye_y - 1), max(1, int(ry * 0.08)))
+            if is_golden:
+                # 볼터치
+                pygame.draw.circle(surface, (245, 112, 72), (eye_x + 5, eye_y + 7), max(2, int(ry * 0.14)))
+
+        # 아가미 곡선
+        gill_rect = pygame.Rect(cx - int(rx * 0.42), cy - int(ry * 0.48), int(rx * 0.28), int(ry * 0.96))
+        pygame.draw.arc(surface, detail_col, gill_rect, -1.2, 1.2, 2)
+
+        # 몸통 비늘 자국 3개
+        for s_idx in range(3):
+            sx = cx - int(rx * 0.14) + s_idx * int(rx * 0.20)
+            sy = cy - int(ry * 0.22) + (s_idx % 2) * int(ry * 0.18)
+            s_rect = pygame.Rect(sx, sy, int(rx * 0.20), int(ry * 0.44))
+            pygame.draw.arc(surface, detail_col, s_rect, -1.3, 1.3, 2)
+
+        # 꼬리 결 라인
+        pygame.draw.line(
+            surface, detail_col,
+            (cx + int(rx * 0.52), cy - int(ry * 0.16)),
+            (cx + int(rx * 0.92), cy - int(ry * 0.44)), 2
+        )
+        pygame.draw.line(
+            surface, detail_col,
+            (cx + int(rx * 0.52), cy + int(ry * 0.16)),
+            (cx + int(rx * 0.92), cy + int(ry * 0.44)), 2
+        )
+
+    @classmethod
+    def _draw_tycoon_sparkle_star(
+        cls,
+        surface: pygame.Surface,
+        sx: int,
+        sy: int,
+        size: int,
+        color: tuple[int, int, int] = (255, 248, 120),
+    ) -> None:
+        """컴투스 붕어빵 타이쿤 황금 완성 시 반짝이는 4각 별(✨) 이펙트."""
+        pts = [
+            (sx, sy - size),
+            (sx + max(2, size // 3), sy - max(2, size // 3)),
+            (sx + size, sy),
+            (sx + max(2, size // 3), sy + max(2, size // 3)),
+            (sx, sy + size),
+            (sx - max(2, size // 3), sy + max(2, size // 3)),
+            (sx - size, sy),
+            (sx - max(2, size // 3), sy - max(2, size // 3)),
+        ]
+        pygame.draw.polygon(surface, color, pts)
+        pygame.draw.polygon(surface, (255, 255, 255), pts, 1)
+
+    @classmethod
+    def draw_bungeo_tycoon_fire_pump(
+        cls,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        active_ratio: float = 0.5,
+        time_tick: float = 0.0,
+    ) -> None:
+        """원작 『붕어빵 타이쿤』 좌측의 빨간 화력 펌프 & 압력 게이지 장식을 그린다."""
+        if rect.width < 16 or rect.height < 40:
+            return
+        cx = rect.centerx
+        # T자 손잡이 (화력에 따라 위아래 피스톤 운동)
+        pump_bounce = int(math.sin(time_tick * 6.0) * 4) if active_ratio > 0 else 0
+        handle_y = rect.y + 8 + pump_bounce
+        pygame.draw.line(surface, (180, 186, 198), (cx, handle_y), (cx, rect.y + 30), 3)
+        pygame.draw.rect(surface, (212, 148, 58), pygame.Rect(cx - 10, handle_y - 4, 20, 6), border_radius=2)
+
+        # 빨간 가스 실린더 몸통
+        cyl_rect = pygame.Rect(cx - 9, rect.y + 28, 18, max(24, rect.height - 54))
+        pygame.draw.rect(surface, (218, 44, 38), cyl_rect, border_radius=5)
+        pygame.draw.rect(surface, (255, 196, 48), pygame.Rect(cyl_rect.x + 2, cyl_rect.centery - 5, cyl_rect.width - 4, 10))
+        pygame.draw.rect(surface, (52, 24, 24), cyl_rect, width=2, border_radius=5)
+
+        # 하단 원형 압력 게이지
+        gauge_r = min(11, rect.width // 2)
+        gy = rect.bottom - gauge_r - 3
+        pygame.draw.circle(surface, (238, 242, 248), (cx, gy), gauge_r)
+        pygame.draw.circle(surface, (48, 54, 68), (cx, gy), gauge_r, 2)
+        angle = -2.2 + min(1.0, max(0.0, active_ratio)) * 3.4
+        nx = cx + int(math.cos(angle) * (gauge_r - 3))
+        ny = gy + int(math.sin(angle) * (gauge_r - 3))
+        pygame.draw.line(surface, (228, 42, 38), (cx, gy), (nx, ny), 2)
+
+    @classmethod
+    def draw_bungeo_tycoon_mold_slot(
+        cls,
+        surface: pygame.Surface,
+        slot_rect: pygame.Rect,
+        slot_index: int,
+        slot,
+        recipe_name: str = "",
+        selected_recipe_name: str = "",
+        is_targeted: bool = False,
+        time_tick: float = 0.0,
+    ) -> pygame.Rect | None:
+        """
+        컴투스 『붕어빵 타이쿤』 감성의 주물 붕어빵 틀 슬롯 1칸을 렌더링한다.
+        - STATE_IDLE: 어두운 무쇠 붕어 음각 + 키패드 번호(1~6) + "터치: 반죽+속 붓기"
+        - STATE_COOKING (앞면, not flipped): 하얀 생반죽 + 속재료(팥/슈크림/치즈 등) 토핑
+          * is_flip_ready 도달 시: 네온 테두리 점멸 + "🔄 지금 뒤집기!" 강조
+        - STATE_COOKING (뒷면, flipped): 뒤집혀서 노릇한 주황빛 붕어빵이 구워지는 모습
+        - STATE_READY: 황금빛 바삭 붕어빵 + 사방 반짝이 별(✨) + "★ 황금 완성! 꺼내기"
+        - STATE_BURNT: 시커먼 숯검댕이 붕어빵 + 연기 + "💀 숯검댕이! 버리기"
+        반환값: 조리 중 취소 버튼(✕) Rect (없으면 None)
+        """
+        cancel_rect: pygame.Rect | None = None
+        state = getattr(slot, "state", "IDLE")
+        needs_flip = bool(getattr(slot, "needs_flip", False))
+        flipped = bool(getattr(slot, "flipped", False))
+        is_flip_ready = bool(getattr(slot, "is_flip_ready", False))
+        recipe_id = str(getattr(slot, "recipe_id", "") or "")
+
+        # 속재료 키 추출 (bungeo_redbean -> redbean)
+        filling_key = "redbean"
+        for k in ("cream", "pizza", "sweetpotato", "choco", "kimchi", "redbean"):
+            if k in recipe_id:
+                filling_key = k
+                break
+
+        # 1) 무쇠 주물 틀 베젤 & 내부 음각 배경 (원작의 회색 철판 격자 느낌)
+        outer_col = (118, 124, 138)
+        inner_plate_col = (74, 78, 88)
+        border_col = (42, 45, 54)
+        border_w = 2
+
+        if state == "READY":
+            outer_col = (142, 132, 86)
+            inner_plate_col = (88, 82, 58)
+            border_col = (255, 218, 64)
+            border_w = 3
+        elif state == "BURNT":
+            outer_col = (88, 62, 66)
+            inner_plate_col = (54, 42, 46)
+            border_col = (238, 68, 68)
+            border_w = 3
+        elif is_flip_ready:
+            pulse = (math.sin(time_tick * 10.0) + 1.0) * 0.5
+            border_col = (82, 242, 255) if pulse > 0.45 else (255, 178, 48)
+            border_w = 3
+        elif is_targeted:
+            border_col = (82, 232, 255)
+            border_w = 3
+
+        pygame.draw.rect(surface, outer_col, slot_rect, border_radius=10)
+        plate_rect = slot_rect.inflate(-8, -8)
+        pygame.draw.rect(surface, inner_plate_col, plate_rect, border_radius=8)
+        # 철판 상단 하이라이트 & 하단 그림자
+        pygame.draw.line(
+            surface, (156, 162, 176),
+            (slot_rect.x + 6, slot_rect.y + 3),
+            (slot_rect.right - 6, slot_rect.y + 3), 2
+        )
+        pygame.draw.rect(surface, border_col, slot_rect, width=border_w, border_radius=10)
+
+        # 2) 중앙 붕어 그래픽 좌표 계산
+        fish_cx = slot_rect.centerx - 4
+        fish_cy = slot_rect.centery - 8
+        fish_rx = max(24, min(56, int(slot_rect.width * 0.34)))
+        fish_ry = max(16, min(34, int(slot_rect.height * 0.25)))
+
+        f_sm = cls._get_font(11)
+
+        if state == "IDLE":
+            # 빈 무쇠 붕어 음각
+            cls._draw_tycoon_fish_shape(
+                surface,
+                fish_cx,
+                fish_cy,
+                fish_rx,
+                fish_ry,
+                body_col=(44, 47, 56),
+                rim_col=(96, 102, 116),
+                detail_col=(62, 66, 78),
+                is_cavity=True,
+                time_tick=time_tick,
+            )
+            # 원작 하단 스크린샷처럼 빈 틀 한가운데 큼직한 키패드 번호(1~6) 각인
+            f_big_num = cls._get_font(22)
+            num_shadow = f_big_num.render(str(slot_index + 1), True, (22, 24, 30))
+            num_surf = f_big_num.render(str(slot_index + 1), True, (210, 218, 232))
+            surface.blit(num_shadow, num_shadow.get_rect(center=(fish_cx - 4, fish_cy + 2)))
+            surface.blit(num_surf, num_surf.get_rect(center=(fish_cx - 5, fish_cy + 1)))
+
+            # 하단 안내 배지
+            pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 24, slot_rect.width - 12, 18)
+            pygame.draw.rect(surface, (34, 38, 48), pill_rect, border_radius=6)
+            short_sel = selected_recipe_name.replace(" 붕어빵", "").strip() if selected_recipe_name else "반죽"
+            lbl = f"🥣 터치: [{short_sel}] 붓기"
+            l_surf = f_sm.render(lbl, True, (218, 232, 255))
+            surface.blit(l_surf, l_surf.get_rect(center=pill_rect.center))
+
+        elif state == "COOKING":
+            # 먼저 바닥에 붕어 음각 테두리 깔기
+            cls._draw_tycoon_fish_shape(
+                surface,
+                fish_cx,
+                fish_cy,
+                fish_rx + 3,
+                fish_ry + 2,
+                body_col=(38, 40, 48),
+                rim_col=(62, 66, 76),
+                detail_col=(50, 54, 62),
+                is_cavity=True,
+                time_tick=time_tick,
+            )
+
+            if needs_flip and not flipped:
+                # 1단계: 하얀 생반죽 + 속재료 토핑이 얹어진 모습
+                rim_c = (238, 152, 48) if is_flip_ready else (218, 182, 118)
+                cls._draw_tycoon_fish_shape(
+                    surface,
+                    fish_cx,
+                    fish_cy,
+                    fish_rx,
+                    fish_ry,
+                    body_col=(246, 236, 208),
+                    rim_col=rim_c,
+                    detail_col=(210, 178, 120),
+                    is_batter=True,
+                    filling_key=filling_key,
+                    time_tick=time_tick,
+                )
+                if is_flip_ready:
+                    # 뒤집기 타이밍! 반짝이는 화살표/연기 + 하단 강조 배지
+                    burn_ratio = float(getattr(slot, "flip_burn_ratio", 0.0))
+                    pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 25, slot_rect.width - 12, 19)
+                    bg_c = (218, 68, 38) if burn_ratio > 0.55 else (18, 128, 158)
+                    pygame.draw.rect(surface, bg_c, pill_rect, border_radius=6)
+                    pygame.draw.rect(surface, (255, 242, 148), pill_rect, width=1, border_radius=6)
+                    msg = "🔄 지금 터치해 뒤집기!" if burn_ratio <= 0.55 else "🔥 빨리 뒤집기! (타는 중)"
+                    m_surf = f_sm.render(msg, True, (255, 255, 255))
+                    surface.blit(m_surf, m_surf.get_rect(center=pill_rect.center))
+                else:
+                    # 앞면 익는 중 진행바 (0% -> 50%를 0~100%로 환산 표시)
+                    front_pct = min(1.0, float(getattr(slot, "progress", 0.0)) / 0.5)
+                    bar_rect = pygame.Rect(slot_rect.x + 8, slot_rect.bottom - 22, slot_rect.width - 16, 15)
+                    pygame.draw.rect(surface, (28, 32, 42), bar_rect, border_radius=5)
+                    fill_w = max(4, int((bar_rect.width - 2) * front_pct))
+                    pygame.draw.rect(
+                        surface,
+                        (242, 178, 54),
+                        pygame.Rect(bar_rect.x + 1, bar_rect.y + 1, fill_w, bar_rect.height - 2),
+                        border_radius=4,
+                    )
+                    p_surf = f_sm.render(f"🥣 앞면 굽기 {int(front_pct * 100)}%", True, (255, 255, 255))
+                    surface.blit(p_surf, p_surf.get_rect(center=bar_rect.center))
+            else:
+                # 2단계: 뒤집어서 노릇한 붕어빵이 구워지는 모습
+                cls._draw_tycoon_fish_shape(
+                    surface,
+                    fish_cx,
+                    fish_cy,
+                    fish_rx,
+                    fish_ry,
+                    body_col=(228, 134, 38),
+                    rim_col=(148, 72, 18),
+                    detail_col=(156, 78, 20),
+                    time_tick=time_tick,
+                )
+                back_pct = max(0.0, min(1.0, (float(getattr(slot, "progress", 0.5)) - 0.5) / 0.5))
+                bar_rect = pygame.Rect(slot_rect.x + 8, slot_rect.bottom - 22, slot_rect.width - 16, 15)
+                pygame.draw.rect(surface, (28, 32, 42), bar_rect, border_radius=5)
+                fill_w = max(4, int((bar_rect.width - 2) * back_pct))
+                pygame.draw.rect(
+                    surface,
+                    (255, 142, 42),
+                    pygame.Rect(bar_rect.x + 1, bar_rect.y + 1, fill_w, bar_rect.height - 2),
+                    border_radius=4,
+                )
+                p_surf = f_sm.render(f"♨ 뒷면 굽기 {int(back_pct * 100)}%", True, (255, 255, 255))
+                surface.blit(p_surf, p_surf.get_rect(center=bar_rect.center))
+
+            # 우측 상단 취소(✕) 배지
+            cancel_rect = pygame.Rect(slot_rect.right - 24, slot_rect.y + 4, 20, 18)
+            pygame.draw.rect(surface, (158, 42, 48), cancel_rect, border_radius=5)
+            pygame.draw.rect(surface, (255, 188, 188), cancel_rect, width=1, border_radius=5)
+            x_surf = f_sm.render("✕", True, (255, 240, 240))
+            surface.blit(x_surf, x_surf.get_rect(center=cancel_rect.center))
+
+        elif state == "READY":
+            # 3단계: 황금빛 바삭 완성 + 반짝이 별 4개 (원작 컴투스 붕어빵 타이쿤 완성 이펙트!)
+            cls._draw_tycoon_fish_shape(
+                surface,
+                fish_cx,
+                fish_cy,
+                fish_rx,
+                fish_ry,
+                body_col=(255, 212, 52),
+                rim_col=(212, 118, 22),
+                detail_col=(178, 92, 18),
+                is_golden=True,
+                time_tick=time_tick,
+            )
+            # 사방 반짝이 별 (✨)
+            star_pulse = 6 + int(abs(math.sin(time_tick * 7.0)) * 3)
+            cls._draw_tycoon_sparkle_star(surface, fish_cx - fish_rx + 4, fish_cy - fish_ry + 2, star_pulse)
+            cls._draw_tycoon_sparkle_star(surface, fish_cx + fish_rx - 2, fish_cy - fish_ry + 4, max(5, star_pulse - 1))
+            cls._draw_tycoon_sparkle_star(surface, fish_cx - fish_rx + 8, fish_cy + fish_ry - 2, max(5, star_pulse - 2))
+            cls._draw_tycoon_sparkle_star(surface, fish_cx + fish_rx - 6, fish_cy + fish_ry - 2, star_pulse)
+
+            pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 24, slot_rect.width - 12, 18)
+            pygame.draw.rect(surface, (34, 148, 72), pill_rect, border_radius=6)
+            pygame.draw.rect(surface, (255, 232, 92), pill_rect, width=1, border_radius=6)
+            r_surf = f_sm.render("★ 황금 완성! 꺼내기!", True, (255, 255, 255))
+            surface.blit(r_surf, r_surf.get_rect(center=pill_rect.center))
+
+        elif state == "BURNT":
+            # 시커먼 숯검댕이 붕어빵
+            cls._draw_tycoon_fish_shape(
+                surface,
+                fish_cx,
+                fish_cy,
+                fish_rx,
+                fish_ry,
+                body_col=(46, 48, 56),
+                rim_col=(24, 25, 30),
+                detail_col=(28, 30, 36),
+                is_burnt=True,
+                time_tick=time_tick,
+            )
+            # 매캐한 연기 방울
+            smoke_y = fish_cy - fish_ry - int((time_tick * 18.0) % 10)
+            pygame.draw.circle(surface, (92, 96, 108), (fish_cx - 8, smoke_y), 5)
+            pygame.draw.circle(surface, (112, 116, 128), (fish_cx + 10, smoke_y - 3), 4)
+
+            pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 24, slot_rect.width - 12, 18)
+            pygame.draw.rect(surface, (168, 38, 44), pill_rect, border_radius=6)
+            b_surf = f_sm.render("💀 숯검댕이! 버리기", True, (255, 236, 236))
+            surface.blit(b_surf, b_surf.get_rect(center=pill_rect.center))
+
+        # 좌측 상단 슬롯 번호 & 현재 담긴 속재료 미니 배지
+        num_badge = pygame.Rect(slot_rect.x + 5, slot_rect.y + 4, 22, 17)
+        pygame.draw.rect(surface, (32, 36, 46), num_badge, border_radius=4)
+        pygame.draw.rect(surface, (148, 156, 176), num_badge, width=1, border_radius=4)
+        nb_surf = f_sm.render(str(slot_index + 1), True, (238, 242, 250))
+        surface.blit(nb_surf, nb_surf.get_rect(center=num_badge.center))
+
+        if state != "IDLE" and recipe_name:
+            short_r = recipe_name.replace(" 붕어빵", "").strip()
+            tag_surf = f_sm.render(short_r, True, (255, 236, 168))
+            tag_bg = pygame.Rect(num_badge.right + 4, slot_rect.y + 4, tag_surf.get_width() + 8, 17)
+            pygame.draw.rect(surface, (38, 34, 28), tag_bg, border_radius=4)
+            surface.blit(tag_surf, (tag_bg.x + 4, tag_bg.y + 1))
+
+        return cancel_rect
+
 
 # 전역 싱글톤 인스턴스 및 모듈 레벨 편의 함수
 art_renderer = ArtRenderer()
@@ -2516,3 +3018,5 @@ draw_station_hardware = ArtRenderer.draw_station_hardware
 draw_station_detail = ArtRenderer.draw_station_detail
 draw_alpha_overlay = ArtRenderer.draw_alpha_overlay
 draw_story_cutscene_overlay = ArtRenderer.draw_story_cutscene_overlay
+draw_bungeo_tycoon_mold_slot = ArtRenderer.draw_bungeo_tycoon_mold_slot
+draw_bungeo_tycoon_fire_pump = ArtRenderer.draw_bungeo_tycoon_fire_pump
