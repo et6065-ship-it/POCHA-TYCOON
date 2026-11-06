@@ -535,9 +535,18 @@ class PlayScene(BaseScene):
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEMOTION:
             self._hover_pos = event.pos
+            if self.assembly_tray.hold_slot_idx is not None:
+                idx = self.assembly_tray.hold_slot_idx
+                if idx < len(self.assembly_tray.slot_rects) and not self.assembly_tray.slot_rects[idx].inflate(12, 12).collidepoint(event.pos):
+                    self.assembly_tray.end_hold()
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.assembly_tray.end_hold()
 
         elif event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = event.pos
+            if event.button == 1 and self.assembly_tray.rect.inflate(8, 8).collidepoint(mx, my):
+                self.assembly_tray.start_hold((mx, my))
 
             # 스토리 컷신 표시 중일 때 클릭 처리
             if self.active_cutscene is not None:
@@ -769,6 +778,10 @@ class PlayScene(BaseScene):
             sound_fx.play_burn()
             self.particles.emit_burn(px, py, count=7)
             self.particles.spawn_floating_text("🗑️ 음식 폐기", px, py - 15, color=config.TEXT_WARNING, size=18)
+        elif action == "toggle_trash_mode":
+            sound_fx.play_click()
+            msg = str(res.get("message", "버리기 모드 전환"))
+            self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_ORANGE, size=16)
         elif action in ("tray_full", "no_customer", "invalid_topping"):
             sound_fx.play_burn()
             msg = str(res.get("message", "주문한 손님이 없습니다!"))
@@ -912,7 +925,12 @@ class PlayScene(BaseScene):
                 step_gain = int((target_g / 24.0) * (0.85 + rnd_idx * 0.08))
                 self.ai_rival_gold += max(200, (step_gain // 10) * 10)
 
-        # 7. 파티클 & 비행 디쉬 & 플로팅 텍스트 업데이트
+        # 7. 조립 트레이(0.35초 롱프레스 자동 폐기 포함) & 파티클 업데이트
+        self.assembly_tray.update(dt)
+        hold_fb = self.assembly_tray.pop_hold_feedback()
+        if hold_fb is not None:
+            fb_pos = hold_fb.get("pos", self.assembly_tray.rect.center)
+            self._handle_station_feedback(hold_fb, fb_pos)
         self.particles.update(dt)
 
     def _finish_day(self) -> None:

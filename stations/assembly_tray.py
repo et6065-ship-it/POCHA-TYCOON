@@ -88,6 +88,15 @@ class AssemblyTray:
         self.available_topping_ids: List[str] = []
         self.topping_buttons: List[Tuple[pygame.Rect, str]] = []
         self.trash_rect: pygame.Rect = pygame.Rect(0, 0, 10, 10)
+        self.trash_mode_rect: pygame.Rect = pygame.Rect(0, 0, 10, 10)
+        self.trash_mode: bool = False
+
+        # 모바일 0.35초 롱프레스(길게 누르기) 즉시 폐기 상태
+        self.hold_slot_idx: Optional[int] = None
+        self.hold_timer: float = 0.0
+        self.LONG_PRESS_DURATION: float = 0.35
+        self._pending_hold_feedback: Optional[Dict[str, Any]] = None
+        self._suppress_next_click: bool = False
 
         self.sync_slots_with_manager()
 
@@ -141,12 +150,12 @@ class AssemblyTray:
     def _rebuild_layout(self) -> None:
         self._last_layout_rect = self.rect.copy()
         r = self.rect
-        pad = 8
+        pad = 6
 
         # 1. 상단 접시 슬롯 영역
         slot_count = max(2, len(self.dishes))
-        plate_area_top = r.y + 40
-        plate_area_h = 152
+        plate_area_top = r.y + 36
+        plate_area_h = 132
 
         self.slot_rects = []
         cols = slot_count if slot_count <= 3 else ((slot_count + 1) // 2)
@@ -161,17 +170,17 @@ class AssemblyTray:
             sy = plate_area_top + pad + row * (cell_h + pad)
             self.slot_rects.append(pygame.Rect(sx, sy, cell_w, cell_h))
 
-        # 2. 중단 토핑 버튼 영역
-        topping_top = plate_area_top + plate_area_h + 6
-        trash_h = 42
-        topping_area_h = max(72, r.bottom - topping_top - trash_h - 14)
+        # 2. 중단 토핑 버튼 영역 (최소 56x44px 이상 대형 터치 버튼 보장)
+        topping_top = plate_area_top + plate_area_h + 4
+        trash_h = 44
+        topping_area_h = max(96, r.bottom - topping_top - trash_h - 10)
 
         self.topping_buttons = []
         t_cnt = max(1, len(self.available_topping_ids))
         t_cols = min(3, t_cnt)
         t_rows = (t_cnt + t_cols - 1) // t_cols
-        t_w = (r.width - pad * (t_cols + 1)) // t_cols
-        t_h = (topping_area_h - pad * (t_rows + 1)) // max(1, t_rows)
+        t_w = max(56, (r.width - pad * (t_cols + 1)) // t_cols)
+        t_h = max(44, (topping_area_h - pad * (t_rows + 1)) // max(1, t_rows))
 
         for idx, tid in enumerate(self.available_topping_ids):
             c = idx % t_cols
@@ -180,13 +189,13 @@ class AssemblyTray:
             by = topping_top + pad + rw * (t_h + pad)
             self.topping_buttons.append((pygame.Rect(bx, by, t_w, t_h), tid))
 
-        # 3. 하단 휴지통(폐기) 버튼
-        self.trash_rect = pygame.Rect(
-            r.x + pad,
-            r.bottom - trash_h - 6,
-            r.width - pad * 2,
-            trash_h,
-        )
+        # 3. 하단 휴지통(즉시 폐기) & [🗑️ 버리기 모드] 토글 버튼
+        total_w = r.width - pad * 2
+        left_w = int(total_w * 0.56)
+        right_w = total_w - left_w - 6
+        by_trash = r.bottom - trash_h - 6
+        self.trash_rect = pygame.Rect(r.x + pad, by_trash, left_w, trash_h)
+        self.trash_mode_rect = pygame.Rect(self.trash_rect.right + 6, by_trash, right_w, trash_h)
 
     def has_empty_slot(self) -> bool:
         """비어 있는 접시 슬롯이 있는지 여부를 반환한다."""
@@ -278,9 +287,51 @@ class AssemblyTray:
             "message": "폐기할 음식이 없습니다.",
         }
 
+    def start_hold(self, pos: Tuple[int, int]) -> None:
+        """모바일 0.35초 롱프레스(길게 누르기) 감지를 시작한다."""
+        self._ensure_layout()
+        self.hold_slot_idx = None
+        self.hold_timer = 0.0
+        for idx, s_rect in enumerate(self.slot_rects):
+            if s_rect.inflate(8, 8).collidepoint(pos) and idx < len(self.dishes) and self.dishes[idx] is not None:
+                self.hold_slot_idx = idx
+                self.hold_timer = 0.0
+                break
+
+    def end_hold(self) -> None:
+        """터치/마우스 해제 시 롱프레스 타이머를 초기화한다."""
+        self.hold_slot_idx = None
+        self.hold_timer = 0.0
+
+    def pop_hold_feedback(self) -> Optional[Dict[str, Any]]:
+        """롱프레스로 자동 폐기된 결과가 있으면 반환하고 비운다."""
+        fb = self._pending_hold_feedback
+        self._pending_hold_feedback = None
+        return fb
+
     def update(self, dt: float) -> None:
-        """인터페이스 일관성을 위한 update 메서드."""
-        pass
+        """0.35초 롱프레스 유지 시 접시 음식을 즉시 폐기한다."""
+        if self.hold_slot_idx is not None:
+            idx = self.hold_slot_idx
+            if 0 <= idx < len(self.dishes) and self.dishes[idx] is not None:
+                self.hold_timer += max(0.0, float(dt))
+                if self.hold_timer >= self.LONG_PRESS_DURATION:
+                    removed = self.dishes[idx]
+                    self.dishes[idx] = None
+                    self.hold_slot_idx = None
+                    self.hold_timer = 0.0
+                    self._suppress_next_click = True
+                    s_rect = self.slot_rects[idx] if idx < len(self.slot_rects) else self.rect
+                    self._pending_hold_feedback = {
+                        "action": "trash_dish",
+                        "slot_index": idx,
+                        "recipe_id": removed.recipe_id if removed else "",
+                        "dish": removed,
+                        "pos": s_rect.center,
+                    }
+            else:
+                self.hold_slot_idx = None
+                self.hold_timer = 0.0
 
     def handle_click(
         self,
@@ -291,20 +342,22 @@ class AssemblyTray:
         """
         조립 트레이 클릭 인터랙션을 처리한다.
         - 접시 슬롯 클릭:
-          * 우클릭(button == 3): 해당 접시 음식 즉시 폐기.
+          * 우클릭(button == 3), [X] 배지 클릭, 또는 [🗑️ 버리기 모드] 활성 상태: 해당 접시 음식 즉시 폐기.
           * 좌클릭(button == 1): auto_serve_cb(dish.recipe_id, slot_center)를 호출해
             해당 메뉴를 기다리는 손님에게 즉시 자동 서빙!
-            만약 기다리는 손님이 없으면 해당 접시 슬롯을 선택(포커스) 상태로 변경.
-        - 토핑 버튼 클릭: 선택된 슬롯(우선) 또는 첫 번째 가능 슬롯의 음식에 토핑 추가.
-        - 휴지통 버튼 클릭: 선택된/첫 번째 접시 음식 폐기.
+        - 토핑 버튼 클릭(inflate(8, 8)): 선택된 슬롯(우선) 또는 첫 번째 가능 슬롯의 음식에 토핑 추가.
+        - 휴지통 버튼 클릭: 선택된/첫 번째 접시 음식 폐기 또는 [🗑️ 버리기 모드] 토글.
         """
         self._ensure_layout()
-        if not self.rect.collidepoint(pos):
+        if self._suppress_next_click:
+            self._suppress_next_click = False
+            return None
+        if not self.rect.inflate(8, 8).collidepoint(pos):
             return None
 
-        # 1. 접시 슬롯 클릭 확인 (우측 상단 [X] 원터치 폐기 배지 + 슬롯 터치 판정 여유 확보)
+        # 1. 접시 슬롯 클릭 확인 (우측 상단 30x30 [X] 배지 + 버리기 모드 + 슬롯 터치 판정 여유 확보)
         for idx, s_rect in enumerate(self.slot_rects):
-            if not s_rect.inflate(6, 6).collidepoint(pos):
+            if not s_rect.inflate(8, 8).collidepoint(pos):
                 continue
 
             dish = self.dishes[idx]
@@ -316,10 +369,11 @@ class AssemblyTray:
                     "slot_index": idx,
                 }
 
-            # 모바일 원터치 폐기: 접시 우측 상단 [X] 배지 터치 또는 우클릭(button == 3) 시 즉시 폐기
-            del_badge_rect = pygame.Rect(s_rect.right - 26, s_rect.y + 2, 24, 24)
-            if button == 3 or del_badge_rect.inflate(6, 6).collidepoint(pos):
+            # 모바일 원터치 폐기: 접시 우측 상단 [X] 배지(30x30) 터치, 버리기 모드 ON, 또는 우클릭(button == 3) 시 즉시 폐기
+            del_badge_rect = pygame.Rect(s_rect.right - 30, s_rect.y + 2, 28, 28)
+            if button == 3 or self.trash_mode or del_badge_rect.inflate(8, 8).collidepoint(pos):
                 self.dishes[idx] = None
+                self.trash_mode = False
                 return {
                     "action": "trash_dish",
                     "slot_index": idx,
@@ -350,13 +404,23 @@ class AssemblyTray:
                 "dish": dish,
             }
 
-        # 2. 토핑 버튼 터치 확인 (엄지손가락 오터치 방지 여유 판정)
+        # 2. 토핑 버튼 터치 확인 (엄지손가락 오터치 방지 inflate(8, 8))
         for btn_rect, tid in self.topping_buttons:
-            if btn_rect.inflate(6, 6).collidepoint(pos):
+            if btn_rect.inflate(8, 8).collidepoint(pos):
                 return self.apply_topping(tid)
 
-        # 3. 휴지통 버튼 터치 확인
-        if self.trash_rect.inflate(6, 6).collidepoint(pos):
+        # 3. [🗑️ 버리기 모드] 토글 버튼 터치 확인
+        if self.trash_mode_rect.inflate(6, 6).collidepoint(pos):
+            self.trash_mode = not self.trash_mode
+            return {
+                "action": "toggle_trash_mode",
+                "trash_mode": self.trash_mode,
+                "message": "🗑️ 버리기 모드 ON: 폐기할 접시를 터치하세요!" if self.trash_mode else "버리기 모드 해제",
+            }
+
+        # 4. 휴지통 즉시 비우기 버튼 터치 확인
+        if self.trash_rect.inflate(8, 8).collidepoint(pos):
+            self.trash_mode = False
             return self.trash_selected_or_first()
 
         return None
@@ -402,15 +466,23 @@ class AssemblyTray:
 
             dish = self.dishes[idx] if idx < len(self.dishes) else None
             if dish is not None:
-                icon_size = min(52, max(34, min(s_rect.width, s_rect.height) - 22))
+                icon_size = min(50, max(34, min(s_rect.width, s_rect.height) - 22))
                 dish.draw(surface, (s_rect.centerx, s_rect.centery - 8), size=icon_size)
 
-                # 우측 상단 모바일 원터치 폐기 [X] 배지
-                del_badge = pygame.Rect(s_rect.right - 22, s_rect.y + 3, 19, 19)
-                pygame.draw.rect(surface, (155, 38, 46), del_badge, border_radius=5)
-                pygame.draw.rect(surface, config.WHITE, del_badge, width=1, border_radius=5)
-                x_s = config.get_font(11, bold=True).render("X", True, config.WHITE)
+                # 우측 상단 모바일 원터치 폐기 [X] 배지 (26x26 대형화)
+                del_badge = pygame.Rect(s_rect.right - 28, s_rect.y + 3, 25, 25)
+                pygame.draw.rect(surface, (185, 42, 52) if self.trash_mode else (155, 38, 46), del_badge, border_radius=6)
+                pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.WHITE, del_badge, width=2 if self.trash_mode else 1, border_radius=6)
+                x_s = config.get_font(13, bold=True).render("✕", True, config.WHITE)
                 surface.blit(x_s, x_s.get_rect(center=del_badge.center))
+
+                # 0.35초 롱프레스 진행 중일 때 게이지 표시
+                if self.hold_slot_idx == idx and self.hold_timer > 0.04:
+                    hold_ratio = min(1.0, self.hold_timer / max(0.1, self.LONG_PRESS_DURATION))
+                    hbar = pygame.Rect(s_rect.x + 6, s_rect.y + 6, s_rect.width - 38, 10)
+                    pygame.draw.rect(surface, (24, 18, 28), hbar, border_radius=5)
+                    pygame.draw.rect(surface, config.RED, (hbar.x, hbar.y, int(hbar.width * hold_ratio), hbar.height), border_radius=5)
+                    pygame.draw.rect(surface, config.WHITE, hbar, width=1, border_radius=5)
 
                 name_txt = dish.name.replace("갈릭버터 큐브스테이크", "갈릭 큐브스테이크")
                 lbl_bg = pygame.Rect(s_rect.x + 3, s_rect.bottom - 22, s_rect.width - 6, 19)
@@ -432,7 +504,8 @@ class AssemblyTray:
                     (s_rect.centerx - empty_surf.get_width() // 2, s_rect.centery - empty_surf.get_height() // 2),
                 )
 
-        # 2. 토핑 버튼 렌더링 (큼직한 터치 버튼)
+        # 2. 토핑 버튼 렌더링 (큼직한 터치 버튼 >= 56x44px, 폰트 14px 상향)
+        top_font = config.get_font(14, bold=True)
         for btn_rect, tid in self.topping_buttons:
             t_meta = TOPPINGS.get(tid)
             t_name = str(t_meta["short_name"]) if t_meta else tid
@@ -440,46 +513,45 @@ class AssemblyTray:
             can_apply = any(
                 d is not None and d.can_add_topping(tid) for d in self.dishes
             )
-            bg_col = (52, 76, 68) if can_apply else config.UI_BUTTON
+            bg_col = (52, 82, 72) if can_apply else config.UI_BUTTON
             b_col = config.NEON_GREEN if can_apply else config.UI_BORDER
 
-            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=9)
-            pygame.draw.rect(surface, b_col, btn_rect, width=2 if can_apply else 1, border_radius=9)
+            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
+            pygame.draw.rect(surface, b_col, btn_rect, width=2 if can_apply else 1, border_radius=10)
 
-            badge_size = min(24, max(18, btn_rect.height - 14))
+            badge_size = min(26, max(20, btn_rect.height - 16))
             draw_topping_badge(
                 surface,
-                (btn_rect.x + badge_size // 2 + 5, btn_rect.centery),
+                (btn_rect.x + badge_size // 2 + 6, btn_rect.centery),
                 tid,
                 size=badge_size,
             )
             lbl_str = f"+{t_name}"
-            active_t_font = font_sm
+            active_t_font = top_font
             max_tw = btn_rect.width - badge_size - 10
             if active_t_font.size(lbl_str)[0] > max_tw:
-                active_t_font = config.get_font(12, bold=True)
+                active_t_font = config.get_font(13, bold=True)
             if active_t_font.size(lbl_str)[0] > max_tw:
-                active_t_font = config.get_font(11, bold=True)
+                active_t_font = config.get_font(12, bold=True)
             t_surf = active_t_font.render(lbl_str, True, config.WHITE if can_apply else config.TEXT_PRIMARY)
             surface.blit(
                 t_surf,
                 (
-                    btn_rect.x + badge_size + 7,
+                    btn_rect.x + badge_size + 8,
                     btn_rect.centery - t_surf.get_height() // 2,
                 ),
             )
 
-        # 3. 하단 휴지통 버튼 렌더링
+        # 3. 하단 휴지통 즉시 비우기 & [🗑️ 버리기 모드] 토글 버튼 렌더링
         has_any_dish = any(d is not None for d in self.dishes)
-        trash_bg = (145, 42, 48) if has_any_dish else (62, 58, 68)
-        pygame.draw.rect(surface, trash_bg, self.trash_rect, border_radius=9)
-        pygame.draw.rect(surface, config.RED if has_any_dish else config.UI_BORDER, self.trash_rect, width=2, border_radius=9)
+        trash_bg = (145, 42, 48) if has_any_dish else (56, 52, 64)
+        pygame.draw.rect(surface, trash_bg, self.trash_rect, border_radius=10)
+        pygame.draw.rect(surface, config.RED if has_any_dish else config.UI_BORDER, self.trash_rect, width=2, border_radius=10)
+        trash_lbl = font_sm.render("🗑️ 선택 접시 폐기", True, config.WHITE if has_any_dish else config.TEXT_SECONDARY)
+        surface.blit(trash_lbl, trash_lbl.get_rect(center=self.trash_rect.center))
 
-        trash_lbl = font_sm.render("🗑️ 선택 접시 비우기 (또는 접시 [X] 터치)", True, config.TEXT_PRIMARY)
-        surface.blit(
-            trash_lbl,
-            (
-                self.trash_rect.centerx - trash_lbl.get_width() // 2,
-                self.trash_rect.centery - trash_lbl.get_height() // 2,
-            ),
-        )
+        mode_bg = (210, 52, 58) if self.trash_mode else (72, 42, 56)
+        pygame.draw.rect(surface, mode_bg, self.trash_mode_rect, border_radius=10)
+        pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.UI_BORDER, self.trash_mode_rect, width=2, border_radius=10)
+        mode_lbl = font_xs.render("🗑️ 버리기모드 ON" if self.trash_mode else "🗑️ 버리기 모드", True, config.WHITE)
+        surface.blit(mode_lbl, mode_lbl.get_rect(center=self.trash_mode_rect.center))

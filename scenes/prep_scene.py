@@ -138,14 +138,14 @@ class PrepScene(BaseScene):
         area = pygame.Rect(28, 126, 1224, 504)
 
         if self.active_tab == "character":
-            # 국가 필터 탭 버튼 (10개)
+            # 국가 필터 탭 버튼 (10개, 높이 38px 대형화)
             fx = area.x + 18
-            fy = area.y + 12
+            fy = area.y + 10
             for f_code in COUNTRY_FILTER_ORDER:
                 cnt = len(get_characters_by_country(f_code))
                 lbl = COUNTRY_LABELS.get(f_code, f"{f_code} ({cnt})")
-                fw = max(76, len(lbl) * 12 + 18)
-                frect = pygame.Rect(fx, fy, fw, 30)
+                fw = max(78, len(lbl) * 12 + 20)
+                frect = pygame.Rect(fx, fy, fw, 38)
                 self._click_targets.append((frect, "filter_char_country", f_code))
                 fx += fw + 6
 
@@ -156,18 +156,18 @@ class PrepScene(BaseScene):
             page_items = filtered[self.char_page * per_page : (self.char_page + 1) * per_page]
 
             if total_pages > 1:
-                prev_r = pygame.Rect(area.x + 620, area.y + 462, 68, 30)
-                next_r = pygame.Rect(area.x + 754, area.y + 462, 68, 30)
+                prev_r = pygame.Rect(area.x + 612, area.y + 458, 76, 36)
+                next_r = pygame.Rect(area.x + 748, area.y + 458, 76, 36)
                 self._click_targets.append((prev_r, "char_page_delta", -1))
                 self._click_targets.append((next_r, "char_page_delta", 1))
 
-            card_w, card_h, gap_x, gap_y = 258, 196, 14, 12
-            start_x, start_y = area.x + 18, area.y + 52
+            card_w, card_h, gap_x, gap_y = 258, 194, 14, 10
+            start_x, start_y = area.x + 18, area.y + 54
             for idx, cid in enumerate(page_items):
                 col = idx % 3
                 row = idx // 3
                 crect = pygame.Rect(start_x + col * (card_w + gap_x), start_y + row * (card_h + gap_y), card_w, card_h)
-                btn_rect = pygame.Rect(crect.x + 10, crect.bottom - 38, crect.width - 20, 30)
+                btn_rect = pygame.Rect(crect.x + 8, crect.bottom - 38, crect.width - 16, 32)
                 unlocked = self.game_mgr.is_character_unlocked(cid)
                 selected = self.game_mgr.selected_character == cid
                 if unlocked and not selected:
@@ -711,24 +711,24 @@ class PrepScene(BaseScene):
     # ------------------------------------------------------------------
     def _draw_character_tab(self, surface: pygame.Surface, area: pygame.Rect) -> None:
         mx, my = self._hover_pos
-        sub_f = config.get_font(13, bold=True)
-        xs_f = config.get_font(12, bold=False)
-        card_name_f = config.get_font(16, bold=True)
+        sub_f = config.get_font(14, bold=True)
+        xs_f = config.get_font(13, bold=True)
+        card_name_f = config.get_font(17, bold=True)
 
-        # 1) 상단 국가별 필터 바 (전체 32명 / 한국 1 / 대만 2 / 일본 3 / 멕시코 3 / 브라질 3 / 러시아 3 / 미국 5 / 인도 6 / 중국 6)
+        # 1) 상단 국가별 필터 바 (높이 38px 모바일 터치 대형화)
         fx = area.x + 18
-        fy = area.y + 12
+        fy = area.y + 10
         for f_code in COUNTRY_FILTER_ORDER:
             cnt = len(get_characters_by_country(f_code))
             lbl = COUNTRY_LABELS.get(f_code, f"{f_code} ({cnt})")
-            fw = max(76, sub_f.size(lbl)[0] + 20)
-            frect = pygame.Rect(fx, fy, fw, 30)
+            fw = max(78, sub_f.size(lbl)[0] + 20)
+            frect = pygame.Rect(fx, fy, fw, 38)
             is_sel = self.char_country_filter == f_code
             is_hov = frect.collidepoint(mx, my)
             bg = (228, 108, 38) if is_sel else ((58, 52, 84) if is_hov else (38, 34, 56))
             border = config.GOLD if is_sel else config.UI_BORDER
-            pygame.draw.rect(surface, bg, frect, border_radius=8)
-            pygame.draw.rect(surface, border, frect, width=2 if is_sel else 1, border_radius=8)
+            pygame.draw.rect(surface, bg, frect, border_radius=9)
+            pygame.draw.rect(surface, border, frect, width=2 if is_sel else 1, border_radius=9)
             ftxt = sub_f.render(lbl, True, config.WHITE if is_sel else config.TEXT_PRIMARY)
             surface.blit(ftxt, ftxt.get_rect(center=frect.center))
             self._click_targets.append((frect, "filter_char_country", f_code))
@@ -741,8 +741,8 @@ class PrepScene(BaseScene):
         self.char_page = max(0, min(self.char_page, total_pages - 1))
         page_items = filtered[self.char_page * per_page : (self.char_page + 1) * per_page]
 
-        card_w, card_h, gap_x, gap_y = 258, 196, 14, 12
-        start_x, start_y = area.x + 18, area.y + 52
+        card_w, card_h, gap_x, gap_y = 258, 194, 14, 10
+        start_x, start_y = area.x + 18, area.y + 54
 
         for idx, cid in enumerate(page_items):
             cdata = CHARACTERS[cid]
@@ -761,7 +761,7 @@ class PrepScene(BaseScene):
 
             # 국가·지역 배지
             reg_str = f"[{cdata['country']}] {cdata.get('region_name', cdata['country_name'])}"
-            r_badge = pygame.Rect(crect.x + 10, crect.y + 8, min(148, xs_f.size(reg_str)[0] + 14), 22)
+            r_badge = pygame.Rect(crect.x + 10, crect.y + 8, min(156, xs_f.size(reg_str)[0] + 14), 24)
             pygame.draw.rect(surface, theme_col, r_badge, border_radius=6)
             rb_s = xs_f.render(reg_str, True, config.WHITE)
             surface.blit(rb_s, rb_s.get_rect(center=r_badge.center))
@@ -779,8 +779,8 @@ class PrepScene(BaseScene):
 
             # 우측 이름, 직함, 특기 메뉴
             nm_s = card_name_f.render(cdata["name"], True, config.WHITE if unlocked else config.TEXT_MUTED)
-            tt_s = xs_f.render(cdata["title"][:15], True, cdata["accent_color"])
-            sp_s = xs_f.render(f"특기: {cdata.get('specialty_tag', '')[:14]}", True, config.TEXT_PRIMARY)
+            tt_s = xs_f.render(cdata["title"][:13], True, cdata["accent_color"])
+            sp_s = xs_f.render(f"특기: {cdata.get('specialty_tag', '')[:12]}", True, config.TEXT_PRIMARY)
             surface.blit(nm_s, (crect.x + 88, crect.y + 38))
             surface.blit(tt_s, (crect.x + 88, crect.y + 62))
             surface.blit(sp_s, (crect.x + 88, crect.y + 82))
@@ -788,29 +788,29 @@ class PrepScene(BaseScene):
             # 한 줄 스킬 요약
             sk_line = f"⚡ {cdata['skill_name']} (쿨 {int(cdata['cooldown'])}초)"
             sk_s = xs_f.render(sk_line, True, config.GOLD if unlocked else config.TEXT_SECONDARY)
-            surface.blit(sk_s, (crect.x + 12, crect.y + 114))
+            surface.blit(sk_s, (crect.x + 12, crect.y + 112))
 
-            p_line = cdata["passive_desc"][:22] + ("..." if len(cdata["passive_desc"]) > 22 else "")
+            p_line = cdata["passive_desc"][:20] + ("..." if len(cdata["passive_desc"]) > 20 else "")
             p_s = xs_f.render(f"✦ {p_line}", True, config.NEON_GREEN if unlocked else config.TEXT_MUTED)
-            surface.blit(p_s, (crect.x + 12, crect.y + 134))
+            surface.blit(p_s, (crect.x + 12, crect.y + 132))
 
-            # 카드 하단 빠른 선택/영입 버튼
-            btn_rect = pygame.Rect(crect.x + 10, crect.bottom - 36, crect.width - 20, 28)
+            # 카드 하단 빠른 선택/영입 버튼 (높이 32px 대형화)
+            btn_rect = pygame.Rect(crect.x + 8, crect.bottom - 38, crect.width - 16, 32)
             b_hov = btn_rect.collidepoint(mx, my)
             if unlocked:
                 if selected:
-                    pygame.draw.rect(surface, (46, 112, 68), btn_rect, border_radius=7)
+                    pygame.draw.rect(surface, (46, 112, 68), btn_rect, border_radius=8)
                     b_lbl = sub_f.render("✔ 현재 출전 마스터", True, config.WHITE)
                 else:
-                    pygame.draw.rect(surface, config.UI_BUTTON_HOVER if b_hov else config.UI_BUTTON, btn_rect, border_radius=7)
-                    pygame.draw.rect(surface, theme_col, btn_rect, width=1, border_radius=7)
+                    pygame.draw.rect(surface, config.UI_BUTTON_HOVER if b_hov else config.UI_BUTTON, btn_rect, border_radius=8)
+                    pygame.draw.rect(surface, theme_col, btn_rect, width=1, border_radius=8)
                     b_lbl = sub_f.render("이 마스터 선택", True, config.WHITE)
                     self._click_targets.append((btn_rect, "select_character", cid))
             else:
                 req_ch = cdata.get("unlock_chapter", "KR")
                 cost = int(cdata.get("unlock_cost", 0))
                 can_un = self.game_mgr.can_unlock_character(cid)
-                pygame.draw.rect(surface, (212, 122, 32) if can_un else config.UI_DISABLED, btn_rect, border_radius=7)
+                pygame.draw.rect(surface, (212, 122, 32) if can_un else config.UI_DISABLED, btn_rect, border_radius=8)
                 lbl_s = f"🔓 영입 ({cost:,}원)" if self.game_mgr.is_chapter_unlocked(req_ch) else f"🔒 [{req_ch}] 해금 필요"
                 b_lbl = sub_f.render(lbl_s, True, config.WHITE if can_un else config.TEXT_SECONDARY)
                 self._click_targets.append((btn_rect, "unlock_character", cid))
@@ -819,15 +819,15 @@ class PrepScene(BaseScene):
 
         # 하단 좌측 안내 및 페이지네이션 컨트롤 (전체 32명 보기 시 활성화)
         hint_s = sub_f.render(
-            f"💡 영토 면적·인구 비례 9개국 32인 지역 마스터 로스터  |  현재 필터: {COUNTRY_LABELS.get(self.char_country_filter, '전체')}",
+            f"💡 좌우 스와이프(밀기)로 페이지 전환  |  필터: {COUNTRY_LABELS.get(self.char_country_filter, '전체')}",
             True,
             config.TEXT_SECONDARY,
         )
-        surface.blit(hint_s, (area.x + 20, area.y + 467))
+        surface.blit(hint_s, (area.x + 20, area.y + 465))
 
         if total_pages > 1:
-            prev_r = pygame.Rect(area.x + 612, area.y + 460, 72, 32)
-            next_r = pygame.Rect(area.x + 750, area.y + 460, 72, 32)
+            prev_r = pygame.Rect(area.x + 612, area.y + 458, 76, 36)
+            next_r = pygame.Rect(area.x + 748, area.y + 458, 76, 36)
             for r_btn, lbl_t, d_val in ((prev_r, "◀ 이전", -1), (next_r, "다음 ▶", 1)):
                 bh = r_btn.collidepoint(mx, my)
                 pygame.draw.rect(surface, (62, 54, 92) if bh else (42, 36, 64), r_btn, border_radius=8)
@@ -836,7 +836,7 @@ class PrepScene(BaseScene):
                 surface.blit(bs, bs.get_rect(center=r_btn.center))
                 self._click_targets.append((r_btn, "char_page_delta", d_val))
             pg_s = sub_f.render(f"{self.char_page + 1} / {total_pages}", True, config.GOLD)
-            surface.blit(pg_s, pg_s.get_rect(center=(area.x + 717, area.y + 476)))
+            surface.blit(pg_s, pg_s.get_rect(center=(area.x + 718, area.y + 476)))
 
         # 3) 우측: 선택/포커스된 마스터 대형 일러스트 & 상세 도감 패널 (x = area.x + 830)
         insp_id = self.inspected_character if self.inspected_character in CHARACTERS else self.game_mgr.selected_character

@@ -57,31 +57,59 @@ RESOLUTION_LABELS: Dict[Tuple[int, int], str] = {
 
 
 def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> None:
-    """웹앱(Pygbag WebAssembly) 환경에서 다크 베젤 CSS 및 브라우저 전체화면 API를 동기화한다."""
+    """웹앱(Pygbag WebAssembly) 환경에서 캔버스 비율(가로 16:9 / 세로 9:16) 박스를 정확히 계산하여 터치 오차를 0으로 만들고 전체화면 API를 동기화한다."""
     if sys.platform != "emscripten":
         return
     try:
         import platform
 
-        js_code = """
-        (function() {
+        is_portrait = 1 if WINDOW_HEIGHT > WINDOW_WIDTH else 0
+        js_code = f"""
+        (function() {{
+            window.__pocha_ready = true;
+            window.__pocha_portrait = {is_portrait};
             var doc = document;
             var body = doc.body;
-            if (body) {
+            if (body) {{
                 body.style.backgroundColor = '#0c0a16';
                 body.style.margin = '0';
                 body.style.padding = '0';
                 body.style.overflow = 'hidden';
-            }
-            var cvs = doc.getElementById('canvas');
-            if (cvs) {
-                cvs.style.objectFit = 'contain';
-                cvs.style.maxWidth = '100vw';
-                cvs.style.maxHeight = '100vh';
+            }}
+            function fitPochaCanvas() {{
+                var cvs = doc.getElementById('canvas');
+                if (!cvs) return;
+                var vw = window.innerWidth || doc.documentElement.clientWidth || 1280;
+                var vh = window.innerHeight || doc.documentElement.clientHeight || 720;
+                var isPort = !!window.__pocha_portrait;
+                var targetAspect = isPort ? (720.0 / 1280.0) : (1280.0 / 720.0);
+                var w = vw;
+                var h = w / targetAspect;
+                if (h > vh) {{
+                    h = vh;
+                    w = h * targetAspect;
+                }}
+                cvs.style.position = 'fixed';
+                cvs.style.left = Math.floor((vw - w) * 0.5) + 'px';
+                cvs.style.top = Math.floor((vh - h) * 0.5) + 'px';
+                cvs.style.width = Math.floor(w) + 'px';
+                cvs.style.height = Math.floor(h) + 'px';
+                cvs.style.maxWidth = 'none';
+                cvs.style.maxHeight = 'none';
+                cvs.style.margin = '0';
+                cvs.style.objectFit = 'fill';
                 cvs.style.backgroundColor = '#0c0a16';
-            }
-            window.__pocha_ready = true;
-        })();
+            }}
+            window.__fitPochaCanvas = fitPochaCanvas;
+            fitPochaCanvas();
+            if (!window.__pocha_resize_bound) {{
+                window.__pocha_resize_bound = true;
+                window.addEventListener('resize', fitPochaCanvas);
+                window.addEventListener('orientationchange', function() {{
+                    setTimeout(fitPochaCanvas, 120);
+                }});
+            }}
+        }})();
         """
         platform.window.eval(js_code)
 
