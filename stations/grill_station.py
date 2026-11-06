@@ -215,24 +215,31 @@ class GrillStation(BaseStation):
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}구")
 
         for slot in self.slots:
-            slot.draw_slot_box(surface, time_tick=t, empty_label="빈 그릴 (클릭)")
+            slot.draw_slot_box(surface, time_tick=t, empty_label="➕ 터치 조리")
 
-        # 하단 [재료 올리기] 버튼 렌더링
+        # 하단 [재료 올리기] 버튼 렌더링 (고시인성 16px 볼드 + 3px 보더 + 40px 아이콘)
         has_idle = any(s.state == STATE_IDLE for s in self.slots)
-        btn_col = config.UI_BUTTON_ACTIVE if has_idle else config.UI_DISABLED
-        border_col = config.UI_HIGHLIGHT if has_idle else config.UI_BORDER
-        pygame.draw.rect(surface, btn_col, self.cook_button_rect, border_radius=8)
-        pygame.draw.rect(surface, border_col, self.cook_button_rect, width=2, border_radius=8)
+        btn_col = (235, 118, 32) if has_idle else (62, 58, 78)
+        border_col = config.GOLD if has_idle else config.UI_BORDER
+        pygame.draw.rect(surface, btn_col, self.cook_button_rect, border_radius=10)
+        pygame.draw.rect(surface, border_col, self.cook_button_rect, width=3 if has_idle else 2, border_radius=10)
 
         icon_pos = (self.cook_button_rect.x + 28, self.cook_button_rect.centery)
-        draw_food_icon(surface, icon_pos, self.base_recipe_id, size=34, burnt=False)
+        draw_food_icon(surface, icon_pos, self.base_recipe_id, size=40, burnt=False)
 
         rec = RECIPES.get(self.base_recipe_id)
         base_name = str(rec["name"]) if rec else self.base_recipe_id
-        font_main = config.get_font(13, bold=True)
-        font_sub = config.get_font(11, bold=False)
+        font_main = config.get_font(15, bold=True)
+        font_sub = config.get_font(12, bold=True)
 
-        lbl_main = font_main.render(f"{base_name} 올리기", True, config.TEXT_PRIMARY)
-        lbl_sub = font_sub.render("완성 후 조립 트레이로 이동", True, config.CREAM)
-        surface.blit(lbl_main, (self.cook_button_rect.x + 52, self.cook_button_rect.y + 11))
-        surface.blit(lbl_sub, (self.cook_button_rect.x + 52, self.cook_button_rect.y + 32))
+        main_str = f"🔥 {base_name} 올리기"
+        max_w = self.cook_button_rect.width - 56
+        for f_sz in (15, 14, 13, 12):
+            font_main = config.get_font(f_sz, bold=True)
+            if font_main.size(main_str)[0] <= max_w:
+                break
+
+        lbl_main = font_main.render(main_str, True, config.WHITE)
+        lbl_sub = font_sub.render("완성 후 조립 트레이로 이동", True, config.GOLD if has_idle else config.TEXT_SECONDARY)
+        surface.blit(lbl_main, (self.cook_button_rect.x + 52, self.cook_button_rect.y + 8))
+        surface.blit(lbl_sub, (self.cook_button_rect.x + 52, self.cook_button_rect.y + 33))

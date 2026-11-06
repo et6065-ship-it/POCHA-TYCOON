@@ -232,29 +232,30 @@ class MoldStation(BaseStation):
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}구")
 
         for slot in self.slots:
-            slot.draw_slot_box(surface, time_tick=t, empty_label="빈 틀 (클릭)")
+            slot.draw_slot_box(surface, time_tick=t, empty_label="➕ 터치 조리")
 
-        # 하단 레시피 선택/투입 버튼 렌더링
-        font_btn = config.get_font(12, bold=True)
+        # 하단 레시피 선택/투입 버튼 렌더링 (고시인성 15px 볼드 + 3px 하이라이트 보더 + 38px 아이콘)
+        font_btn = config.get_font(15, bold=True)
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             is_sel = idx == self.selected_recipe_index
-            bg_col = config.UI_BUTTON_ACTIVE if is_sel else config.UI_BUTTON
-            border_col = config.UI_HIGHLIGHT if is_sel else config.UI_BORDER
-            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=8)
-            pygame.draw.rect(surface, border_col, btn_rect, width=2 if is_sel else 1, border_radius=8)
+            bg_col = (235, 118, 32) if is_sel else (54, 72, 116)
+            border_col = config.GOLD if is_sel else (136, 152, 198)
+            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
+            pygame.draw.rect(surface, border_col, btn_rect, width=3 if is_sel else 2, border_radius=10)
 
             icon_pos = (btn_rect.centerx, btn_rect.y + 22)
-            draw_food_icon(surface, icon_pos, rid, size=32, burnt=False)
+            draw_food_icon(surface, icon_pos, rid, size=38, burnt=False)
 
             rec = RECIPES.get(rid)
             r_name = str(rec["name"]) if rec else rid
             active_f = font_btn
-            if active_f.size(r_name)[0] > btn_rect.width - 6:
-                active_f = config.get_font(11, bold=True)
-            if active_f.size(r_name)[0] > btn_rect.width - 6:
-                active_f = config.get_font(10, bold=True)
-            txt_surf = active_f.render(r_name, True, config.TEXT_PRIMARY)
-            surface.blit(
-                txt_surf,
-                (btn_rect.centerx - txt_surf.get_width() // 2, btn_rect.bottom - 20),
-            )
+            for f_sz in (14, 13, 12, 11):
+                if active_f.size(r_name)[0] <= btn_rect.width - 8:
+                    break
+                active_f = config.get_font(f_sz, bold=True)
+            sh_surf = active_f.render(r_name, True, (18, 12, 24))
+            txt_surf = active_f.render(r_name, True, config.WHITE)
+            tx = btn_rect.centerx - txt_surf.get_width() // 2
+            ty = btn_rect.bottom - 22
+            surface.blit(sh_surf, (tx + 1, ty + 1))
+            surface.blit(txt_surf, (tx, ty))

@@ -233,86 +233,104 @@ class BatchPotStation(BaseStation):
         slot = self.main_slot
         r = self.pot_rect
         if slot.state == STATE_IDLE:
-            bg_col = (36, 32, 44)
-            border_col = (90, 86, 110)
+            bg_col = (40, 36, 56)
+            border_col = (108, 100, 146)
+            b_w = 2
         elif slot.state == STATE_COOKING:
-            bg_col = (62, 42, 30)
+            bg_col = (66, 44, 30)
             border_col = config.GAUGE_COOKING
+            b_w = 3
         else:
-            bg_col = (34, 58, 42)
-            border_col = config.GAUGE_READY
+            bg_col = (28, 68, 46)
+            border_col = config.NEON_GREEN
+            b_w = 3
 
-        pygame.draw.rect(surface, bg_col, r, border_radius=10)
-        pygame.draw.rect(surface, border_col, r, width=2, border_radius=10)
+        pygame.draw.rect(surface, bg_col, r, border_radius=12)
+        pygame.draw.rect(surface, border_col, r, width=b_w, border_radius=12)
 
+        font_lg = config.get_font(15, bold=True)
         font_md = config.get_font(14, bold=True)
         font_sm = config.get_font(12, bold=True)
-        font_xs = config.get_font(11, bold=False)
 
         if slot.state == STATE_IDLE:
-            draw_food_icon(surface, (r.centerx, r.centery - 14), self.base_recipe_id, size=48, burnt=False)
-            lbl = font_sm.render("비어 있음 (클릭하여 조리)", True, config.TEXT_SECONDARY)
-            surface.blit(lbl, (r.centerx - lbl.get_width() // 2, r.bottom - 32))
+            draw_food_icon(surface, (r.centerx, r.centery - 18), self.base_recipe_id, size=56, burnt=False)
+            lbl = font_md.render("➕ 터치하여 대량 조리", True, config.GOLD)
+            pill_r = pygame.Rect(r.x + 8, r.bottom - 38, r.width - 16, 28)
+            pygame.draw.rect(surface, (24, 20, 36), pill_r, border_radius=8)
+            pygame.draw.rect(surface, config.GOLD, pill_r, width=1, border_radius=8)
+            surface.blit(lbl, (pill_r.centerx - lbl.get_width() // 2, pill_r.centery - lbl.get_height() // 2))
 
         elif slot.state == STATE_COOKING:
-            draw_food_icon(surface, (r.centerx, r.centery - 18), self.base_recipe_id, size=54, burnt=False)
-            gauge_rect = pygame.Rect(r.x + 12, r.bottom - 22, r.width - 24, 12)
-            pygame.draw.rect(surface, config.GAUGE_BG, gauge_rect, border_radius=6)
+            draw_food_icon(surface, (r.centerx, r.centery - 22), self.base_recipe_id, size=62, burnt=False)
+            gauge_rect = pygame.Rect(r.x + 10, r.bottom - 22, r.width - 20, 15)
+            pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=7)
             fill_w = int((gauge_rect.width - 4) * slot.progress)
             if fill_w > 0:
                 pygame.draw.rect(
                     surface,
                     config.GAUGE_COOKING,
                     (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
-                    border_radius=4,
+                    border_radius=5,
                 )
-            pygame.draw.rect(surface, config.GAUGE_BORDER, gauge_rect, width=1, border_radius=6)
-            st_surf = font_sm.render(f"대량 조리중... ({int(slot.progress * 100)}%)", True, config.GAUGE_COOKING)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 18))
+            pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=7)
+            st_surf = font_md.render(f"🔥 조리중 ({int(slot.progress * 100)}%)", True, config.GAUGE_COOKING)
+            pill_r = pygame.Rect(r.x + 10, gauge_rect.top - 25, r.width - 20, 22)
+            pygame.draw.rect(surface, (34, 24, 16), pill_r, border_radius=6)
+            pygame.draw.rect(surface, config.GAUGE_COOKING, pill_r, width=1, border_radius=6)
+            surface.blit(st_surf, (pill_r.centerx - st_surf.get_width() // 2, pill_r.centery - st_surf.get_height() // 2))
 
         elif slot.state == STATE_READY:
             # 남은 인분 수에 비례해 음식 아이콘들을 풍성하게 배치
             rem = self.remaining_servings
             positions = [
-                (r.centerx - 32, r.centery - 22),
-                (r.centerx + 32, r.centery - 22),
-                (r.centerx, r.centery - 6),
-                (r.centerx - 26, r.centery + 8),
-                (r.centerx + 26, r.centery + 8),
+                (r.centerx - 34, r.centery - 26),
+                (r.centerx + 34, r.centery - 26),
+                (r.centerx, r.centery - 8),
+                (r.centerx - 28, r.centery + 8),
+                (r.centerx + 28, r.centery + 8),
             ]
             for i in range(min(rem, len(positions))):
-                draw_food_icon(surface, positions[i], self.base_recipe_id, size=44, burnt=False)
+                draw_food_icon(surface, positions[i], self.base_recipe_id, size=48, burnt=False)
 
-            badge_surf = font_md.render(f"보온중: {rem}/{self.max_servings} 인분", True, config.GAUGE_READY)
-            surface.blit(badge_surf, (r.centerx - badge_surf.get_width() // 2, r.bottom - 38))
-            sub_surf = font_xs.render("타지 않음 · 클릭 시 1인분 덜기", True, config.CREAM)
-            surface.blit(sub_surf, (r.centerx - sub_surf.get_width() // 2, r.bottom - 19))
+            pill_r = pygame.Rect(r.x + 6, r.bottom - 44, r.width - 12, 38)
+            pygame.draw.rect(surface, (16, 38, 26), pill_r, border_radius=8)
+            pygame.draw.rect(surface, config.NEON_GREEN, pill_r, width=2, border_radius=8)
+            badge_surf = font_md.render(f"✨ 보온중: {rem}/{self.max_servings}인분", True, config.NEON_GREEN)
+            sub_surf = font_sm.render("타지 않음 · 터치 시 1인분 덜기", True, config.WHITE)
+            surface.blit(badge_surf, (pill_r.centerx - badge_surf.get_width() // 2, pill_r.y + 2))
+            surface.blit(sub_surf, (pill_r.centerx - sub_surf.get_width() // 2, pill_r.y + 20))
 
-        # 하단 액션 버튼 렌더링
+        # 하단 액션 버튼 렌더링 (고시인성 15px 볼드 + 3px 보더)
         rec = RECIPES.get(self.base_recipe_id)
         base_name = str(rec["name"]) if rec else self.base_recipe_id
+        short_base = base_name.replace("오리지널 큐브스테이크", "큐브스테이크")
 
         if slot.state == STATE_IDLE:
-            btn_col = config.UI_BUTTON_ACTIVE
-            btn_title = f"{base_name} {self.max_servings}인분 조리"
-            btn_sub = "클릭하여 대량 조리 시작"
+            btn_col = (235, 118, 32)
+            btn_title = f"🥘 {short_base} {self.max_servings}인분 조리"
+            btn_sub = "터치하여 대량 조리 시작"
         elif slot.state == STATE_COOKING:
-            btn_col = config.UI_DISABLED
-            btn_title = "철판 조리 진행 중..."
+            btn_col = (64, 58, 78)
+            btn_title = "🔥 대량 조리 진행중..."
             btn_sub = "잠시만 기다려 주세요"
         else:
-            btn_col = (44, 138, 76)
-            btn_title = f"1인분 덜기 (남은 {self.remaining_servings}인분)"
-            btn_sub = "조립 트레이로 전달 / 즉시 서빙"
+            btn_col = (42, 152, 82)
+            btn_title = f"✨ 1인분 덜기 ({self.remaining_servings}인분)"
+            btn_sub = "트레이로 전달 / 즉시 서빙"
 
-        pygame.draw.rect(surface, btn_col, self.action_button_rect, border_radius=8)
-        pygame.draw.rect(surface, config.UI_HIGHLIGHT, self.action_button_rect, width=2, border_radius=8)
+        pygame.draw.rect(surface, btn_col, self.action_button_rect, border_radius=10)
+        pygame.draw.rect(surface, config.GOLD, self.action_button_rect, width=3, border_radius=10)
 
-        t_surf = font_sm.render(btn_title, True, config.TEXT_PRIMARY)
-        s_surf = font_xs.render(btn_sub, True, config.CREAM)
+        active_tf = font_lg
+        for f_sz in (15, 14, 13, 12):
+            active_tf = config.get_font(f_sz, bold=True)
+            if active_tf.size(btn_title)[0] <= self.action_button_rect.width - 10:
+                break
+        t_surf = active_tf.render(btn_title, True, config.WHITE)
+        s_surf = font_sm.render(btn_sub, True, config.GOLD if slot.state != STATE_COOKING else config.TEXT_SECONDARY)
         surface.blit(
             t_surf,
-            (self.action_button_rect.centerx - t_surf.get_width() // 2, self.action_button_rect.y + 11),
+            (self.action_button_rect.centerx - t_surf.get_width() // 2, self.action_button_rect.y + 8),
         )
         surface.blit(
             s_surf,

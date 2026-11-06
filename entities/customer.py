@@ -437,11 +437,11 @@ class Customer:
         # 입장 애니메이션 오프셋
         y_offset = int((self.enter_timer / 0.30) * 18) if self.enter_timer > 0 else 0
 
-        # 좌측 하단부에 손님 캐릭터 배치, 우측/상단부에 주문 말풍선 배치
-        char_w = min(104, int(self.rect.width * 0.40))
-        char_h = min(145, int(self.rect.height * 0.62))
+        # 좌측 하단부에 손님 캐릭터 배치, 우측/상단부에 대형 고대비 주문 말풍선 배치
+        char_w = min(96, int(self.rect.width * 0.36))
+        char_h = min(142, int(self.rect.height * 0.60))
         char_rect = pygame.Rect(
-            self.rect.x + 6,
+            self.rect.x + 4,
             self.rect.bottom - char_h - 22 + y_offset,
             char_w,
             char_h,
@@ -468,16 +468,16 @@ class Customer:
             time_tick=t,
         )
 
-        # 인내심 게이지 바 (캐릭터 하단)
-        gauge_rect = pygame.Rect(char_rect.x + 4, char_rect.bottom + 3, char_rect.width - 8, 12)
-        pygame.draw.rect(surface, config.GAUGE_BG, gauge_rect, border_radius=6)
+        # 인내심 게이지 바 (캐릭터 하단 — 모바일 고시인성 14px 두께 & 네온 컬러)
+        gauge_rect = pygame.Rect(char_rect.x + 2, char_rect.bottom + 3, char_rect.width - 4, 14)
+        pygame.draw.rect(surface, (20, 16, 28), gauge_rect, border_radius=7)
         ratio = self.patience_ratio
         if ratio >= 0.55:
-            bar_col = config.PATIENCE_HIGH
+            bar_col = (48, 238, 102)
         elif ratio >= 0.25:
-            bar_col = config.PATIENCE_MID
+            bar_col = (255, 206, 42)
         else:
-            bar_col = config.PATIENCE_LOW
+            bar_col = (248, 52, 52)
 
         fill_w = int((gauge_rect.width - 4) * ratio)
         if fill_w > 0:
@@ -485,28 +485,28 @@ class Customer:
                 surface,
                 bar_col,
                 (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
-                border_radius=4,
+                border_radius=5,
             )
-        pygame.draw.rect(surface, config.GAUGE_BORDER, gauge_rect, width=1, border_radius=6)
+        pygame.draw.rect(surface, (215, 212, 232), gauge_rect, width=2, border_radius=7)
 
-        # 손님 유형 뱃지 (캐릭터 머리 위/가슴 상단)
-        badge_font = config.get_font(12, bold=True)
+        # 손님 유형 뱃지 (캐릭터 머리 위/가슴 상단 — 13px 볼드 고대비)
+        badge_font = config.get_font(13, bold=True)
         badge_surf = badge_font.render(self.badge_text, True, config.WHITE)
-        badge_w = badge_surf.get_width() + 12
-        badge_h = 20
+        badge_w = badge_surf.get_width() + 14
+        badge_h = 22
         badge_rect = pygame.Rect(
             char_rect.centerx - badge_w // 2,
-            char_rect.top - 18,
+            char_rect.top - 20,
             badge_w,
             badge_h,
         )
-        pygame.draw.rect(surface, self.badge_color, badge_rect, border_radius=6)
+        pygame.draw.rect(surface, self.badge_color, badge_rect, border_radius=7)
         pygame.draw.rect(
             surface,
             config.GOLD if self.is_vip else config.WHITE,
             badge_rect,
-            width=1,
-            border_radius=6,
+            width=2,
+            border_radius=7,
         )
         surface.blit(
             badge_surf,
@@ -525,82 +525,116 @@ class Customer:
         char_rect: pygame.Rect,
         time_tick: float,
     ) -> None:
-        """주문 메뉴 아이콘, 짧은 한글 메뉴명, 완료 체크 표시가 포함된 말풍선을 그린다."""
+        """주문 메뉴 아이콘(38px), 굵은 한글 메뉴명(15px), 기구/토핑 컬러 배지가 포함된 고시인성 말풍선을 그린다."""
         display_orders = self.initial_orders if self.initial_orders else self.orders
         if not display_orders:
             return
 
         item_count = len(display_orders)
-        row_h = 46
-        bubble_w = max(132, self.rect.right - char_rect.right + 6)
-        bubble_h = 16 + item_count * row_h
-        bubble_x = min(char_rect.right - 4, self.rect.right - bubble_w - 4)
+        row_h = 52
+        bubble_w = max(154, self.rect.right - char_rect.right + 14)
+        bubble_h = 14 + item_count * row_h
+        bubble_x = max(self.rect.x + 74, self.rect.right - bubble_w - 2)
         bubble_y = max(
-            config.CUSTOMER_AREA_TOP + 6,
-            char_rect.top - 8,
+            config.CUSTOMER_AREA_TOP + 4,
+            char_rect.top - 14,
         )
         bubble_rect = pygame.Rect(bubble_x, bubble_y, bubble_w, bubble_h)
 
         # 말풍선 꼬리
         tail_pts = [
             (bubble_rect.left + 8, bubble_rect.centery),
-            (char_rect.right - 14, char_rect.centery - 6),
+            (char_rect.right - 12, char_rect.centery - 6),
             (bubble_rect.left + 8, bubble_rect.centery + 12),
         ]
-        bg_col = (255, 250, 240) if not self.is_vip else (255, 248, 225)
+        bg_col = (255, 252, 245) if not self.is_vip else (255, 248, 222)
         border_col = (
             config.GOLD
             if self.is_vip
-            else (config.PATIENCE_LOW if self.patience_ratio < 0.25 else (95, 85, 110))
+            else (config.PATIENCE_LOW if self.patience_ratio < 0.25 else (58, 48, 78))
         )
 
         pygame.draw.polygon(surface, bg_col, tail_pts)
-        pygame.draw.rect(surface, bg_col, bubble_rect, border_radius=10)
-        pygame.draw.rect(surface, border_col, bubble_rect, width=2, border_radius=10)
+        pygame.draw.rect(surface, bg_col, bubble_rect, border_radius=11)
+        pygame.draw.rect(surface, border_col, bubble_rect, width=3, border_radius=11)
 
         # 완료 여부 매칭을 위해 completed_orders 복사본 사용
         completed_pool = list(self.completed_orders)
-        name_font = config.get_font(12, bold=True)
-        sub_font = config.get_font(11, bold=False)
+        name_font = config.get_font(15, bold=True)
+        sub_font = config.get_font(12, bold=True)
+
+        short_map = {
+            "갈릭버터 큐브스테이크": "갈릭 큐브스테이크",
+            "오리지널 큐브스테이크": "큐브스테이크",
+            "스위트 칠리 지파이": "칠리 지파이",
+            "마라 시즈닝 지파이": "마라 지파이",
+            "크리스피 대왕 지파이": "대왕 지파이",
+            "어묵국물 (오뎅탕)": "어묵국물",
+            "전통 살얼음 식혜": "살얼음 식혜",
+            "구슬 사이다 (라무네)": "라무네 사이다",
+            "타피오카 버블밀크티": "버블밀크티",
+        }
 
         for idx, rid in enumerate(display_orders):
-            row_y = bubble_rect.y + 8 + idx * row_h
-            row_rect = pygame.Rect(bubble_rect.x + 6, row_y, bubble_rect.width - 12, row_h - 4)
+            row_y = bubble_rect.y + 7 + idx * row_h
+            row_rect = pygame.Rect(bubble_rect.x + 5, row_y, bubble_rect.width - 10, row_h - 4)
 
             is_done = False
             if rid in completed_pool:
                 completed_pool.remove(rid)
                 is_done = True
 
-            row_bg = (224, 245, 228) if is_done else (244, 238, 226)
-            pygame.draw.rect(surface, row_bg, row_rect, border_radius=7)
+            row_bg = (218, 246, 224) if is_done else (246, 240, 228)
+            row_border = (52, 168, 82) if is_done else (196, 184, 168)
+            pygame.draw.rect(surface, row_bg, row_rect, border_radius=8)
+            pygame.draw.rect(surface, row_border, row_rect, width=1, border_radius=8)
 
-            icon_center = (row_rect.x + 20, row_rect.centery)
-            draw_food_icon(surface, icon_center, rid, size=34, burnt=False)
+            icon_center = (row_rect.x + 21, row_rect.centery)
+            draw_food_icon(surface, icon_center, rid, size=38, burnt=False)
 
             rec = RECIPES.get(rid)
             full_name = str(rec["name"]) if rec else rid
-            short_name = full_name.replace("갈릭버터 큐브스테이크", "갈릭 큐브스테이크")
+            short_name = short_map.get(full_name, full_name)
 
-            text_col = (60, 130, 75) if is_done else (35, 30, 42)
-            max_txt_w = row_rect.width - 42
+            text_col = (24, 118, 48) if is_done else (18, 14, 28)
+            max_txt_w = row_rect.width - 44
             active_name_font = name_font
-            if active_name_font.size(short_name)[0] > max_txt_w:
-                active_name_font = config.get_font(11, bold=True)
-            if active_name_font.size(short_name)[0] > max_txt_w:
-                active_name_font = config.get_font(10, bold=True)
+            for f_sz in (14, 13, 12, 11):
+                if active_name_font.size(short_name)[0] <= max_txt_w:
+                    break
+                active_name_font = config.get_font(f_sz, bold=True)
             name_surf = active_name_font.render(short_name, True, text_col)
-            surface.blit(name_surf, (row_rect.x + 38, row_rect.y + 5))
+            surface.blit(name_surf, (row_rect.x + 41, row_rect.y + 3))
 
+            # 하단 고대비 기구/토핑 컬러 배지
+            slot_type = str(rec.get("slot_type", "")) if rec else ""
             if is_done:
-                done_surf = sub_font.render("★ 서빙완료", True, (38, 165, 68))
-                surface.blit(done_surf, (row_rect.x + 38, row_rect.y + 23))
+                tag_txt, pill_bg = "★ 서빙완료!", (34, 158, 68)
+            elif rec and rec.get("has_topping", False):
+                tag_txt, pill_bg = "★토핑조립", (222, 78, 28)
+            elif slot_type == "dispenser":
+                tag_txt, pill_bg = "🥤음료·즉시", (32, 132, 208)
+            elif slot_type == "mold":
+                tag_txt, pill_bg = "🐟틀구이", (188, 102, 24)
+            elif slot_type == "grill":
+                tag_txt, pill_bg = "🔥그릴구이", (198, 52, 44)
+            elif slot_type == "batch_pot":
+                tag_txt, pill_bg = "🥘대량팬", (158, 48, 132)
             else:
-                # 토핑 힌트 또는 단품 표시
-                if rec and rec.get("has_topping", False):
-                    hint_surf = sub_font.render("★토핑메뉴", True, (215, 92, 32))
-                elif rec and rec.get("slot_type") == "dispenser":
-                    hint_surf = sub_font.render("음료", True, (55, 135, 205))
-                else:
-                    hint_surf = sub_font.render("주문대기", True, (120, 112, 130))
-                surface.blit(hint_surf, (row_rect.x + 38, row_rect.y + 23))
+                tag_txt, pill_bg = "주문메뉴", (88, 78, 112)
+
+            hint_surf = sub_font.render(tag_txt, True, config.WHITE)
+            pill_rect = pygame.Rect(
+                row_rect.x + 41,
+                row_rect.bottom - 22,
+                min(max_txt_w, hint_surf.get_width() + 12),
+                19,
+            )
+            pygame.draw.rect(surface, pill_bg, pill_rect, border_radius=5)
+            surface.blit(
+                hint_surf,
+                (
+                    pill_rect.centerx - hint_surf.get_width() // 2,
+                    pill_rect.centery - hint_surf.get_height() // 2,
+                ),
+            )

@@ -222,50 +222,69 @@ class DispenserStation(BaseStation):
         t = float(time_tick) if isinstance(time_tick, (int, float)) else 0.0
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}노즐")
 
-        font_sm = config.get_font(12, bold=True)
-        font_xs = config.get_font(11, bold=False)
+        font_title = config.get_font(15, bold=True)
+        font_status = config.get_font(14, bold=True)
+
+        short_drink_map = {
+            "어묵국물 (오뎅탕)": "어묵국물",
+            "전통 살얼음 식혜": "살얼음 식혜",
+            "구슬 사이다 (라무네)": "라무네 사이다",
+            "타피오카 버블밀크티": "버블밀크티",
+        }
 
         for idx, slot in enumerate(self.slots):
             r = slot.rect
             drink_id = slot.recipe_id or self._get_slot_drink_id(idx)
             rec = RECIPES.get(drink_id)
-            drink_name = str(rec["name"]) if rec else drink_id
+            raw_name = str(rec["name"]) if rec else drink_id
+            drink_name = short_drink_map.get(raw_name, raw_name)
 
             is_ready = slot.state == STATE_READY
-            bg_col = (32, 62, 54) if is_ready else (36, 42, 56)
-            border_col = config.NEON_CYAN if is_ready else config.GAUGE_COOKING
+            bg_col = (28, 76, 62) if is_ready else (38, 48, 74)
+            border_col = config.NEON_GREEN if is_ready else config.NEON_CYAN
 
-            pygame.draw.rect(surface, bg_col, r, border_radius=9)
-            pygame.draw.rect(surface, border_col, r, width=2, border_radius=9)
+            pygame.draw.rect(surface, bg_col, r, border_radius=10)
+            pygame.draw.rect(surface, border_col, r, width=3 if is_ready else 2, border_radius=10)
 
-            # 음료 메뉴명 상단 표시
-            active_name_f = font_sm
-            if active_name_f.size(drink_name)[0] > r.width - 6:
-                active_name_f = config.get_font(11, bold=True)
-            if active_name_f.size(drink_name)[0] > r.width - 6:
-                active_name_f = config.get_font(10, bold=True)
-            name_surf = active_name_f.render(drink_name, True, config.TEXT_PRIMARY)
-            surface.blit(name_surf, (r.centerx - name_surf.get_width() // 2, r.y + 6))
+            # 음료 메뉴명 상단 고대비 필 배지
+            active_name_f = font_title
+            for f_sz in (14, 13, 12, 11):
+                if active_name_f.size(drink_name)[0] <= r.width - 10:
+                    break
+                active_name_f = config.get_font(f_sz, bold=True)
+            name_pill = pygame.Rect(r.x + 4, r.y + 5, r.width - 8, 24)
+            pygame.draw.rect(surface, (18, 22, 34), name_pill, border_radius=6)
+            name_surf = active_name_f.render(drink_name, True, config.GOLD if is_ready else config.WHITE)
+            surface.blit(
+                name_surf,
+                (name_pill.centerx - name_surf.get_width() // 2, name_pill.centery - name_surf.get_height() // 2),
+            )
 
-            # 음료 아이콘
-            icon_size = min(48, max(30, min(r.width, r.height) - 42))
+            # 음료 대형 아이콘
+            icon_size = min(60, max(38, min(r.width, r.height) - 44))
             draw_food_icon(surface, (r.centerx, r.centery - 2), drink_id, size=icon_size, burnt=False)
 
-            # 하단 충전 게이지 및 안내
-            gauge_rect = pygame.Rect(r.x + 6, r.bottom - 14, r.width - 12, 8)
-            pygame.draw.rect(surface, config.GAUGE_BG, gauge_rect, border_radius=4)
-            fill_w = int((gauge_rect.width - 2) * slot.progress)
-            bar_col = config.GAUGE_READY if is_ready else config.NEON_CYAN
+            # 하단 14px 충전 게이지 및 고대비 상태 배지
+            gauge_rect = pygame.Rect(r.x + 6, r.bottom - 18, r.width - 12, 14)
+            pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=6)
+            fill_w = int((gauge_rect.width - 4) * slot.progress)
+            bar_col = config.NEON_GREEN if is_ready else config.NEON_CYAN
             if fill_w > 0:
                 pygame.draw.rect(
                     surface,
                     bar_col,
-                    (gauge_rect.x + 1, gauge_rect.y + 1, fill_w, gauge_rect.height - 2),
-                    border_radius=3,
+                    (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
+                    border_radius=4,
                 )
-            pygame.draw.rect(surface, config.GAUGE_BORDER, gauge_rect, width=1, border_radius=4)
+            pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=6)
 
-            status_txt = "즉시 서빙!" if is_ready else "자동 충전중"
-            status_col = config.GAUGE_READY if is_ready else config.TEXT_SECONDARY
-            st_surf = font_xs.render(status_txt, True, status_col)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 15))
+            status_txt = "✨ 즉시 서빙!" if is_ready else "💧 충전중..."
+            status_col = config.NEON_GREEN if is_ready else config.NEON_CYAN
+            st_surf = font_status.render(status_txt, True, status_col)
+            if st_surf.get_width() > r.width - 8:
+                st_surf = config.get_font(12, bold=True).render(status_txt, True, status_col)
+            pill_w = min(r.width - 6, st_surf.get_width() + 10)
+            st_pill = pygame.Rect(r.centerx - pill_w // 2, gauge_rect.top - 22, pill_w, 20)
+            pygame.draw.rect(surface, (16, 28, 24) if is_ready else (18, 24, 38), st_pill, border_radius=5)
+            pygame.draw.rect(surface, status_col, st_pill, width=1, border_radius=5)
+            surface.blit(st_surf, (st_pill.centerx - st_surf.get_width() // 2, st_pill.centery - st_surf.get_height() // 2))

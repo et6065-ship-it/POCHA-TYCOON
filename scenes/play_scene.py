@@ -1055,16 +1055,16 @@ class PlayScene(BaseScene):
 
     def _draw_story_hud_helpers(self, surface: pygame.Surface) -> None:
         """스토리 모드 전용 [🎬 스토리] 다시보기 버튼과 일차별 가이드 배너를 표시한다."""
-        xs_f = config.get_font(12, bold=True)
+        xs_f = config.get_font(13, bold=True)
         mx, my = self._hover_pos
         hov = self.story_replay_btn_rect.collidepoint(mx, my)
         pygame.draw.rect(
             surface,
-            (82, 54, 128) if hov else (52, 36, 86),
+            (92, 62, 142) if hov else (62, 42, 102),
             self.story_replay_btn_rect,
             border_radius=7,
         )
-        pygame.draw.rect(surface, config.GOLD, self.story_replay_btn_rect, width=1, border_radius=7)
+        pygame.draw.rect(surface, config.GOLD, self.story_replay_btn_rect, width=2, border_radius=7)
         st_lbl = xs_f.render("🎬 스토리 보기", True, config.GOLD)
         surface.blit(st_lbl, st_lbl.get_rect(center=self.story_replay_btn_rect.center))
 
@@ -1072,77 +1072,77 @@ class PlayScene(BaseScene):
         tip_text = str(prog.get("gameplay_tip", "") or "")
         if tip_text:
             tip_rect = pygame.Rect(324, 70, 942, 26)
-            art_renderer.draw_alpha_overlay(surface, tip_rect, (18, 22, 36, 200), border_radius=7)
-            pygame.draw.rect(surface, (95, 145, 215), tip_rect, width=1, border_radius=7)
-            tip_surf = xs_f.render(f"💡 {tip_text}", True, (215, 238, 255))
-            surface.blit(tip_surf, (tip_rect.x + 12, tip_rect.y + 4))
+            art_renderer.draw_alpha_overlay(surface, tip_rect, (18, 22, 38, 225), border_radius=7)
+            pygame.draw.rect(surface, (112, 165, 238), tip_rect, width=1, border_radius=7)
+            tip_surf = xs_f.render(f"💡 {tip_text}", True, (235, 245, 255))
+            surface.blit(tip_surf, (tip_rect.x + 12, tip_rect.y + 3))
 
     def _draw_hud(self, surface: pygame.Surface) -> None:
         hud_rect = pygame.Rect(config.HUD_RECT)
-        pygame.draw.rect(surface, (22, 19, 34), hud_rect)
+        pygame.draw.rect(surface, (20, 17, 32), hud_rect)
         pygame.draw.line(surface, config.GOLD, (0, hud_rect.bottom - 2), (config.SCREEN_WIDTH, hud_rect.bottom - 2), 2)
 
         title_f = config.get_font(17, bold=True)
-        sub_f = config.get_font(13, bold=True)
-        num_f = config.get_font(20, bold=True)
+        sub_f = config.get_font(15, bold=True)
+        btn_f = config.get_font(15, bold=True)
 
-        # 1) 현재 모드 / 국가 / Day 배지 (x=14~255)
+        # 1) 현재 모드 / 국가 / Day 배지 (x=14~268)
         ch_data = CHAPTERS.get(self.game_mgr.current_chapter, CHAPTERS["KR"])
         mode_tag = "🏮 글로벌 통합" if self.game_mgr.mode == "GLOBAL_ENDLESS" else f"🗺️ [{ch_data['id']}] {ch_data['name'][:7]}"
         day_txt = title_f.render(f"{mode_tag} · Day {self.game_mgr.day}", True, config.WHITE)
-        surface.blit(day_txt, (16, 11))
+        surface.blit(day_txt, (16, 8))
 
-        total_gold_txt = sub_f.render(f"보유 자금: {self.game_mgr.gold:,}원", True, config.TEXT_SECONDARY)
-        surface.blit(total_gold_txt, (16, 37))
+        total_gold_txt = sub_f.render(f"💰 자산: {self.game_mgr.gold:,}원", True, config.GOLD)
+        surface.blit(total_gold_txt, (16, 34))
 
         # 2) 남은 영업 시간 타이머 바 (x=275~565)
-        timer_box = pygame.Rect(275, 12, 285, 42)
-        pygame.draw.rect(surface, (34, 30, 50), timer_box, border_radius=10)
-        pygame.draw.rect(surface, config.UI_BORDER, timer_box, width=1, border_radius=10)
+        timer_box = pygame.Rect(275, 10, 285, 45)
+        pygame.draw.rect(surface, (34, 30, 52), timer_box, border_radius=10)
+        pygame.draw.rect(surface, config.UI_BORDER, timer_box, width=2, border_radius=10)
 
         t_ratio = max(0.0, min(1.0, self.time_left / max(1.0, self.day_duration)))
-        bar_rect = pygame.Rect(timer_box.x + 10, timer_box.bottom - 14, timer_box.width - 20, 8)
-        pygame.draw.rect(surface, config.GAUGE_BG, bar_rect, border_radius=4)
+        bar_rect = pygame.Rect(timer_box.x + 10, timer_box.bottom - 14, timer_box.width - 20, 9)
+        pygame.draw.rect(surface, (18, 16, 26), bar_rect, border_radius=4)
         bar_col = config.PATIENCE_HIGH if t_ratio > 0.4 else (config.PATIENCE_MID if t_ratio > 0.2 else config.PATIENCE_LOW)
         fill_w = int(bar_rect.width * t_ratio)
         if fill_w > 0:
             pygame.draw.rect(surface, bar_col, (bar_rect.x, bar_rect.y, fill_w, bar_rect.height), border_radius=4)
 
         sec_left = int(math.ceil(self.time_left))
-        t_lbl = sub_f.render(f"⏱️ 남은 영업 시간: {sec_left}초", True, config.WHITE if sec_left > 15 else config.TEXT_WARNING)
-        surface.blit(t_lbl, (timer_box.x + 12, timer_box.y + 6))
+        t_lbl = sub_f.render(f"⏱️ 남은 시간: {sec_left}초", True, config.WHITE if sec_left > 15 else config.TEXT_WARNING)
+        surface.blit(t_lbl, (timer_box.x + 12, timer_box.y + 5))
 
-        # 3) 오늘의 매출 / 목표 매출 게이지 (x=572~874)
-        rev_box = pygame.Rect(572, 10, 302, 45)
-        pygame.draw.rect(surface, (34, 30, 50), rev_box, border_radius=10)
+        # 3) 오늘의 매출 / 목표 매출 게이지 (x=570~874)
+        rev_box = pygame.Rect(570, 10, 304, 45)
+        pygame.draw.rect(surface, (34, 30, 52), rev_box, border_radius=10)
         target_gold = max(1, self.game_mgr.get_target_gold())
         daily_gold = self.game_mgr.daily_gold
         rev_ratio = min(1.0, daily_gold / float(target_gold))
         cleared = daily_gold >= target_gold
 
-        pygame.draw.rect(surface, config.GOLD if cleared else config.UI_BORDER, rev_box, width=2 if cleared else 1, border_radius=10)
+        pygame.draw.rect(surface, config.GOLD if cleared else config.UI_BORDER, rev_box, width=2, border_radius=10)
         r_lbl = sub_f.render(
-            f"💰 오늘 매출: {daily_gold:,}원 / 목표 {target_gold:,}원",
+            f"💰 매출 {daily_gold:,} / 목표 {target_gold:,}원",
             True,
-            config.GOLD if cleared else config.TEXT_PRIMARY,
+            config.GOLD if cleared else config.WHITE,
         )
-        surface.blit(r_lbl, (rev_box.x + 12, rev_box.y + 6))
+        surface.blit(r_lbl, (rev_box.x + 12, rev_box.y + 5))
 
-        r_bar = pygame.Rect(rev_box.x + 10, rev_box.bottom - 13, rev_box.width - 20, 7)
-        pygame.draw.rect(surface, config.GAUGE_BG, r_bar, border_radius=3)
+        r_bar = pygame.Rect(rev_box.x + 10, rev_box.bottom - 14, rev_box.width - 20, 9)
+        pygame.draw.rect(surface, (18, 16, 26), r_bar, border_radius=4)
         r_fill = int(r_bar.width * rev_ratio)
         if r_fill > 0:
             pygame.draw.rect(
                 surface,
-                config.TEXT_SUCCESS if cleared else config.GOLD,
+                config.NEON_GREEN if cleared else config.GOLD,
                 (r_bar.x, r_bar.y, r_fill, r_bar.height),
-                border_radius=3,
+                border_radius=4,
             )
 
         # 4) 현재 콤보 & 피버 상태 배지 (x=882~1048)
         combo_box = pygame.Rect(882, 10, 168, 45)
         is_fever = self.fever_timer > 0.0
-        c_bg = (88, 28, 72) if is_fever else (38, 32, 56)
+        c_bg = (96, 28, 78) if is_fever else (38, 32, 58)
         pygame.draw.rect(surface, c_bg, combo_box, border_radius=10)
         pygame.draw.rect(
             surface,
@@ -1157,7 +1157,7 @@ class PlayScene(BaseScene):
         elif self.game_mgr.combo > 0:
             c_txt = title_f.render(f"🔥 COMBO x{self.game_mgr.combo}", True, config.NEON_ORANGE)
         else:
-            c_txt = sub_f.render("연속 서빙 콤보!", True, config.TEXT_SECONDARY)
+            c_txt = sub_f.render("🔥 콤보 대기중", True, config.TEXT_SECONDARY)
         surface.blit(
             c_txt,
             (combo_box.centerx - c_txt.get_width() // 2, combo_box.centery - c_txt.get_height() // 2),
@@ -1168,23 +1168,23 @@ class PlayScene(BaseScene):
         o_hov = self.options_btn_rect.collidepoint(mx, my)
         pygame.draw.rect(
             surface,
-            config.UI_BUTTON_HOVER if o_hov else config.UI_PANEL,
+            config.UI_BUTTON_HOVER if o_hov else (48, 42, 72),
             self.options_btn_rect,
             border_radius=10,
         )
-        pygame.draw.rect(surface, config.GOLD if o_hov else config.UI_BORDER, self.options_btn_rect, width=1, border_radius=10)
-        o_txt = sub_f.render("⚙️ 옵션", True, config.GOLD if o_hov else config.WHITE)
+        pygame.draw.rect(surface, config.GOLD if o_hov else config.UI_BORDER, self.options_btn_rect, width=2, border_radius=10)
+        o_txt = btn_f.render("⚙️ 옵션", True, config.GOLD if o_hov else config.WHITE)
         surface.blit(o_txt, o_txt.get_rect(center=self.options_btn_rect.center))
 
         p_hov = self.pause_btn_rect.collidepoint(mx, my)
         pygame.draw.rect(
             surface,
-            config.UI_BUTTON_HOVER if p_hov else config.UI_BUTTON,
+            config.UI_BUTTON_HOVER if p_hov else (58, 52, 88),
             self.pause_btn_rect,
             border_radius=10,
         )
-        pygame.draw.rect(surface, config.UI_BORDER, self.pause_btn_rect, width=1, border_radius=10)
-        p_txt = sub_f.render("⚙ 준비/상점", True, config.WHITE)
+        pygame.draw.rect(surface, config.NEON_CYAN if p_hov else config.UI_BORDER, self.pause_btn_rect, width=2, border_radius=10)
+        p_txt = btn_f.render("🏪 준비/상점", True, config.WHITE)
         surface.blit(
             p_txt,
             (
@@ -1201,7 +1201,7 @@ class PlayScene(BaseScene):
         skill_ready = skill_unlocked and (self.game_mgr.skill_cooldown <= 0.0)
 
         # 반투명 패널 배경 (캐싱)
-        art_renderer.draw_alpha_overlay(surface, panel, (22, 18, 34, 215), border_radius=14)
+        art_renderer.draw_alpha_overlay(surface, panel, (24, 20, 38, 228), border_radius=14)
 
         border_col = (
             config.GOLD
@@ -1211,7 +1211,7 @@ class PlayScene(BaseScene):
         pygame.draw.rect(surface, border_col, panel, width=2, border_radius=14)
 
         # 마스터 아바타
-        av_rect = pygame.Rect(panel.centerx - 46, panel.y + 10, 92, 92)
+        av_rect = pygame.Rect(panel.centerx - 46, panel.y + 8, 92, 92)
         any_cooking = any(
             s.state == STATE_COOKING for st in self.station_list for s in st.slots
         )
@@ -1224,57 +1224,62 @@ class PlayScene(BaseScene):
             time_tick=self.time_tick,
         )
 
-        name_f = config.get_font(15, bold=True)
-        xs_f = config.get_font(11, bold=False)
-        btn_f = config.get_font(13, bold=True)
+        name_f = config.get_font(16, bold=True)
+        xs_f = config.get_font(13, bold=True)
+        btn_f = config.get_font(16, bold=True)
 
         nm = name_f.render(f"{char_data['name']} ({char_data['country']})", True, config.WHITE)
-        surface.blit(nm, (panel.centerx - nm.get_width() // 2, panel.y + 108))
+        if nm.get_width() > panel.width - 10:
+            nm = config.get_font(14, bold=True).render(f"{char_data['name']} ({char_data['country']})", True, config.WHITE)
+        surface.blit(nm, (panel.centerx - nm.get_width() // 2, panel.y + 104))
 
         # 스킬 이름 & 설명 요약
         sk_title = xs_f.render(f"★ {char_data['skill_name']}", True, config.GOLD)
-        surface.blit(sk_title, (panel.centerx - sk_title.get_width() // 2, panel.y + 132))
+        if sk_title.get_width() > panel.width - 10:
+            sk_title = config.get_font(12, bold=True).render(f"★ {char_data['skill_name']}", True, config.GOLD)
+        surface.blit(sk_title, (panel.centerx - sk_title.get_width() // 2, panel.y + 128))
 
         desc = str(char_data["skill_desc"])
-        line1 = desc[:14]
-        line2 = desc[14:28]
-        d1 = xs_f.render(line1, True, config.TEXT_SECONDARY)
-        surface.blit(d1, (panel.centerx - d1.get_width() // 2, panel.y + 152))
+        line1 = desc[:13]
+        line2 = desc[13:26]
+        desc_f = config.get_font(12, bold=True)
+        d1 = desc_f.render(line1, True, (220, 216, 236))
+        surface.blit(d1, (panel.centerx - d1.get_width() // 2, panel.y + 150))
         if line2:
-            d2 = xs_f.render(line2, True, config.TEXT_SECONDARY)
+            d2 = desc_f.render(line2, True, (220, 216, 236))
             surface.blit(d2, (panel.centerx - d2.get_width() // 2, panel.y + 168))
 
-        # 하단 [SPACE] 액티브 스킬 버튼
+        # 하단 원터치 액티브 스킬 버튼 (불필요한 PC 단축키 안내 제거 & 16px 볼드 고시인성)
         s_rect = self.skill_btn_rect
         mx, my = self._hover_pos
         is_hov = s_rect.collidepoint(mx, my)
 
         if not skill_unlocked:
-            bg_col = (34, 32, 46)
+            bg_col = (38, 34, 54)
             lbl_top = "🔒 Day 4 해금"
             lbl_bot = "마스터 액티브 스킬"
         elif skill_active:
-            bg_col = (235, 165, 35)
+            bg_col = (242, 168, 32)
             lbl_top = "⚡ 스킬 발동 중!"
             lbl_bot = f"남은 시간 {self.game_mgr.skill_active_timer:.1f}초"
         elif skill_ready:
-            pulse = 0.85 + 0.15 * math.sin(self.time_tick * 6.0)
-            bg_col = (235, 105, 38) if is_hov else (int(215 * pulse), int(82 * pulse), 34)
-            lbl_top = "⚡ 스킬 터치 발동!"
-            lbl_bot = "터치 또는 SPACE"
+            pulse = 0.88 + 0.12 * math.sin(self.time_tick * 6.0)
+            bg_col = (245, 118, 36) if is_hov else (int(232 * pulse), int(96 * pulse), 32)
+            lbl_top = "⚡ 스킬 발동!"
+            lbl_bot = char_data["skill_name"]
         else:
-            bg_col = (52, 48, 66)
+            bg_col = (54, 48, 72)
             cd = self.game_mgr.skill_cooldown
-            lbl_top = f"쿨타임 {int(math.ceil(cd))}초"
+            lbl_top = f"⏳ 쿨타임 {int(math.ceil(cd))}초"
             lbl_bot = char_data["skill_name"]
 
-        pygame.draw.rect(surface, bg_col, s_rect, border_radius=10)
+        pygame.draw.rect(surface, bg_col, s_rect, border_radius=11)
         pygame.draw.rect(
             surface,
             config.GOLD if (skill_ready or skill_active) else config.UI_BORDER,
             s_rect,
-            width=2,
-            border_radius=10,
+            width=3 if (skill_ready or skill_active) else 2,
+            border_radius=11,
         )
 
         # 쿨타임 진행 게이지
@@ -1285,14 +1290,14 @@ class PlayScene(BaseScene):
             if fill_w > 0:
                 pygame.draw.rect(
                     surface,
-                    (82, 138, 195),
+                    (82, 148, 215),
                     (s_rect.x + 2, s_rect.bottom - 7, fill_w, 5),
                     border_radius=2,
                 )
 
-        t1 = btn_f.render(lbl_top, True, config.WHITE if skill_unlocked else config.TEXT_SECONDARY)
-        t2 = xs_f.render(lbl_bot, True, config.CREAM if skill_unlocked else config.TEXT_SECONDARY)
-        surface.blit(t1, (s_rect.centerx - t1.get_width() // 2, s_rect.y + 7))
+        t1 = btn_f.render(lbl_top, True, config.WHITE if skill_unlocked else config.GOLD)
+        t2 = xs_f.render(lbl_bot, True, config.GOLD if skill_ready else (config.WHITE if skill_unlocked else config.TEXT_SECONDARY))
+        surface.blit(t1, (s_rect.centerx - t1.get_width() // 2, s_rect.y + 6))
         surface.blit(t2, (s_rect.centerx - t2.get_width() // 2, s_rect.y + 30))
 
     def _draw_locked_slot_cover(
@@ -1303,27 +1308,41 @@ class PlayScene(BaseScene):
         title: str,
         sub_desc: str,
     ) -> None:
-        """아직 스토리에서 해금되지 않은 조리 기구/트레이 위에 잠금 안내 커버를 그린다."""
-        art_renderer.draw_alpha_overlay(surface, rect, (12, 14, 24, 226), border_radius=14)
-        pygame.draw.rect(surface, (82, 88, 114), rect, width=2, border_radius=14)
+        """아직 스토리에서 해금되지 않은 조리 기구/트레이 위에 선명한 고대비 잠금 안내 카드를 그린다."""
+        art_renderer.draw_alpha_overlay(surface, rect, (18, 20, 36, 236), border_radius=14)
+        pygame.draw.rect(surface, (118, 128, 172), rect, width=2, border_radius=14)
 
-        badge_rect = pygame.Rect(rect.centerx - 78, rect.centery - 62, 156, 34)
-        pygame.draw.rect(surface, (46, 38, 66), badge_rect, border_radius=9)
-        pygame.draw.rect(surface, config.GOLD, badge_rect, width=1, border_radius=9)
+        inner_card = pygame.Rect(rect.x + 10, rect.centery - 74, rect.width - 20, 148)
+        pygame.draw.rect(surface, (28, 30, 52), inner_card, border_radius=12)
+        pygame.draw.rect(surface, config.GOLD, inner_card, width=2, border_radius=12)
 
-        f_lock = config.get_font(14, bold=True)
-        f_title = config.get_font(16, bold=True)
-        f_sub = config.get_font(12, bold=False)
+        badge_rect = pygame.Rect(rect.centerx - 84, inner_card.y + 14, 168, 38)
+        pygame.draw.rect(surface, (62, 46, 88), badge_rect, border_radius=10)
+        pygame.draw.rect(surface, config.GOLD, badge_rect, width=2, border_radius=10)
+
+        f_lock = config.get_font(17, bold=True)
+        f_title = config.get_font(17, bold=True)
+        f_sub = config.get_font(13, bold=True)
 
         hint_str = self._get_slot_unlock_hint(slot_key).split(":")[0]
         lk_s = f_lock.render(hint_str, True, config.GOLD)
         surface.blit(lk_s, lk_s.get_rect(center=badge_rect.center))
 
-        t_s = f_title.render(title, True, (215, 222, 238))
-        surface.blit(t_s, t_s.get_rect(center=(rect.centerx, rect.centery - 6)))
+        active_tf = f_title
+        for f_sz in (17, 16, 15, 14):
+            active_tf = config.get_font(f_sz, bold=True)
+            if active_tf.size(title)[0] <= inner_card.width - 14:
+                break
+        t_s = active_tf.render(title, True, config.WHITE)
+        surface.blit(t_s, t_s.get_rect(center=(rect.centerx, inner_card.y + 78)))
 
-        sub_s = f_sub.render(sub_desc, True, (150, 160, 182))
-        surface.blit(sub_s, sub_s.get_rect(center=(rect.centerx, rect.centery + 24)))
+        active_sf = f_sub
+        for f_sz in (13, 12, 11):
+            active_sf = config.get_font(f_sz, bold=True)
+            if active_sf.size(sub_desc)[0] <= inner_card.width - 14:
+                break
+        sub_s = active_sf.render(sub_desc, True, config.NEON_CYAN)
+        surface.blit(sub_s, sub_s.get_rect(center=(rect.centerx, inner_card.y + 114)))
 
     def _draw_counter_and_stations(self, surface: pygame.Surface) -> None:
         counter_rect = pygame.Rect(config.COUNTER_RECT)
@@ -1332,26 +1351,12 @@ class PlayScene(BaseScene):
         pygame.draw.rect(surface, config.POCHA_STAINLESS_DARK, (0, counter_rect.y, config.SCREEN_WIDTH, 8))
         pygame.draw.line(surface, config.POCHA_STAINLESS, (0, counter_rect.y + 1), (config.SCREEN_WIDTH, counter_rect.y + 1), 2)
 
-        # 4개 조리 스테이션 & 중앙 조립 트레이 렌더링
+        # 4개 조리 스테이션 & 중앙 조립 트레이 렌더링 (모바일 시인성을 위해 상단 단축키 텍스트 오버레이 제거)
         self.mold_station.draw(surface, time_tick=self.time_tick)
         self.dispenser_station.draw(surface, time_tick=self.time_tick)
         self.assembly_tray.draw(surface, time_tick=self.time_tick)
         self.grill_station.draw(surface, time_tick=self.time_tick)
         self.batch_pot_station.draw(surface, time_tick=self.time_tick)
-
-        # 단축키 미니 배지 오버레이 (해금된 슬롯만 표시)
-        badge_f = config.get_font(11, bold=True)
-        shortcut_hints = [
-            ("mold", self.mold_rect.x + 8, self.mold_rect.y + 8, "[Q/W]"),
-            ("dispenser", self.dispenser_rect.x + 8, self.dispenser_rect.y + 8, "[A/S]"),
-            ("tray", self.tray_rect.x + 8, self.tray_rect.y + 8, "[1~4]"),
-            ("grill", self.grill_rect.x + 8, self.grill_rect.y + 8, "[E]"),
-            ("batch_pot", self.batch_pot_rect.x + 8, self.batch_pot_rect.y + 8, "[R]"),
-        ]
-        for slot_key, bx, by, k_str in shortcut_hints:
-            if self.game_mgr.is_slot_unlocked_in_story(slot_key):
-                ks = badge_f.render(k_str, True, config.NEON_YELLOW)
-                surface.blit(ks, (bx, by))
 
         # 스토리 모드에서 아직 잠겨 있는 조리 기구/트레이에 잠금 커버 표시
         if not self.game_mgr.is_slot_unlocked_in_story("dispenser"):
@@ -1368,7 +1373,7 @@ class PlayScene(BaseScene):
                 self.tray_rect,
                 "tray",
                 "중앙 조립 & 토핑 트레이",
-                "붕어빵·음료는 클릭 즉시 서빙됩니다",
+                "붕어빵·음료는 터치 즉시 서빙!",
             )
         if not self.game_mgr.is_slot_unlocked_in_story("grill"):
             self._draw_locked_slot_cover(

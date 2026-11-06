@@ -60,7 +60,7 @@ async def main(max_frames: int = 0) -> None:
         pygame.display.set_caption(f"{config.WINDOW_TITLE} - [2P 결투 클라이언트]")
         scene_mgr.change_scene("duel_lobby", auto_join_ip=target_ip)
     elif max_frames == 0:
-        scene_mgr.start_loading(duration=1.15)
+        scene_mgr.start_loading(duration=1.8, wait_for_tap=True, cycle_themes=True)
 
     running = True
     frame_count = 0

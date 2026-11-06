@@ -178,40 +178,52 @@ class StationSlot:
         self,
         surface: pygame.Surface,
         time_tick: float = 0.0,
-        empty_label: str = "클릭 조리",
+        empty_label: str = "➕ 터치 조리",
     ) -> None:
-        """개별 슬롯 박스, 음식 아이콘, 상태 텍스트 및 진행률 게이지 바를 렌더링한다."""
+        """개별 슬롯 박스, 대형 음식 아이콘(54~60px), 고대비 상태 배지 및 14px 진행률 게이지 바를 렌더링한다."""
         r = self.rect
         if self.state == STATE_IDLE:
-            bg_col = (34, 32, 44)
-            border_col = (88, 84, 108)
+            bg_col = (40, 36, 56)
+            border_col = (106, 98, 142)
+            b_width = 2
         elif self.state == STATE_COOKING:
-            bg_col = (54, 42, 32)
+            bg_col = (64, 46, 32)
             border_col = config.GAUGE_COOKING
+            b_width = 2
         elif self.state == STATE_READY:
             if self.can_burn and self.burn_progress >= 0.65:
-                bg_col = (68, 36, 28)
+                bg_col = (78, 36, 28)
                 border_col = config.GAUGE_WARNING
             else:
-                bg_col = (32, 58, 42)
-                border_col = config.GAUGE_READY
+                bg_col = (28, 68, 46)
+                border_col = config.NEON_GREEN
+            b_width = 3
         else:  # STATE_BURNT
-            bg_col = (48, 24, 26)
+            bg_col = (58, 22, 26)
             border_col = config.GAUGE_BURNT
+            b_width = 3
 
-        pygame.draw.rect(surface, bg_col, r, border_radius=8)
-        pygame.draw.rect(surface, border_col, r, width=2, border_radius=8)
+        pygame.draw.rect(surface, bg_col, r, border_radius=10)
+        pygame.draw.rect(surface, border_col, r, width=b_width, border_radius=10)
 
-        font_sm = config.get_font(13, bold=True)
-        font_xs = config.get_font(12, bold=True)
+        font_md = config.get_font(14, bold=True)
 
         if self.state == STATE_IDLE:
-            lbl = font_xs.render(empty_label.replace("클릭", "터치"), True, config.TEXT_SECONDARY)
-            surface.blit(lbl, (r.centerx - lbl.get_width() // 2, r.centery - lbl.get_height() // 2))
+            clean_lbl = empty_label.replace("클릭", "터치")
+            if "➕" not in clean_lbl and "빈" in clean_lbl:
+                clean_lbl = f"➕ {clean_lbl}"
+            lbl = font_md.render(clean_lbl, True, (238, 234, 252))
+            if lbl.get_width() > r.width - 8:
+                lbl = config.get_font(13, bold=True).render(clean_lbl, True, (238, 234, 252))
+            pill_w = min(r.width - 6, lbl.get_width() + 14)
+            pill_r = pygame.Rect(r.centerx - pill_w // 2, r.centery - 14, pill_w, 28)
+            pygame.draw.rect(surface, (26, 22, 38), pill_r, border_radius=8)
+            pygame.draw.rect(surface, (118, 108, 156), pill_r, width=1, border_radius=8)
+            surface.blit(lbl, (r.centerx - lbl.get_width() // 2, pill_r.centery - lbl.get_height() // 2))
             return
 
-        icon_size = min(48, max(30, min(r.width, r.height) - 20))
-        icon_center = (r.centerx, r.y + icon_size // 2 + 5)
+        icon_size = min(60, max(38, min(r.width, r.height) - 22))
+        icon_center = (r.centerx, r.y + icon_size // 2 + 4)
         if self.recipe_id:
             draw_food_icon(
                 surface,
@@ -221,53 +233,64 @@ class StationSlot:
                 burnt=(self.state == STATE_BURNT),
             )
 
-        # 하단 게이지 바 및 상태 라벨 (모바일 시인성 강화: 게이지 두께 10px)
-        gauge_rect = pygame.Rect(r.x + 6, r.bottom - 15, r.width - 12, 10)
-        pygame.draw.rect(surface, config.GAUGE_BG, gauge_rect, border_radius=5)
+        # 하단 게이지 바 및 고대비 상태 필 배지 (모바일 시인성 강화: 게이지 두께 14px)
+        gauge_rect = pygame.Rect(r.x + 6, r.bottom - 18, r.width - 12, 14)
+        pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=6)
 
         if self.state == STATE_COOKING:
-            fill_w = int((gauge_rect.width - 2) * self.progress)
+            fill_w = int((gauge_rect.width - 4) * self.progress)
             if fill_w > 0:
                 pygame.draw.rect(
                     surface,
                     config.GAUGE_COOKING,
-                    (gauge_rect.x + 1, gauge_rect.y + 1, fill_w, gauge_rect.height - 2),
+                    (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
                     border_radius=4,
                 )
-            st_surf = font_xs.render("조리중...", True, config.GAUGE_COOKING)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 17))
+            label_txt = "🔥 조리중..."
+            label_col = config.GAUGE_COOKING
+            pill_bg = (34, 24, 16)
 
         elif self.state == STATE_READY:
             if self.can_burn:
                 rem_ratio = 1.0 - self.burn_progress
-                bar_col = config.GAUGE_WARNING if self.burn_progress >= 0.60 else config.GAUGE_READY
-                fill_w = int((gauge_rect.width - 2) * rem_ratio)
+                bar_col = config.GAUGE_WARNING if self.burn_progress >= 0.60 else config.NEON_GREEN
+                fill_w = int((gauge_rect.width - 4) * rem_ratio)
             else:
-                bar_col = config.GAUGE_READY
-                fill_w = gauge_rect.width - 2
+                bar_col = config.NEON_GREEN
+                fill_w = gauge_rect.width - 4
             if fill_w > 0:
                 pygame.draw.rect(
                     surface,
                     bar_col,
-                    (gauge_rect.x + 1, gauge_rect.y + 1, fill_w, gauge_rect.height - 2),
+                    (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4),
                     border_radius=4,
                 )
-            label_txt = "주의! 곧 탐" if (self.can_burn and self.burn_progress >= 0.65) else "완성! 터치"
-            label_col = config.GAUGE_WARNING if (self.can_burn and self.burn_progress >= 0.65) else config.GAUGE_READY
-            st_surf = font_sm.render(label_txt, True, label_col)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 17))
+            is_warn = self.can_burn and self.burn_progress >= 0.65
+            label_txt = "⚠️ 곧 탐! 터치!" if is_warn else "✨ 완성! 터치!"
+            label_col = config.GAUGE_WARNING if is_warn else config.NEON_GREEN
+            pill_bg = (48, 20, 16) if is_warn else (16, 44, 28)
 
-        elif self.state == STATE_BURNT:
+        else:  # STATE_BURNT
             pygame.draw.rect(
                 surface,
                 config.GAUGE_BURNT,
-                (gauge_rect.x + 1, gauge_rect.y + 1, gauge_rect.width - 2, gauge_rect.height - 2),
+                (gauge_rect.x + 2, gauge_rect.y + 2, gauge_rect.width - 4, gauge_rect.height - 4),
                 border_radius=4,
             )
-            st_surf = font_sm.render("탄 음식 비우기", True, config.GAUGE_BURNT)
-            surface.blit(st_surf, (r.centerx - st_surf.get_width() // 2, gauge_rect.top - 17))
+            label_txt = "💀 탔음! 폐기"
+            label_col = (255, 118, 118)
+            pill_bg = (46, 16, 20)
 
-        pygame.draw.rect(surface, config.GAUGE_BORDER, gauge_rect, width=1, border_radius=4)
+        pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=6)
+
+        st_surf = font_md.render(label_txt, True, label_col)
+        if st_surf.get_width() > r.width - 8:
+            st_surf = config.get_font(13, bold=True).render(label_txt, True, label_col)
+        pill_w = min(r.width - 6, st_surf.get_width() + 12)
+        st_pill = pygame.Rect(r.centerx - pill_w // 2, gauge_rect.top - 23, pill_w, 21)
+        pygame.draw.rect(surface, pill_bg, st_pill, border_radius=6)
+        pygame.draw.rect(surface, label_col, st_pill, width=1, border_radius=6)
+        surface.blit(st_surf, (st_pill.centerx - st_surf.get_width() // 2, st_pill.centery - st_surf.get_height() // 2))
 
 
 class BaseStation:
@@ -457,29 +480,31 @@ class BaseStation:
         )
         pygame.draw.rect(surface, config.UI_BORDER, self.rect, width=2, border_radius=12)
 
-        # 상단 타이틀 바
-        header_rect = pygame.Rect(self.rect.x + 4, self.rect.y + 4, self.rect.width - 8, 28)
+        # 상단 타이틀 바 (PC 단축키 접두어 없이 정중앙 15px 볼드 고대비)
+        header_rect = pygame.Rect(self.rect.x + 4, self.rect.y + 4, self.rect.width - 8, 30)
         header_col = self.meta.get("color", config.UI_PANEL_LIGHT)
         dark_header = (
-            max(20, int(header_col[0] * 0.45)),
-            max(20, int(header_col[1] * 0.45)),
-            max(25, int(header_col[2] * 0.45)),
+            max(22, int(header_col[0] * 0.42)),
+            max(22, int(header_col[1] * 0.42)),
+            max(30, int(header_col[2] * 0.42)),
         )
         pygame.draw.rect(surface, dark_header, header_rect, border_radius=8)
+        pygame.draw.rect(surface, header_col, header_rect, width=1, border_radius=8)
 
-        title_font = config.get_font(13, bold=True)
+        title_font = config.get_font(15, bold=True)
         title_txt = self.short_name or self.name
         if subtitle:
             title_txt = f"{title_txt} ({subtitle})"
-        title_surf = title_font.render(title_txt, True, config.TEXT_PRIMARY)
-        tx = max(header_rect.x + 40, header_rect.centerx - title_surf.get_width() // 2)
-        surface.blit(
-            title_surf,
-            (
-                tx,
-                header_rect.centery - title_surf.get_height() // 2,
-            ),
-        )
+        for f_sz in (15, 14, 13):
+            title_font = config.get_font(f_sz, bold=True)
+            if title_font.size(title_txt)[0] <= header_rect.width - 10:
+                break
+        sh_surf = title_font.render(title_txt, True, (12, 10, 18))
+        title_surf = title_font.render(title_txt, True, config.GOLD)
+        tx = header_rect.centerx - title_surf.get_width() // 2
+        ty = header_rect.centery - title_surf.get_height() // 2
+        surface.blit(sh_surf, (tx + 1, ty + 1))
+        surface.blit(title_surf, (tx, ty))
 
     def draw(
         self,
