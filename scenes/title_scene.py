@@ -45,12 +45,12 @@ class TitleScene(BaseScene):
         self.global_mode_rect: pygame.Rect = pygame.Rect(952, 215, 294, 340)
         self.duel_mode_rect: pygame.Rect = pygame.Rect(928, 648, 312, 46)
 
-        # 하단 유틸리티 버튼 Rect 및 상단 9개국 배경 테마 프리뷰 버튼
-        self.load_btn_rect: pygame.Rect = pygame.Rect(40, 648, 156, 46)
-        self.reset_btn_rect: pygame.Rect = pygame.Rect(204, 648, 156, 46)
-        self.options_btn_rect: pygame.Rect = pygame.Rect(368, 648, 186, 46)
-        self.rotate_btn_rect: pygame.Rect = pygame.Rect(562, 648, 172, 46)
-        self.fullscreen_btn_rect: pygame.Rect = pygame.Rect(742, 648, 178, 46)
+        # 하단 유틸리티 버튼 Rect (5종 균등 배치) 및 상단 9개국 배경 테마 프리뷰 버튼
+        self.load_btn_rect: pygame.Rect = pygame.Rect(40, 648, 224, 46)
+        self.reset_btn_rect: pygame.Rect = pygame.Rect(278, 648, 204, 46)
+        self.options_btn_rect: pygame.Rect = pygame.Rect(496, 648, 248, 46)
+        self.rotate_btn_rect: pygame.Rect = pygame.Rect(758, 648, 234, 46)
+        self.fullscreen_btn_rect: pygame.Rect = pygame.Rect(1006, 648, 234, 46)
         self.country_btn_rects: List[Tuple[str, pygame.Rect]] = [
             (cid, pygame.Rect(796 + idx * 49, 20, 44, 28))
             for idx, cid in enumerate(CHAPTER_ORDER)
@@ -86,8 +86,6 @@ class TitleScene(BaseScene):
                 self.hovered_btn = "ROTATE"
             elif self.fullscreen_btn_rect.collidepoint(mx, my):
                 self.hovered_btn = "FULLSCREEN"
-            elif self.duel_mode_rect.collidepoint(mx, my):
-                self.hovered_btn = "DUEL"
 
             if (self.hovered_card and self.hovered_card != prev_card) or (
                 self.hovered_btn and self.hovered_btn != prev_btn
@@ -126,13 +124,6 @@ class TitleScene(BaseScene):
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
-                return
-
-            # 4) 1:1 네트워크 결투 로비 버튼 클릭
-            if self.duel_mode_rect.collidepoint(mx, my):
-                sound_fx.play_day_start()
-                if self.scene_mgr:
-                    self.scene_mgr.change_scene("duel_lobby", show_loading=True)
                 return
 
             # 프로필 카드 클릭 시 주인공 선택 탭으로 이동
@@ -218,10 +209,6 @@ class TitleScene(BaseScene):
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="chapter", show_loading=True)
-            elif event.key == pygame.K_4:
-                sound_fx.play_day_start()
-                if self.scene_mgr:
-                    self.scene_mgr.change_scene("duel_lobby", show_loading=True)
 
     def update(self, dt: float) -> None:
         self.time_tick += dt
@@ -566,13 +553,13 @@ class TitleScene(BaseScene):
             # 가이드 바 우측 상단 단축키 요약
             key_f = config.get_font(12, bold=True)
             k_txt = key_f.render(
-                "단축키: [1~4] 모드 · [Q/W/E/R/A/S] 조리 · [SPACE] 스킬 · [F10] 옵션",
+                "단축키: [1~3] 모드 · [Q/W/E/R/A/S] 조리 · [SPACE] 스킬 · [F10] 옵션",
                 True,
                 config.TEXT_SECONDARY,
             )
             surface.blit(k_txt, (guide_rect.right - k_txt.get_width() - 18, guide_rect.y + 12))
 
-        # 세이브 불러오기 / 초기화 / 옵션 / 가로·세로 회전 / 브라우저 전체화면 / 1:1 결투 로비 버튼
+        # 세이브 불러오기 / 초기화 / 옵션 / 가로·세로 회전 / 브라우저 전체화면 버튼
         is_portrait = bool(getattr(self.scene_mgr, "is_portrait_mode", False))
         rot_label = "🔄 가로모드 전환" if is_portrait else "🔄 세로모드 전환"
         btn_items = (
@@ -581,7 +568,6 @@ class TitleScene(BaseScene):
             ("OPTIONS", self.options_btn_rect, "⚙️ 사운드·화면 설정", config.GOLD),
             ("ROTATE", self.rotate_btn_rect, rot_label, config.NEON_GREEN),
             ("FULLSCREEN", self.fullscreen_btn_rect, "⛶ 전체화면 전환", config.POCHA_ORANGE),
-            ("DUEL", self.duel_mode_rect, "⚔️ 1:1 네트워크 결투 로비 [4]", (255, 110, 145)),
         )
         for key, rect, label, col in btn_items:
             is_hov = self.hovered_btn == key

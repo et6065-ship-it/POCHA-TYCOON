@@ -373,25 +373,16 @@ class SpecialistStation:
                 }
 
             if slot.state == STATE_IDLE:
-                if is_mold:
-                    # 『붕어빵 타이쿤』 1단계: 빈 붕어틀을 직접 터치하면 현재 선택한 속재료+반죽을 그 칸에 즉시 붓는다!
-                    rid = self.selected_recipe_id
-                    cooked_slot = self.start_cooking_recipe(rid, target_slot_index=slot.slot_index)
-                    if cooked_slot is not None:
-                        return {
-                            "action": "start_cook",
-                            "slot_type": self.slot_type,
-                            "recipe_id": rid,
-                            "slot_index": cooked_slot.slot_index,
-                        }
-                # 오뎅/꼬치 모드에서는 빈 슬롯 터치 시 투입 대상 슬롯으로 지정
-                self.selected_slot_index = slot.slot_index
-                return {
-                    "action": "select_target_slot",
-                    "slot_type": self.slot_type,
-                    "slot_index": slot.slot_index,
-                    "message": f"화로 #{slot.slot_index + 1}번 칸 선택됨! 좌측에서 넣을 맛 버튼을 터치하세요.",
-                }
+                # 6구 화로의 빈 칸(#1~#6)을 직접 터치하면 현재 선택한 속재료/육수/원육을 그 칸에 즉시 조리 시작!
+                rid = self.selected_recipe_id
+                cooked_slot = self.start_cooking_recipe(rid, target_slot_index=slot.slot_index)
+                if cooked_slot is not None:
+                    return {
+                        "action": "start_cook",
+                        "slot_type": self.slot_type,
+                        "recipe_id": rid,
+                        "slot_index": cooked_slot.slot_index,
+                    }
 
         return None
 
@@ -451,7 +442,7 @@ class SpecialistStation:
             r_name = str(rec["name"]) if rec else rid
             price = self.game_mgr.get_recipe_price(rid) if hasattr(self.game_mgr, "get_recipe_price") else 3500
             r_col = rec.get("color", theme_col) if rec else theme_col
-            is_selected = is_mold and (idx == self.selected_recipe_index)
+            is_selected = idx == self.selected_recipe_index
 
             if is_selected:
                 bg_col = (68, 54, 28)
@@ -538,16 +529,16 @@ class SpecialistStation:
             lv_s = config.get_font(12, bold=True).render(f"Lv.{lvl}", True, config.GOLD)
             surface.blit(lv_s, lv_s.get_rect(center=lv_badge.center))
         else:
+            sel_rec = RECIPES.get(self.selected_recipe_id)
+            sel_nm = str(sel_rec["name"]) if sel_rec else "단팥 붕어빵"
             if is_mold:
-                sel_rec = RECIPES.get(self.selected_recipe_id)
-                sel_nm = str(sel_rec["name"]) if sel_rec else "단팥 붕어빵"
                 raw_t = f"② 6구 주물 붕어빵틀 (Lv.{lvl}) · 현재 속: [{sel_nm}]"
             else:
-                raw_t = f"{self.spec_data.get('appliance_title', '② 6구 장인 전용 화로')} (Lv.{lvl})"
+                raw_t = f"{self.spec_data.get('appliance_title', '② 6구 장인 전용 화로')} (Lv.{lvl}) · [{sel_nm}]"
             title_f = config.get_font(19 if is_giant else (14 if is_mold else 15), bold=True)
             t_surf = title_f.render(raw_t, True, config.GOLD)
             if t_surf.get_width() > hdr_rect.width - 10:
-                t_surf = config.get_font(16 if is_giant else 12, bold=True).render(raw_t, True, config.GOLD)
+                t_surf = config.get_font(15 if is_giant else 12, bold=True).render(raw_t, True, config.GOLD)
             surface.blit(t_surf, t_surf.get_rect(center=hdr_rect.center))
 
         if is_mold:
@@ -578,8 +569,9 @@ class SpecialistStation:
                 )
             return
 
-        name_f = config.get_font(13, bold=True)
-        pill_f = config.get_font(13, bold=True)
+        name_f = config.get_font(18 if is_giant else 13, bold=True)
+        pill_f = config.get_font(16 if is_giant else 13, bold=True)
+        sub_idle_f = config.get_font(15 if is_giant else 12, bold=True)
 
         for idx, slot in enumerate(self.slots):
             sr = slot.rect
@@ -599,38 +591,40 @@ class SpecialistStation:
                 idle_lbl = (
                     f"붕어틀 #{idx + 1}"
                     if self.specialist_id == "bungeo"
-                    else (f"오뎅칸 #{idx + 1}" if self.specialist_id == "odeng" else f"참숯구 #{idx + 1}")
+                    else (f"🍢 오뎅칸 #{idx + 1}" if self.specialist_id == "odeng" else f"🔥 참숯구 #{idx + 1}")
                 )
-                s1 = name_f.render(idle_lbl, True, config.NEON_CYAN if is_target else (192, 188, 214))
-                s2 = config.get_font(12, bold=True).render(
-                    "👈 좌측 맛 선택!" if is_target else "좌측 메뉴 터치",
+                sel_rec = RECIPES.get(self.selected_recipe_id)
+                sel_short = str(sel_rec.get("short_name", sel_rec.get("name", "")))[:6] if sel_rec else ""
+                s1 = name_f.render(idle_lbl, True, config.NEON_CYAN if is_target else (220, 216, 240))
+                s2 = sub_idle_f.render(
+                    f"터치: [{sel_short}] 투입" if sel_short else "터치하여 조리 시작",
                     True,
-                    config.GOLD if is_target else (138, 134, 162),
+                    config.GOLD,
                 )
-                surface.blit(s1, s1.get_rect(center=(sr.centerx, sr.centery - 10)))
-                surface.blit(s2, s2.get_rect(center=(sr.centerx, sr.centery + 12)))
+                surface.blit(s1, s1.get_rect(center=(sr.centerx, sr.centery - (16 if is_giant else 10))))
+                surface.blit(s2, s2.get_rect(center=(sr.centerx, sr.centery + (18 if is_giant else 12))))
                 continue
 
             rec = RECIPES.get(slot.recipe_id or "")
             short_nm = str(rec["name"]) if rec else str(slot.recipe_id)
-            if len(short_nm) > 7:
-                short_nm = short_nm[:7]
+            if len(short_nm) > (9 if is_giant else 7):
+                short_nm = short_nm[: (9 if is_giant else 7)]
 
             # 상단 메뉴명 배지 (조리 중일 때는 우측 상단 [✕] 취소 버튼과 겹치지 않게 폭 조정)
-            tag_w = (sr.width - 36) if slot.state == STATE_COOKING else (sr.width - 12)
-            top_tag = pygame.Rect(sr.x + 6, sr.y + 5, tag_w, 20)
-            pygame.draw.rect(surface, (18, 16, 28), top_tag, border_radius=5)
-            nt = config.get_font(12, bold=True).render(short_nm, True, config.WHITE)
+            tag_w = (sr.width - (44 if is_giant else 36)) if slot.state == STATE_COOKING else (sr.width - 12)
+            top_tag = pygame.Rect(sr.x + 6, sr.y + (8 if is_giant else 5), tag_w, 30 if is_giant else 20)
+            pygame.draw.rect(surface, (18, 16, 28), top_tag, border_radius=7 if is_giant else 5)
+            nt = config.get_font(15 if is_giant else 12, bold=True).render(short_nm, True, config.WHITE)
             surface.blit(nt, nt.get_rect(center=top_tag.center))
 
             if slot.state == STATE_COOKING:
-                cancel_badge = pygame.Rect(sr.right - 26, sr.y + 4, 22, 22)
-                pygame.draw.rect(surface, (198, 42, 46), cancel_badge, border_radius=6)
-                pygame.draw.rect(surface, config.WHITE, cancel_badge, width=1, border_radius=6)
-                xt = config.get_font(12, bold=True).render("✕", True, config.WHITE)
+                cancel_badge = pygame.Rect(sr.right - (36 if is_giant else 26), sr.y + (7 if is_giant else 4), 30 if is_giant else 22, 30 if is_giant else 22)
+                pygame.draw.rect(surface, (198, 42, 46), cancel_badge, border_radius=7 if is_giant else 6)
+                pygame.draw.rect(surface, config.WHITE, cancel_badge, width=1, border_radius=7 if is_giant else 6)
+                xt = config.get_font(15 if is_giant else 12, bold=True).render("✕", True, config.WHITE)
                 surface.blit(xt, xt.get_rect(center=cancel_badge.center))
 
-            # 중앙 대형 음식 아이콘 (56~58px)
+            # 중앙 대형 음식 아이콘
             bob = int(math.sin(time_tick * 7.0 + idx) * 3) if slot.state == STATE_READY else 0
             icon_pos = (sr.centerx, sr.centery - 4 + bob) if is_mobile else (sr.centerx, sr.centery - 2 + bob)
             if is_mobile and slot.state == STATE_READY:
@@ -638,24 +632,25 @@ class SpecialistStation:
             draw_food_icon(
                 surface,
                 icon_pos,
-                slot.recipe_id or "bungeoppang_redbean",
-                size=58 if is_mobile else 56,
+                slot.recipe_id or self.selected_recipe_id,
+                size=88 if is_giant else (58 if is_mobile else 56),
                 burnt=(slot.state == STATE_BURNT),
             )
 
             # 하단 상태 캡슐 & 진행 바
-            bot_pill = pygame.Rect(sr.x + 6, sr.bottom - (20 if is_mobile else 28), sr.width - 12, 14 if is_mobile else 22)
+            bot_h = 34 if is_giant else (14 if is_mobile else 22)
+            bot_pill = pygame.Rect(sr.x + 6, sr.bottom - (bot_h + (8 if is_giant else 6)), sr.width - 12, bot_h)
             if slot.state == STATE_COOKING:
-                pygame.draw.rect(surface, (22, 20, 34), bot_pill, border_radius=6)
+                pygame.draw.rect(surface, (22, 20, 34), bot_pill, border_radius=8 if is_giant else 6)
                 fill_w = int((bot_pill.width - 4) * slot.progress)
                 if fill_w > 0:
                     pygame.draw.rect(
                         surface,
                         (238, 142, 36),
                         (bot_pill.x + 2, bot_pill.y + 2, fill_w, bot_pill.height - 4),
-                        border_radius=5,
+                        border_radius=6 if is_giant else 5,
                     )
-                pygame.draw.rect(surface, config.GOLD, bot_pill, width=1, border_radius=6)
+                pygame.draw.rect(surface, config.GOLD, bot_pill, width=1, border_radius=8 if is_giant else 6)
                 if not is_mobile:
                     pct = int(slot.progress * 100)
                     pt = pill_f.render(f"♨ 조리 {pct}%", True, config.WHITE)
@@ -664,16 +659,16 @@ class SpecialistStation:
             elif slot.state == STATE_READY:
                 burn_r = slot.burn_progress
                 bg_c = (218, 68, 36) if burn_r > 0.65 else (28, 158, 72)
-                pygame.draw.rect(surface, bg_c, bot_pill, border_radius=6)
-                pygame.draw.rect(surface, config.WHITE, bot_pill, width=1, border_radius=6)
+                pygame.draw.rect(surface, bg_c, bot_pill, border_radius=8 if is_giant else 6)
+                pygame.draw.rect(surface, config.WHITE, bot_pill, width=1, border_radius=8 if is_giant else 6)
                 if not is_mobile:
                     lbl = "⚠️ 타기 직전!" if burn_r > 0.65 else "★ 완성! 터치!"
                     pt = pill_f.render(lbl, True, config.WHITE)
                     surface.blit(pt, pt.get_rect(center=bot_pill.center))
 
             elif slot.state == STATE_BURNT:
-                pygame.draw.rect(surface, (168, 32, 38), bot_pill, border_radius=6)
-                pygame.draw.rect(surface, config.RED, bot_pill, width=1, border_radius=6)
+                pygame.draw.rect(surface, (168, 32, 38), bot_pill, border_radius=8 if is_giant else 6)
+                pygame.draw.rect(surface, config.RED, bot_pill, width=1, border_radius=8 if is_giant else 6)
                 if not is_mobile:
                     pt = pill_f.render("🗑️ 터치 폐기", True, config.WHITE)
                     surface.blit(pt, pt.get_rect(center=bot_pill.center))
