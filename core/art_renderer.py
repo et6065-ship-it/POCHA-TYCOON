@@ -2821,12 +2821,15 @@ class ArtRenderer:
         pygame.draw.rect(surface, border_col, slot_rect, width=border_w, border_radius=10)
 
         # 2) 중앙 붕어 그래픽 좌표 계산
+        is_tall_slot = slot_rect.height >= 220
         fish_cx = slot_rect.centerx - 4
-        fish_cy = slot_rect.centery - 8
-        fish_rx = max(24, min(56, int(slot_rect.width * 0.34)))
-        fish_ry = max(16, min(34, int(slot_rect.height * 0.25)))
+        fish_cy = slot_rect.centery - (12 if is_tall_slot else 8)
+        fish_rx = max(24, min(72 if is_tall_slot else 56, int(slot_rect.width * 0.35)))
+        fish_ry = max(16, min(44 if is_tall_slot else 34, int(slot_rect.height * (0.21 if is_tall_slot else 0.25))))
 
-        f_sm = cls._get_font(11)
+        f_sm = cls._get_font(15 if is_tall_slot else 12)
+        pill_h = 30 if is_tall_slot else 19
+        pill_y = slot_rect.bottom - (pill_h + 8 if is_tall_slot else 24)
 
         if state == "IDLE":
             # 빈 무쇠 붕어 음각
@@ -2843,18 +2846,17 @@ class ArtRenderer:
                 time_tick=time_tick,
             )
             # 원작 하단 스크린샷처럼 빈 틀 한가운데 큼직한 키패드 번호(1~6) 각인
-            f_big_num = cls._get_font(22)
-            num_shadow = f_big_num.render(str(slot_index + 1), True, (22, 24, 30))
-            num_surf = f_big_num.render(str(slot_index + 1), True, (210, 218, 232))
-            surface.blit(num_shadow, num_shadow.get_rect(center=(fish_cx - 4, fish_cy + 2)))
-            surface.blit(num_surf, num_surf.get_rect(center=(fish_cx - 5, fish_cy + 1)))
+            f_big_num = cls._get_font(28 if is_tall_slot else 22)
+            num_surf = f_big_num.render(str(slot_index + 1), True, (235, 240, 252))
+            surface.blit(num_surf, num_surf.get_rect(center=(fish_cx - 4, fish_cy + 1)))
 
             # 하단 안내 배지
-            pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 24, slot_rect.width - 12, 18)
-            pygame.draw.rect(surface, (34, 38, 48), pill_rect, border_radius=6)
+            pill_rect = pygame.Rect(slot_rect.x + 6, pill_y, slot_rect.width - 12, pill_h)
+            pygame.draw.rect(surface, (24, 28, 42), pill_rect, border_radius=7)
+            pygame.draw.rect(surface, (112, 126, 168), pill_rect, width=1, border_radius=7)
             short_sel = selected_recipe_name.replace(" 붕어빵", "").strip() if selected_recipe_name else "반죽"
             lbl = f"🥣 터치: [{short_sel}] 붓기"
-            l_surf = f_sm.render(lbl, True, (218, 232, 255))
+            l_surf = f_sm.render(lbl, True, config.NEON_YELLOW if is_targeted else (238, 244, 255))
             surface.blit(l_surf, l_surf.get_rect(center=pill_rect.center))
 
         elif state == "COOKING":
@@ -2891,25 +2893,26 @@ class ArtRenderer:
                 if is_flip_ready:
                     # 뒤집기 타이밍! 반짝이는 화살표/연기 + 하단 강조 배지
                     burn_ratio = float(getattr(slot, "flip_burn_ratio", 0.0))
-                    pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 25, slot_rect.width - 12, 19)
+                    pill_rect = pygame.Rect(slot_rect.x + 6, pill_y, slot_rect.width - 12, pill_h)
                     bg_c = (218, 68, 38) if burn_ratio > 0.55 else (18, 128, 158)
-                    pygame.draw.rect(surface, bg_c, pill_rect, border_radius=6)
-                    pygame.draw.rect(surface, (255, 242, 148), pill_rect, width=1, border_radius=6)
-                    msg = "🔄 지금 터치해 뒤집기!" if burn_ratio <= 0.55 else "🔥 빨리 뒤집기! (타는 중)"
-                    m_surf = f_sm.render(msg, True, (255, 255, 255))
+                    pygame.draw.rect(surface, bg_c, pill_rect, border_radius=7)
+                    pygame.draw.rect(surface, (255, 242, 148), pill_rect, width=2 if is_tall_slot else 1, border_radius=7)
+                    msg = "🔄 지금 뒤집기!" if burn_ratio <= 0.55 else "🔥 빨리 뒤집기!"
+                    m_surf = f_sm.render(msg, True, config.NEON_YELLOW if burn_ratio <= 0.55 else config.WHITE)
                     surface.blit(m_surf, m_surf.get_rect(center=pill_rect.center))
                 else:
                     # 앞면 익는 중 진행바 (0% -> 50%를 0~100%로 환산 표시)
                     front_pct = min(1.0, float(getattr(slot, "progress", 0.0)) / 0.5)
-                    bar_rect = pygame.Rect(slot_rect.x + 8, slot_rect.bottom - 22, slot_rect.width - 16, 15)
-                    pygame.draw.rect(surface, (28, 32, 42), bar_rect, border_radius=5)
+                    bar_rect = pygame.Rect(slot_rect.x + 8, pill_y, slot_rect.width - 16, pill_h - 2)
+                    pygame.draw.rect(surface, (24, 28, 38), bar_rect, border_radius=6)
                     fill_w = max(4, int((bar_rect.width - 2) * front_pct))
                     pygame.draw.rect(
                         surface,
                         (242, 178, 54),
                         pygame.Rect(bar_rect.x + 1, bar_rect.y + 1, fill_w, bar_rect.height - 2),
-                        border_radius=4,
+                        border_radius=5,
                     )
+                    pygame.draw.rect(surface, (180, 172, 198), bar_rect, width=1, border_radius=6)
                     p_surf = f_sm.render(f"🥣 앞면 굽기 {int(front_pct * 100)}%", True, (255, 255, 255))
                     surface.blit(p_surf, p_surf.get_rect(center=bar_rect.center))
             else:
@@ -2926,23 +2929,26 @@ class ArtRenderer:
                     time_tick=time_tick,
                 )
                 back_pct = max(0.0, min(1.0, (float(getattr(slot, "progress", 0.5)) - 0.5) / 0.5))
-                bar_rect = pygame.Rect(slot_rect.x + 8, slot_rect.bottom - 22, slot_rect.width - 16, 15)
-                pygame.draw.rect(surface, (28, 32, 42), bar_rect, border_radius=5)
+                bar_rect = pygame.Rect(slot_rect.x + 8, pill_y, slot_rect.width - 16, pill_h - 2)
+                pygame.draw.rect(surface, (24, 28, 38), bar_rect, border_radius=6)
                 fill_w = max(4, int((bar_rect.width - 2) * back_pct))
                 pygame.draw.rect(
                     surface,
                     (255, 142, 42),
                     pygame.Rect(bar_rect.x + 1, bar_rect.y + 1, fill_w, bar_rect.height - 2),
-                    border_radius=4,
+                    border_radius=5,
                 )
+                pygame.draw.rect(surface, (180, 172, 198), bar_rect, width=1, border_radius=6)
                 p_surf = f_sm.render(f"♨ 뒷면 굽기 {int(back_pct * 100)}%", True, (255, 255, 255))
                 surface.blit(p_surf, p_surf.get_rect(center=bar_rect.center))
 
             # 우측 상단 취소(✕) 배지
-            cancel_rect = pygame.Rect(slot_rect.right - 24, slot_rect.y + 4, 20, 18)
-            pygame.draw.rect(surface, (158, 42, 48), cancel_rect, border_radius=5)
-            pygame.draw.rect(surface, (255, 188, 188), cancel_rect, width=1, border_radius=5)
-            x_surf = f_sm.render("✕", True, (255, 240, 240))
+            cw = 30 if is_tall_slot else 20
+            ch = 28 if is_tall_slot else 18
+            cancel_rect = pygame.Rect(slot_rect.right - cw - 6, slot_rect.y + 5, cw, ch)
+            pygame.draw.rect(surface, (178, 42, 48), cancel_rect, border_radius=6)
+            pygame.draw.rect(surface, (255, 210, 210), cancel_rect, width=1, border_radius=6)
+            x_surf = f_sm.render("✕", True, (255, 255, 255))
             surface.blit(x_surf, x_surf.get_rect(center=cancel_rect.center))
 
         elif state == "READY":
@@ -2966,10 +2972,10 @@ class ArtRenderer:
             cls._draw_tycoon_sparkle_star(surface, fish_cx - fish_rx + 8, fish_cy + fish_ry - 2, max(5, star_pulse - 2))
             cls._draw_tycoon_sparkle_star(surface, fish_cx + fish_rx - 6, fish_cy + fish_ry - 2, star_pulse)
 
-            pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 24, slot_rect.width - 12, 18)
-            pygame.draw.rect(surface, (34, 148, 72), pill_rect, border_radius=6)
-            pygame.draw.rect(surface, (255, 232, 92), pill_rect, width=1, border_radius=6)
-            r_surf = f_sm.render("★ 황금 완성! 꺼내기!", True, (255, 255, 255))
+            pill_rect = pygame.Rect(slot_rect.x + 6, pill_y, slot_rect.width - 12, pill_h)
+            pygame.draw.rect(surface, (28, 138, 64), pill_rect, border_radius=7)
+            pygame.draw.rect(surface, (255, 232, 92), pill_rect, width=2 if is_tall_slot else 1, border_radius=7)
+            r_surf = f_sm.render("★ 황금 완성! 꺼내기!", True, config.NEON_YELLOW)
             surface.blit(r_surf, r_surf.get_rect(center=pill_rect.center))
 
         elif state == "BURNT":
@@ -2991,16 +2997,18 @@ class ArtRenderer:
             pygame.draw.circle(surface, (92, 96, 108), (fish_cx - 8, smoke_y), 5)
             pygame.draw.circle(surface, (112, 116, 128), (fish_cx + 10, smoke_y - 3), 4)
 
-            pill_rect = pygame.Rect(slot_rect.x + 6, slot_rect.bottom - 24, slot_rect.width - 12, 18)
-            pygame.draw.rect(surface, (168, 38, 44), pill_rect, border_radius=6)
+            pill_rect = pygame.Rect(slot_rect.x + 6, pill_y, slot_rect.width - 12, pill_h)
+            pygame.draw.rect(surface, (168, 38, 44), pill_rect, border_radius=7)
             b_surf = f_sm.render("💀 숯검댕이! 버리기", True, (255, 236, 236))
             surface.blit(b_surf, b_surf.get_rect(center=pill_rect.center))
 
         # 좌측 상단 슬롯 번호 & 현재 담긴 속재료 미니 배지
-        num_badge = pygame.Rect(slot_rect.x + 5, slot_rect.y + 4, 22, 17)
-        pygame.draw.rect(surface, (32, 36, 46), num_badge, border_radius=4)
-        pygame.draw.rect(surface, (148, 156, 176), num_badge, width=1, border_radius=4)
-        nb_surf = f_sm.render(str(slot_index + 1), True, (238, 242, 250))
+        nw = 30 if is_tall_slot else 22
+        nh = 24 if is_tall_slot else 17
+        num_badge = pygame.Rect(slot_rect.x + 5, slot_rect.y + 5, nw, nh)
+        pygame.draw.rect(surface, (28, 32, 44), num_badge, border_radius=5)
+        pygame.draw.rect(surface, (164, 172, 196), num_badge, width=1, border_radius=5)
+        nb_surf = f_sm.render(str(slot_index + 1), True, (255, 255, 255))
         surface.blit(nb_surf, nb_surf.get_rect(center=num_badge.center))
 
         if state != "IDLE" and recipe_name:

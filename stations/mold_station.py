@@ -279,7 +279,7 @@ class MoldStation(BaseStation):
                 surface.blit(xt, xt.get_rect(center=cancel_badge.center))
 
         # 하단 레시피 선택/투입 버튼 렌더링
-        font_btn = config.get_font(20 if is_giant else 15, bold=True)
+        font_btn = config.get_font(22 if is_giant else 15, bold=True)
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             is_sel = idx == self.selected_recipe_index
             bg_col = (235, 118, 32) if is_sel else (54, 72, 116)
@@ -287,20 +287,25 @@ class MoldStation(BaseStation):
             pygame.draw.rect(surface, bg_col, btn_rect, border_radius=12 if is_giant else 10)
             pygame.draw.rect(surface, border_col, btn_rect, width=3 if is_sel else 2, border_radius=12 if is_giant else 10)
 
-            icon_pos = (btn_rect.centerx, btn_rect.y + (44 if is_giant else 22))
-            draw_food_icon(surface, icon_pos, rid, size=68 if is_giant else (40 if is_mobile else 38), burnt=False)
+            icon_pos = (btn_rect.centerx, btn_rect.y + (42 if is_giant else 22))
+            draw_food_icon(surface, icon_pos, rid, size=70 if is_giant else (40 if is_mobile else 38), burnt=False)
 
             rec = RECIPES.get(rid)
             r_name = str(rec["name"]) if rec else rid
             active_f = font_btn
-            sz_candidates = (20, 18, 17, 16, 15) if is_giant else (14, 13, 12, 11)
+            sz_candidates = (22, 20, 18, 17, 16) if is_giant else (14, 13, 12, 11)
             for f_sz in sz_candidates:
-                if active_f.size(r_name)[0] <= btn_rect.width - (16 if is_giant else 8):
+                if active_f.size(r_name)[0] <= btn_rect.width - (20 if is_giant else 8):
                     break
                 active_f = config.get_font(f_sz, bold=True)
-            sh_surf = active_f.render(r_name, True, (18, 12, 24))
-            txt_surf = active_f.render(r_name, True, config.WHITE)
-            tx = btn_rect.centerx - txt_surf.get_width() // 2
-            ty = btn_rect.bottom - (36 if is_giant else 22)
-            surface.blit(sh_surf, (tx + 1, ty + 1))
-            surface.blit(txt_surf, (tx, ty))
+            if is_giant:
+                lbl_pill = pygame.Rect(btn_rect.x + 8, btn_rect.bottom - 44, btn_rect.width - 16, 36)
+                pygame.draw.rect(surface, (18, 15, 28), lbl_pill, border_radius=8)
+                pygame.draw.rect(surface, config.GOLD if is_sel else (112, 128, 178), lbl_pill, width=1, border_radius=8)
+                txt_surf = active_f.render(r_name, True, config.NEON_YELLOW if is_sel else config.WHITE)
+                surface.blit(txt_surf, txt_surf.get_rect(center=lbl_pill.center))
+            else:
+                txt_surf = active_f.render(r_name, True, config.WHITE)
+                tx = btn_rect.centerx - txt_surf.get_width() // 2
+                ty = btn_rect.bottom - 22
+                surface.blit(txt_surf, (tx, ty))

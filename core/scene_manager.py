@@ -1513,9 +1513,10 @@ class SceneManager:
         card_w = (area.width - 16 - (max_slots - 1) * gap) // max_slots
         card_h = area.height - 14
 
-        name_f = config.get_font(15 if max_slots <= 3 else 13, bold=True)
-        top_f = config.get_font(13 if max_slots <= 3 else 11, bold=True)
-        badge_f = config.get_font(12, bold=True)
+        name_f = config.get_font(18 if max_slots <= 3 else 15, bold=True)
+        row_name_f = config.get_font(16 if max_slots <= 3 else 14, bold=True)
+        top_f = config.get_font(15 if max_slots <= 3 else 13, bold=True)
+        badge_f = config.get_font(14 if max_slots <= 3 else 12, bold=True)
 
         for idx in range(max_slots):
             cx = area.x + 8 + idx * (card_w + gap)
@@ -1525,27 +1526,27 @@ class SceneManager:
 
             if cust is None:
                 pygame.draw.rect(portrait_surf, (22, 18, 36), crect, border_radius=10)
-                pygame.draw.rect(portrait_surf, (52, 46, 76), crect, width=1, border_radius=10)
-                empty_s = badge_f.render("손님 대기석", True, config.TEXT_SECONDARY)
+                pygame.draw.rect(portrait_surf, (58, 52, 86), crect, width=2, border_radius=10)
+                empty_s = top_f.render("손님 대기석", True, config.TEXT_SECONDARY)
                 portrait_surf.blit(empty_s, empty_s.get_rect(center=crect.center))
                 continue
 
             p_ratio = max(0.0, min(1.0, float(getattr(cust, "patience_ratio", 1.0))))
             is_vip = bool(getattr(cust, "is_vip", False))
-            b_col = config.GOLD if is_vip else (config.PATIENCE_LOW if p_ratio < 0.28 else config.UI_BORDER)
+            b_col = config.GOLD if is_vip else (config.PATIENCE_LOW if p_ratio < 0.28 else config.NEON_CYAN)
             pygame.draw.rect(portrait_surf, (28, 24, 46), crect, border_radius=10)
             pygame.draw.rect(portrait_surf, b_col, crect, width=2, border_radius=10)
 
-            # 1) 상단 주문 말풍선 카드: cust.initial_orders / cust.orders 실제 데이터 연동
+            # 1) 상단 주문 말풍선 카드: 고대비 다크 카드 + 큼직한 외곽선 볼드 폰트로 시인성 극대화
             init_orders = list(getattr(cust, "initial_orders", []) or getattr(cust, "orders", []) or [])
             rem_orders = list(getattr(cust, "orders", []) or [])
             done_pool = list(getattr(cust, "completed_orders", []) or [])
             if not init_orders and rem_orders:
                 init_orders = list(rem_orders)
 
-            bub_r = pygame.Rect(crect.x + 6, crect.y + 6, crect.width - 12, 126)
-            pygame.draw.rect(portrait_surf, (248, 244, 232), bub_r, border_radius=9)
-            pygame.draw.rect(portrait_surf, config.GOLD if is_vip else (72, 62, 96), bub_r, width=2, border_radius=9)
+            bub_r = pygame.Rect(crect.x + 5, crect.y + 5, crect.width - 10, 140)
+            pygame.draw.rect(portrait_surf, (18, 15, 32), bub_r, border_radius=10)
+            pygame.draw.rect(portrait_surf, config.GOLD if is_vip else (110, 98, 156), bub_r, width=2, border_radius=10)
 
             if len(init_orders) <= 1:
                 rec_id = str(init_orders[0]) if init_orders else "bungeoppang_redbean"
@@ -1554,58 +1555,61 @@ class SceneManager:
                 toppings = list(rec_data.get("required_toppings", []) or [])
                 price_val = int(rec_data.get("sell_price", rec_data.get("base_price", 1500)))
 
-                art_renderer.draw_food_icon(portrait_surf, (bub_r.x + 30, bub_r.y + 34), rec_id, size=48)
-                nm_s = name_f.render(rec_name[:12], True, (24, 18, 34))
-                portrait_surf.blit(nm_s, (bub_r.x + 58, bub_r.y + 10))
+                art_renderer.draw_food_icon(portrait_surf, (bub_r.x + 32, bub_r.y + 38), rec_id, size=52)
+                nm_s = name_f.render(rec_name[:11], True, config.WHITE)
+                portrait_surf.blit(nm_s, (bub_r.x + 60, bub_r.y + 10))
 
-                pr_s = badge_f.render(f"💰 {price_val:,}원", True, (168, 78, 18))
-                portrait_surf.blit(pr_s, (bub_r.x + 58, bub_r.y + 34))
+                pr_s = top_f.render(f"💰 {price_val:,}원", True, config.GOLD)
+                portrait_surf.blit(pr_s, (bub_r.x + 60, bub_r.y + 40))
 
-                tp_pill = pygame.Rect(bub_r.x + 6, bub_r.bottom - 52, bub_r.width - 12, 26)
+                tp_pill = pygame.Rect(bub_r.x + 6, bub_r.bottom - 58, bub_r.width - 12, 32)
                 if toppings:
                     t_names = [f"+{TOPPINGS.get(t, {}).get('short_name', TOPPINGS.get(t, {}).get('name', t))}" for t in toppings[:2]]
                     t_str = " ".join(t_names)
-                    pygame.draw.rect(portrait_surf, (42, 32, 64), tp_pill, border_radius=6)
-                    tp_s = top_f.render(t_str[:18], True, config.NEON_YELLOW)
+                    pygame.draw.rect(portrait_surf, (58, 36, 86), tp_pill, border_radius=7)
+                    pygame.draw.rect(portrait_surf, config.NEON_YELLOW, tp_pill, width=1, border_radius=7)
+                    tp_s = top_f.render(t_str[:16], True, config.NEON_YELLOW)
                     portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
                 else:
-                    pygame.draw.rect(portrait_surf, (226, 220, 206), tp_pill, border_radius=6)
-                    tp_s = badge_f.render("기본맛 (즉시서빙)", True, (76, 68, 92))
+                    pygame.draw.rect(portrait_surf, (32, 52, 48), tp_pill, border_radius=7)
+                    pygame.draw.rect(portrait_surf, config.NEON_GREEN, tp_pill, width=1, border_radius=7)
+                    tp_s = badge_f.render("기본맛 · 즉시서빙", True, config.NEON_GREEN)
                     portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
             else:
                 # 2개 이상 주문 손님(직장인/VIP: 메인 안주 + 음료 등)
                 for o_idx, r_id in enumerate(init_orders[:2]):
-                    row_y = bub_r.y + 6 + o_idx * 48
-                    row_r = pygame.Rect(bub_r.x + 5, row_y, bub_r.width - 10, 44)
+                    row_y = bub_r.y + 6 + o_idx * 54
+                    row_r = pygame.Rect(bub_r.x + 5, row_y, bub_r.width - 10, 50)
                     is_done = False
                     if r_id in done_pool:
                         is_done = True
                         done_pool.remove(r_id)
 
-                    row_bg = (214, 242, 220) if is_done else (238, 232, 218)
-                    pygame.draw.rect(portrait_surf, row_bg, row_r, border_radius=6)
-                    pygame.draw.rect(portrait_surf, (80, 168, 96) if is_done else (196, 186, 168), row_r, width=1, border_radius=6)
+                    row_bg = (24, 58, 38) if is_done else (34, 28, 58)
+                    row_bdr = config.NEON_GREEN if is_done else (92, 82, 134)
+                    pygame.draw.rect(portrait_surf, row_bg, row_r, border_radius=7)
+                    pygame.draw.rect(portrait_surf, row_bdr, row_r, width=1, border_radius=7)
 
                     r_data = RECIPES.get(r_id, {})
                     r_name = str(r_data.get("short_name") or r_data.get("name") or r_id)
                     r_tops = list(r_data.get("required_toppings", []) or [])
                     r_price = int(r_data.get("sell_price", r_data.get("base_price", 1500)))
 
-                    art_renderer.draw_food_icon(portrait_surf, (row_r.x + 20, row_r.centery), r_id, size=34)
-                    rn_s = top_f.render(r_name[:12], True, (24, 18, 34))
-                    portrait_surf.blit(rn_s, (row_r.x + 40, row_r.y + 4))
+                    art_renderer.draw_food_icon(portrait_surf, (row_r.x + 22, row_r.centery), r_id, size=38)
+                    rn_s = row_name_f.render(r_name[:11], True, config.WHITE)
+                    portrait_surf.blit(rn_s, (row_r.x + 42, row_r.y + 3))
 
                     if is_done:
-                        st_s = badge_f.render("✓ 서빙완료", True, (28, 128, 52))
+                        st_s = badge_f.render("✓ 서빙완료", True, config.NEON_GREEN)
                     elif r_tops:
                         t_short = " ".join(f"+{TOPPINGS.get(t, {}).get('short_name', TOPPINGS.get(t, {}).get('name', t))}" for t in r_tops[:2])
-                        st_s = badge_f.render(t_short[:16], True, (148, 52, 16))
+                        st_s = badge_f.render(t_short[:15], True, config.NEON_YELLOW)
                     else:
-                        st_s = badge_f.render(f"{r_price:,}원", True, (148, 78, 18))
-                    portrait_surf.blit(st_s, (row_r.x + 40, row_r.y + 23))
+                        st_s = badge_f.render(f"💰 {r_price:,}원", True, config.GOLD)
+                    portrait_surf.blit(st_s, (row_r.x + 42, row_r.y + 26))
 
             # 인내심 게이지 바
-            p_bar = pygame.Rect(bub_r.x + 8, bub_r.bottom - 18, bub_r.width - 16, 10)
+            p_bar = pygame.Rect(bub_r.x + 8, bub_r.bottom - 18, bub_r.width - 16, 11)
             pygame.draw.rect(portrait_surf, (40, 36, 52), p_bar, border_radius=5)
             p_col = config.PATIENCE_HIGH if p_ratio > 0.5 else (config.PATIENCE_MID if p_ratio > 0.25 else config.PATIENCE_LOW)
             pw = int(p_bar.width * p_ratio)
@@ -1613,12 +1617,12 @@ class SceneManager:
                 pygame.draw.rect(portrait_surf, p_col, (p_bar.x, p_bar.y, pw, p_bar.height), border_radius=5)
 
             # 2) 하단 손님 도트 캐릭터 & VIP/손님 유형 배지
-            av_r = pygame.Rect(crect.centerx - 30, crect.bottom - 82, 60, 74)
+            av_r = pygame.Rect(crect.centerx - 28, crect.bottom - 72, 56, 66)
             mood = cust.get_mood() if hasattr(cust, "get_mood") else getattr(cust, "mood", "NORMAL")
             c_type = getattr(cust, "customer_type", "student")
             art_renderer.draw_customer(portrait_surf, av_r, customer_type=c_type, mood=mood, time_tick=self._loading_tick)
             if is_vip:
-                vip_b = pygame.Rect(crect.x + 6, crect.bottom - 26, 54, 20)
+                vip_b = pygame.Rect(crect.x + 6, crect.bottom - 28, 62, 22)
                 pygame.draw.rect(portrait_surf, (218, 148, 24), vip_b, border_radius=6)
                 vs = badge_f.render("👑VIP", True, config.WHITE)
                 portrait_surf.blit(vs, vs.get_rect(center=vip_b.center))
@@ -1779,14 +1783,14 @@ class SceneManager:
             art_renderer.draw_alpha_overlay(portrait_surf, hdr_r, (26, 20, 44, 238), border_radius=16)
             pygame.draw.rect(portrait_surf, config.GOLD, hdr_r, width=2, border_radius=16)
             tf = config.get_font(26, bold=True)
-            sub_f = config.get_font(15, bold=True)
+            sub_f = config.get_font(16, bold=True)
             t_s = tf.render("🏮 전세계 길거리 음식 포차 타이쿤 🏮", True, (255, 238, 120))
             s_s = sub_f.render("9개국 32인 마스터 월드 스트리트 푸드 투어", True, config.NEON_CYAN)
             portrait_surf.blit(t_s, t_s.get_rect(center=(360, 96)))
             portrait_surf.blit(s_s, s_s.get_rect(center=(360, 138)))
 
             # 상단 카드 전환 바 ([◀] + 4개 카드 탭 + [▶])
-            nav_f = config.get_font(16, bold=True)
+            nav_f = config.get_font(17, bold=True)
             arrow_f = config.get_font(22, bold=True)
             for ar_rect, ar_lbl in ((pygame.Rect(12, 182, 56, 60), "◀"), (pygame.Rect(652, 182, 56, 60), "▶")):
                 pygame.draw.rect(portrait_surf, (48, 40, 76), ar_rect, border_radius=10)
@@ -1811,7 +1815,7 @@ class SceneManager:
                 portrait_surf.blit(ts, ts.get_rect(center=pill_r.center))
 
             # 하단 유틸리티 버튼 1열/2열: 선명한 한글+아이콘 버튼 오버레이
-            btn_f = config.get_font(17, bold=True)
+            btn_f = config.get_font(18, bold=True)
             row1_bg = pygame.Rect(12, 994, 696, 72)
             pygame.draw.rect(portrait_surf, (18, 15, 30), row1_bg, border_radius=12)
             r1_btns = [
@@ -1854,10 +1858,10 @@ class SceneManager:
         elif self.current_scene_name in ("play", "duel_play"):
             from stations.base_station import STATE_COOKING, STATE_READY
             sc = self.current_scene
-            hf = config.get_font(18, bold=True)
-            btn_f = config.get_font(17, bold=True)
-            tab_f = config.get_font(15, bold=True)
-            badge_f = config.get_font(12, bold=True)
+            hf = config.get_font(20, bold=True)
+            btn_f = config.get_font(18, bold=True)
+            tab_f = config.get_font(16, bold=True)
+            badge_f = config.get_font(13, bold=True)
 
             # 1열 좌측: 모드·국가·일차 & 자산
             hud_left = pygame.Rect(8, 8, 448, 48)
@@ -1983,7 +1987,7 @@ class SceneManager:
                 pygame.draw.rect(portrait_surf, bdr, tr, width=3 if is_act else 2, border_radius=10)
 
                 tt_s = tab_f.render(t_title, True, config.WHITE if is_act else config.TEXT_PRIMARY)
-                ts_s = badge_f.render(t_sub, True, config.WHITE if is_act else t_scol)
+                ts_s = badge_f.render(t_sub, True, config.NEON_YELLOW if is_act else t_scol)
                 portrait_surf.blit(tt_s, tt_s.get_rect(center=(tr.centerx, tr.y + 22)))
                 portrait_surf.blit(ts_s, ts_s.get_rect(center=(tr.centerx, tr.y + 48)))
 

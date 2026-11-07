@@ -379,12 +379,12 @@ UI_BUTTON_HOVER: Tuple[int, int, int] = (98, 88, 132)
 UI_BUTTON_ACTIVE: Tuple[int, int, int] = (232, 108, 42)
 UI_DISABLED: Tuple[int, int, int] = (68, 68, 76)
 
-TEXT_PRIMARY: Tuple[int, int, int] = (250, 246, 238)
-TEXT_SECONDARY: Tuple[int, int, int] = (196, 190, 208)
-TEXT_MUTED: Tuple[int, int, int] = (132, 126, 148)
-TEXT_GOLD: Tuple[int, int, int] = (255, 215, 64)
-TEXT_WARNING: Tuple[int, int, int] = (255, 108, 52)
-TEXT_SUCCESS: Tuple[int, int, int] = (82, 235, 118)
+TEXT_PRIMARY: Tuple[int, int, int] = (255, 255, 255)
+TEXT_SECONDARY: Tuple[int, int, int] = (224, 220, 238)
+TEXT_MUTED: Tuple[int, int, int] = (176, 170, 196)
+TEXT_GOLD: Tuple[int, int, int] = (255, 222, 68)
+TEXT_WARNING: Tuple[int, int, int] = (255, 116, 56)
+TEXT_SUCCESS: Tuple[int, int, int] = (88, 245, 126)
 
 # 게이지 색상 (조리 진행도 / 타는 시간 / 손님 인내심)
 GAUGE_BG: Tuple[int, int, int] = (34, 34, 42)
@@ -722,10 +722,14 @@ sanitize_text = sanitize_font_text
 
 
 class SafeKoreanFont(pygame.font.Font):
-    """이모지/미지원 특수문자를 자동 치환하고 렌더링 결과를 캐싱하여 고속 렌더링을 보장하는 Font 서브클래스."""
+    """
+    이모지/미지원 특수문자를 자동 치환하고, 배경 대비를 극대화하는 외곽선(Stroke)·드롭섀도우를
+    자동 합성하여 모바일/PC 어디서든 최상의 한글 시인성을 보장하는 Font 서브클래스.
+    """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, extra_bold: bool = False, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self._extra_bold: bool = bool(extra_bold)
         self._render_cache: Dict[Tuple[str, bool, Tuple[int, ...], Optional[Tuple[int, ...]]], pygame.Surface] = {}
         self._size_cache: Dict[str, Tuple[int, int]] = {}
 
@@ -761,12 +765,38 @@ class SafeKoreanFont(pygame.font.Font):
             return cached
 
         clean_text = sanitize_font_text(s)
-        if b_key is None:
-            surf = super().render(clean_text, antialias, c_key)
+        if b_key is not None or not clean_text.strip():
+            if b_key is None:
+                surf = super().render(clean_text, True, c_key)
+            else:
+                surf = super().render(clean_text, True, c_key, b_key)
         else:
-            surf = super().render(clean_text, antialias, c_key, b_key)
+            fg = super().render(clean_text, True, c_key)
+            fw, fh = fg.get_size()
+            lum = 0.299 * c_key[0] + 0.587 * c_key[1] + 0.114 * c_key[2]
+            pad_x = 3 if self._extra_bold else 2
+            surf = pygame.Surface((fw + pad_x, fh + 2), pygame.SRCALPHA)
 
-        if len(self._render_cache) > 1200:
+            if lum >= 105.0:
+                # 밝은 텍스트(어두운 배경/버튼 위): 선명한 다크 스트로크 외곽선 + 드롭섀도우로 시인성 극대화
+                outline = super().render(clean_text, True, (8, 6, 16))
+                for ox, oy in ((0, 1), (2, 1), (1, 0), (1, 2), (2, 2)):
+                    surf.blit(outline, (ox, oy))
+                if self._extra_bold:
+                    surf.blit(outline, (3, 1))
+                    surf.blit(outline, (3, 2))
+                surf.blit(fg, (1, 1))
+                if self._extra_bold:
+                    surf.blit(fg, (2, 1))
+            else:
+                # 어두운 텍스트(밝은 크림색 말풍선 위): 하이라이트 림 + 볼드 중첩으로 글자 획 선명도 강화
+                hl = super().render(clean_text, True, (255, 253, 246))
+                surf.blit(hl, (1, 2))
+                surf.blit(fg, (1, 1))
+                if self._extra_bold:
+                    surf.blit(fg, (2, 1))
+
+        if len(self._render_cache) > 1400:
             self._render_cache.clear()
         self._render_cache[cache_key] = surf
         return surf
@@ -776,15 +806,17 @@ class SafeKoreanFont(pygame.font.Font):
         cached = self._size_cache.get(s)
         if cached is not None:
             return cached
-        res = super().size(sanitize_font_text(s))
-        if len(self._size_cache) > 1200:
+        w, h = super().size(sanitize_font_text(s))
+        pad_x = 3 if self._extra_bold else 2
+        res = (w + pad_x, h + 2)
+        if len(self._size_cache) > 1400:
             self._size_cache.clear()
         self._size_cache[s] = res
         return res
 
 
 def _find_korean_font_paths() -> Tuple[Optional[str], Optional[str]]:
-    """Windows 시스템 폰트 디렉토리에서 한글 지원 폰트 파일 경로를 탐색한다."""
+    """번들 및 시스템 폰트 디렉토리에서 고시인성 볼드 한글 폰트 파일 경로를 우선 탐색한다."""
     global _RESOLVED_FONT_PATH, _RESOLVED_FONT_BOLD_PATH, _FONT_SEARCH_DONE
     if _FONT_SEARCH_DONE:
         return _RESOLVED_FONT_PATH, _RESOLVED_FONT_BOLD_PATH
@@ -800,7 +832,10 @@ def _find_korean_font_paths() -> Tuple[Optional[str], Optional[str]]:
         else ""
     )
 
+    # 얇은 기본 폰트 대신 획이 굵고 또렷한 NanumGothicBold / malgunbd를 기본 폰트로도 최우선 사용
     regular_candidates = [
+        "NanumGothicBold.ttf",
+        "malgunbd.ttf",
         "NanumGothic.ttf",
         "malgun.ttf",
         "gulim.ttc",
@@ -833,7 +868,8 @@ def _find_korean_font_paths() -> Tuple[Optional[str], Optional[str]]:
 
     if _RESOLVED_FONT_PATH is None:
         matched = pygame.font.match_font(
-            ["malgungothic", "malgun gothic", "맑은 고딕", "nanumgothic", "gulim", "dotum"]
+            ["malgungothic", "malgun gothic", "맑은 고딕", "nanumgothic", "gulim", "dotum"],
+            bold=True,
         )
         if matched and os.path.isfile(matched):
             _RESOLVED_FONT_PATH = matched
@@ -854,14 +890,21 @@ def _find_korean_font_paths() -> Tuple[Optional[str], Optional[str]]:
 
 def get_font(size: int, bold: bool = False) -> pygame.font.Font:
     """
-    지정된 크기와 굵기의 한글 지원 Pygame Font 객체를 캐싱하여 반환한다.
-    번들 폰트(NanumGothic) 및 시스템 폰트를 우선 탐색하며, 폴백 시에도 SafeKoreanFont로 감싸서 반환한다.
+    지정된 크기와 굵기의 고시인성 한글 지원 Pygame Font 객체를 캐싱하여 반환한다.
+    작은 크기의 텍스트도 모바일/고해상도에서 잘 보이도록 최소 크기 보정 및 외곽선 렌더링을 적용한다.
     """
     if not pygame.font.get_init():
         pygame.font.init()
 
-    size = max(8, int(size))
-    cache_key = (size, bool(bold))
+    raw_size = max(10, int(size))
+    if raw_size <= 11:
+        eff_size = raw_size + 2
+    elif raw_size <= 14:
+        eff_size = raw_size + 1
+    else:
+        eff_size = raw_size
+
+    cache_key = (eff_size, bool(bold))
     if cache_key in _FONT_CACHE:
         return _FONT_CACHE[cache_key]
 
@@ -871,9 +914,7 @@ def get_font(size: int, bold: bool = False) -> pygame.font.Font:
     font_obj: Optional[pygame.font.Font] = None
     if target_path and os.path.isfile(target_path):
         try:
-            font_obj = SafeKoreanFont(target_path, size)
-            if bold and target_path == reg_path and not target_path.lower().endswith("bd.ttf"):
-                font_obj.set_bold(True)
+            font_obj = SafeKoreanFont(target_path, eff_size, extra_bold=bool(bold))
         except Exception:
             font_obj = None
 
@@ -881,16 +922,14 @@ def get_font(size: int, bold: bool = False) -> pygame.font.Font:
         try:
             matched_sys = pygame.font.match_font(
                 ["malgungothic", "malgun gothic", "맑은 고딕", "nanumgothic", "gulim", "arial"],
-                bold=bold,
+                bold=True,
             )
             if matched_sys and os.path.isfile(matched_sys):
-                font_obj = SafeKoreanFont(matched_sys, size)
+                font_obj = SafeKoreanFont(matched_sys, eff_size, extra_bold=bool(bold))
             else:
-                font_obj = SafeKoreanFont(None, size)
-            if bold:
-                font_obj.set_bold(True)
+                font_obj = SafeKoreanFont(None, eff_size, extra_bold=bool(bold))
         except Exception:
-            font_obj = SafeKoreanFont(None, size)
+            font_obj = SafeKoreanFont(None, eff_size, extra_bold=bool(bold))
 
     _FONT_CACHE[cache_key] = font_obj
     return font_obj

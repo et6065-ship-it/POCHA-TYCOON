@@ -279,23 +279,23 @@ class StationSlot:
         is_giant_slot = r.width >= 180 and r.height >= 160
         if is_giant_slot:
             if self.state == STATE_IDLE:
-                plus_rad = min(38, max(24, min(r.width, r.height) // 5))
-                circle_c = (r.centerx, r.centery - 18)
+                plus_rad = min(40, max(26, min(r.width, r.height) // 5))
+                circle_c = (r.centerx, r.centery - 20)
                 pygame.draw.circle(surface, (28, 24, 42), circle_c, plus_rad)
-                pygame.draw.circle(surface, (148, 138, 196), circle_c, plus_rad, width=3)
+                pygame.draw.circle(surface, (164, 152, 214), circle_c, plus_rad, width=3)
                 arm = max(10, plus_rad - 12)
                 pygame.draw.line(surface, config.WHITE, (circle_c[0] - arm, circle_c[1]), (circle_c[0] + arm, circle_c[1]), 4)
                 pygame.draw.line(surface, config.WHITE, (circle_c[0], circle_c[1] - arm), (circle_c[0], circle_c[1] + arm), 4)
 
                 clean_lbl = empty_label.replace("클릭", "터치")
-                f_idle = config.get_font(17, bold=True)
-                lbl_s = f_idle.render(clean_lbl, True, (238, 234, 252))
+                f_idle = config.get_font(20, bold=True)
+                lbl_s = f_idle.render(clean_lbl, True, config.WHITE)
                 if lbl_s.get_width() > r.width - 16:
-                    lbl_s = config.get_font(15, bold=True).render(clean_lbl, True, (238, 234, 252))
-                pill_w = min(r.width - 12, lbl_s.get_width() + 24)
-                pill_r = pygame.Rect(r.centerx - pill_w // 2, circle_c[1] + plus_rad + 14, pill_w, 36)
-                pygame.draw.rect(surface, (26, 22, 38), pill_r, border_radius=10)
-                pygame.draw.rect(surface, (124, 114, 168), pill_r, width=2, border_radius=10)
+                    lbl_s = config.get_font(17, bold=True).render(clean_lbl, True, config.WHITE)
+                pill_w = min(r.width - 12, lbl_s.get_width() + 26)
+                pill_r = pygame.Rect(r.centerx - pill_w // 2, circle_c[1] + plus_rad + 14, pill_w, 40)
+                pygame.draw.rect(surface, (24, 20, 38), pill_r, border_radius=10)
+                pygame.draw.rect(surface, (148, 138, 198), pill_r, width=2, border_radius=10)
                 surface.blit(lbl_s, lbl_s.get_rect(center=pill_r.center))
                 return
 
@@ -303,19 +303,19 @@ class StationSlot:
                 rec = RECIPES.get(self.recipe_id)
                 r_nm = str(rec.get("name", self.recipe_id)) if rec else str(self.recipe_id)
                 tag_w = (r.width - 56) if self.state == STATE_COOKING else (r.width - 16)
-                name_tag = pygame.Rect(r.x + 8, r.y + 8, max(60, tag_w), 34)
-                pygame.draw.rect(surface, (18, 15, 28), name_tag, border_radius=8)
-                pygame.draw.rect(surface, config.GOLD if self.state == STATE_READY else config.UI_BORDER, name_tag, width=1, border_radius=8)
-                nf = config.get_font(18, bold=True)
-                for f_sz in (18, 17, 16, 15, 14):
+                name_tag = pygame.Rect(r.x + 8, r.y + 8, max(60, tag_w), 40)
+                pygame.draw.rect(surface, (16, 13, 26), name_tag, border_radius=9)
+                pygame.draw.rect(surface, config.GOLD if self.state == STATE_READY else (128, 118, 176), name_tag, width=2, border_radius=9)
+                nf = config.get_font(21, bold=True)
+                for f_sz in (21, 19, 18, 16, 15):
                     nf = config.get_font(f_sz, bold=True)
                     if nf.size(r_nm)[0] <= name_tag.width - 10:
                         break
                 ns = nf.render(r_nm, True, config.GOLD if self.state == STATE_READY else config.WHITE)
                 surface.blit(ns, ns.get_rect(center=name_tag.center))
 
-            icon_size = min(104, max(64, min(r.width, r.height) - 96))
-            icon_center = (r.centerx, r.centery - 8)
+            icon_size = min(108, max(68, min(r.width, r.height) - 96))
+            icon_center = (r.centerx, r.centery - 6)
             if self.state == STATE_READY:
                 glow_col = config.GAUGE_WARNING if (self.can_burn and self.burn_progress >= 0.65) else config.GOLD
                 pygame.draw.circle(surface, glow_col, icon_center, icon_size // 2 + 8, width=4)
@@ -329,8 +329,8 @@ class StationSlot:
                 if fill_w > 0:
                     pygame.draw.rect(surface, config.GAUGE_COOKING, (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4), border_radius=6)
                 label_txt = "🔄 지금 터치해 뒤집기!" if self.is_flip_ready else f"🔥 조리 중 ({int(self.progress * 100)}%)"
-                label_col = config.GOLD if self.is_flip_ready else config.GAUGE_COOKING
-                pill_bg = (52, 38, 18) if self.is_flip_ready else (34, 24, 16)
+                label_col = config.NEON_YELLOW if self.is_flip_ready else config.GAUGE_COOKING
+                pill_bg = (54, 40, 16) if self.is_flip_ready else (32, 22, 14)
             elif self.state == STATE_READY:
                 if self.can_burn:
                     rem_ratio = 1.0 - self.burn_progress
@@ -352,14 +352,14 @@ class StationSlot:
                 pill_bg = (46, 16, 20)
 
             pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=8)
-            st_f = config.get_font(17, bold=True)
+            st_f = config.get_font(20, bold=True)
             st_surf = st_f.render(label_txt, True, label_col)
             if st_surf.get_width() > r.width - 16:
-                st_surf = config.get_font(15, bold=True).render(label_txt, True, label_col)
-            pill_w = min(r.width - 12, st_surf.get_width() + 20)
-            st_pill = pygame.Rect(r.centerx - pill_w // 2, gauge_rect.top - 38, pill_w, 32)
-            pygame.draw.rect(surface, pill_bg, st_pill, border_radius=8)
-            pygame.draw.rect(surface, label_col, st_pill, width=2, border_radius=8)
+                st_surf = config.get_font(17, bold=True).render(label_txt, True, label_col)
+            pill_w = min(r.width - 12, st_surf.get_width() + 24)
+            st_pill = pygame.Rect(r.centerx - pill_w // 2, gauge_rect.top - 42, pill_w, 36)
+            pygame.draw.rect(surface, pill_bg, st_pill, border_radius=9)
+            pygame.draw.rect(surface, label_col, st_pill, width=2, border_radius=9)
             surface.blit(st_surf, st_surf.get_rect(center=st_pill.center))
             return
 
