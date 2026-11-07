@@ -104,10 +104,8 @@ class TitleScene(BaseScene):
                     sound_fx.play_tab_switch()
                     return
 
-            is_portrait = bool(self.scene_mgr and getattr(self.scene_mgr, "is_portrait_mode", False))
-
-            # 1) 월드 투어 모드 카드 클릭 (세로 1패널 모드에서는 카드 상단 스와이프를 위해 하단 입장 버튼 영역 클릭 시 진입)
-            if self.world_tour_rect.collidepoint(mx, my) and (not is_portrait or my >= self.world_tour_rect.bottom - 76):
+            # 1) 월드 투어 모드 카드 클릭
+            if self.world_tour_rect.collidepoint(mx, my):
                 sound_fx.play_day_start()
                 self.game_mgr.set_mode("WORLD_TOUR")
                 if self.scene_mgr:
@@ -115,7 +113,7 @@ class TitleScene(BaseScene):
                 return
 
             # 2) 단일 메뉴 장인 모드 카드 클릭
-            if self.specialist_mode_rect.collidepoint(mx, my) and (not is_portrait or my >= self.specialist_mode_rect.bottom - 76):
+            if self.specialist_mode_rect.collidepoint(mx, my):
                 sound_fx.play_day_start()
                 self.game_mgr.set_mode("SPECIALIST")
                 if self.scene_mgr:
@@ -123,7 +121,7 @@ class TitleScene(BaseScene):
                 return
 
             # 3) 글로벌 야시장 통합 모드 카드 클릭
-            if self.global_mode_rect.collidepoint(mx, my) and (not is_portrait or my >= self.global_mode_rect.bottom - 76):
+            if self.global_mode_rect.collidepoint(mx, my):
                 sound_fx.play_day_start()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
@@ -138,7 +136,7 @@ class TitleScene(BaseScene):
                 return
 
             # 프로필 카드 클릭 시 주인공 선택 탭으로 이동
-            if self.profile_card_rect.collidepoint(mx, my) and (not is_portrait or my >= self.profile_card_rect.bottom - 76):
+            if self.profile_card_rect.collidepoint(mx, my):
                 sound_fx.play_click()
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="character", show_loading=True)

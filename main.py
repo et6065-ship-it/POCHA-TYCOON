@@ -41,7 +41,20 @@ def create_app(initial_scene: str = "title") -> tuple[pygame.Surface, pygame.tim
     except Exception:
         pass
 
-    screen = pygame.display.set_mode(config.SCREEN_SIZE)
+    init_size = config.SCREEN_SIZE
+    if sys.platform == "emscripten":
+        try:
+            import platform
+            iw = int(platform.window.innerWidth or 1280)
+            ih = int(platform.window.innerHeight or 720)
+            if ih > iw:
+                init_size = config.PORTRAIT_SIZE
+                config.WINDOW_WIDTH, config.WINDOW_HEIGHT = init_size
+                config.WINDOW_SIZE = init_size
+        except Exception:
+            pass
+
+    screen = pygame.display.set_mode(init_size)
     pygame.display.set_caption(config.WINDOW_TITLE)
     clock = pygame.time.Clock()
 
@@ -51,6 +64,10 @@ def create_app(initial_scene: str = "title") -> tuple[pygame.Surface, pygame.tim
         game_mgr.apply_runtime_settings(apply_display=True)
     else:
         game_mgr.apply_runtime_settings(apply_display=False)
+        if init_size == config.PORTRAIT_SIZE:
+            config.apply_display_mode(config.PORTRAIT_WIDTH, config.PORTRAIT_HEIGHT, fullscreen=config.FULLSCREEN)
+        else:
+            config.sync_browser_display_and_fullscreen(config.FULLSCREEN)
     screen = pygame.display.get_surface() or screen
 
     scene_mgr = SceneManager(game_mgr=game_mgr, initial_scene=initial_scene)

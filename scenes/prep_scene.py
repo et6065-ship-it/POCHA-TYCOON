@@ -263,8 +263,10 @@ class PrepScene(BaseScene):
                     selected = (self.game_mgr.current_chapter == ch_id) and (self.game_mgr.mode == "WORLD_TOUR")
                     if unlocked and not selected:
                         self._click_targets.append((btn_rect, "select_chapter", ch_id))
+                        self._click_targets.append((crect, "select_chapter", ch_id))
                     elif not unlocked:
                         self._click_targets.append((btn_rect, "unlock_chapter", ch_id))
+                        self._click_targets.append((crect, "unlock_chapter", ch_id))
 
         elif self.active_tab == "upgrade":
             left_x = area.x + 20
@@ -274,13 +276,16 @@ class PrepScene(BaseScene):
                 btn_rect = pygame.Rect(rrect.right - 148, rrect.centery - 22, 134, 44)
                 if self.game_mgr.get_station_upgrade_cost(up_key) is not None:
                     self._click_targets.append((btn_rect, "upgrade_station", up_key))
+                    self._click_targets.append((rrect, "upgrade_station", up_key))
             right_x = area.x + 632
             i_row_w, i_row_h = 572, 104
             for idx, in_key in enumerate(INTERIOR_UPGRADE_ORDER):
                 irect = pygame.Rect(right_x, area.y + 48 + idx * (i_row_h + 9), i_row_w, i_row_h)
+                btn_rect = pygame.Rect(irect.right - 146, rrect.centery - 22, 132, 44)
                 btn_rect = pygame.Rect(irect.right - 146, irect.centery - 22, 132, 44)
                 if self.game_mgr.get_interior_upgrade_cost(in_key) is not None:
                     self._click_targets.append((btn_rect, "upgrade_interior", in_key))
+                    self._click_targets.append((irect, "upgrade_interior", in_key))
 
         elif self.active_tab == "tournament":
             match_btn = pygame.Rect(area.x + 22, area.bottom - 62, 560, 46)
@@ -293,7 +298,8 @@ class PrepScene(BaseScene):
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             swipe_start = getattr(self, "_swipe_start_pos", None)
             self._swipe_start_pos = None
-            if swipe_start is not None:
+            is_portrait = bool(self.scene_mgr and getattr(self.scene_mgr, "is_portrait_mode", False))
+            if swipe_start is not None and not is_portrait:
                 dx = event.pos[0] - swipe_start[0]
                 dy = event.pos[1] - swipe_start[1]
                 if abs(dx) >= 55 and abs(dx) > abs(dy) * 1.3 and 126 <= swipe_start[1] <= 630:

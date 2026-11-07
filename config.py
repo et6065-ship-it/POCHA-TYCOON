@@ -118,11 +118,14 @@ def sync_browser_display_and_fullscreen(fullscreen: Optional[bool] = None) -> No
             }}
             window.__fitPochaCanvas = fitPochaCanvas;
             fitPochaCanvas();
+            setTimeout(fitPochaCanvas, 30);
+            setTimeout(fitPochaCanvas, 150);
             if (!window.__pocha_resize_bound) {{
                 window.__pocha_resize_bound = true;
                 window.addEventListener('resize', fitPochaCanvas);
                 window.addEventListener('orientationchange', function() {{
-                    setTimeout(fitPochaCanvas, 120);
+                    setTimeout(fitPochaCanvas, 80);
+                    setTimeout(fitPochaCanvas, 220);
                 }});
             }}
         }})();
@@ -255,11 +258,13 @@ def apply_display_mode(
         return None
 
     if sys.platform == "emscripten":
-        sync_browser_display_and_fullscreen(FULLSCREEN)
+        surf = None
         try:
-            return pygame.display.set_mode(WINDOW_SIZE, 0)
+            surf = pygame.display.set_mode(WINDOW_SIZE, 0)
         except Exception:
-            return pygame.display.get_surface()
+            surf = pygame.display.get_surface()
+        sync_browser_display_and_fullscreen(FULLSCREEN)
+        return surf
 
     flags = pygame.FULLSCREEN if FULLSCREEN else 0
     try:
@@ -774,27 +779,17 @@ class SafeKoreanFont(pygame.font.Font):
             fg = super().render(clean_text, True, c_key)
             fw, fh = fg.get_size()
             lum = 0.299 * c_key[0] + 0.587 * c_key[1] + 0.114 * c_key[2]
-            pad_x = 3 if self._extra_bold else 2
-            surf = pygame.Surface((fw + pad_x, fh + 2), pygame.SRCALPHA)
+            surf = pygame.Surface((fw + 2, fh + 2), pygame.SRCALPHA)
 
-            if lum >= 105.0:
-                # 밝은 텍스트(어두운 배경/버튼 위): 선명한 다크 스트로크 외곽선 + 드롭섀도우로 시인성 극대화
-                outline = super().render(clean_text, True, (8, 6, 16))
+            if lum >= 95.0:
+                # 밝은 텍스트: 고스팅(겹침 번짐) 없이 선명한 1px 다크 스트로크 외곽선 + 드롭섀도우만 적용
+                outline = super().render(clean_text, True, (6, 4, 14))
                 for ox, oy in ((0, 1), (2, 1), (1, 0), (1, 2), (2, 2)):
                     surf.blit(outline, (ox, oy))
-                if self._extra_bold:
-                    surf.blit(outline, (3, 1))
-                    surf.blit(outline, (3, 2))
                 surf.blit(fg, (1, 1))
-                if self._extra_bold:
-                    surf.blit(fg, (2, 1))
             else:
-                # 어두운 텍스트(밝은 크림색 말풍선 위): 하이라이트 림 + 볼드 중첩으로 글자 획 선명도 강화
-                hl = super().render(clean_text, True, (255, 253, 246))
-                surf.blit(hl, (1, 2))
+                # 어두운 텍스트: 번짐 없는 1:1 원본 획 출력
                 surf.blit(fg, (1, 1))
-                if self._extra_bold:
-                    surf.blit(fg, (2, 1))
 
         if len(self._render_cache) > 1400:
             self._render_cache.clear()
@@ -807,8 +802,7 @@ class SafeKoreanFont(pygame.font.Font):
         if cached is not None:
             return cached
         w, h = super().size(sanitize_font_text(s))
-        pad_x = 3 if self._extra_bold else 2
-        res = (w + pad_x, h + 2)
+        res = (w + 2, h + 2)
         if len(self._size_cache) > 1400:
             self._size_cache.clear()
         self._size_cache[s] = res

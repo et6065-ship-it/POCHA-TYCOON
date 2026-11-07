@@ -45,10 +45,45 @@ jobs:
         run: |
           python - << 'EOF'
           import pathlib
+          import time
 
           index_path = pathlib.Path("build/web/index.html")
           if index_path.exists():
               html = index_path.read_text(encoding="utf-8")
+              build_ver = str(int(time.time()))
+              cache_buster_head = f"""
+          <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+          <meta http-equiv="Pragma" content="no-cache">
+          <meta http-equiv="Expires" content="0">
+          <script>
+          (function() {{
+            var BV = "{build_ver}";
+            function bustUrl(u) {{
+              if (typeof u === "string" && /\\.(apk|whl|wasm|data|tar|gz)(\\?|$)/i.test(u) && u.indexOf("_bv=") === -1) {{
+                return u + (u.indexOf("?") === -1 ? "?" : "&") + "_bv=" + BV;
+              }}
+              return u;
+            }}
+            if (window.fetch) {{
+              var origFetch = window.fetch;
+              window.fetch = function(input, init) {{
+                if (typeof input === "string") input = bustUrl(input);
+                return origFetch.call(this, input, init);
+              }};
+            }}
+            if (window.XMLHttpRequest && window.XMLHttpRequest.prototype) {{
+              var origOpen = window.XMLHttpRequest.prototype.open;
+              window.XMLHttpRequest.prototype.open = function(method, url) {{
+                var args = Array.prototype.slice.call(arguments);
+                if (args.length > 1) args[1] = bustUrl(args[1]);
+                return origOpen.apply(this, args);
+              }};
+            }}
+          }})();
+          </script>
+          """
+              if "<head>" in html:
+                  html = html.replace("<head>", "<head>\n" + cache_buster_head, 1)
               clean_snippet = """
           <style>
             html, body {
