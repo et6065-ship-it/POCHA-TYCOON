@@ -300,6 +300,7 @@ def _make_recipe(
     resolved_base_id = base_recipe_id if base_recipe_id else recipe_id
     is_base = resolved_base_id == recipe_id and len(toppings_list) == 0
     can_burn = slot_type != "dispenser"
+    cost = max(100, int(round(float(price) * 0.35 / 50.0) * 50))
 
     return AttrDict(
         {
@@ -314,6 +315,8 @@ def _make_recipe(
             "category": slot_type,
             "price": price,
             "base_price": price,
+            "cost": cost,
+            "discard_cost": cost,
             "cook_time": cook_time,
             "cooking_time": cook_time,
             "burn_time": burn_time,
@@ -1884,6 +1887,16 @@ def can_add_topping(current_recipe_id: str, topping_id: str) -> bool:
 def get_recipe(recipe_id: str) -> Optional[AttrDict]:
     """레시피 ID로 레시피 데이터를 반환한다."""
     return RECIPES.get(recipe_id)
+
+
+def get_recipe_cost(recipe_id: str) -> int:
+    """레시피 ID의 기본 재료 원가(폐기 시 1개당 손실 비용, 판매가의 약 35%)를 반환한다."""
+    rec = RECIPES.get(recipe_id)
+    if not rec:
+        return 0
+    if "cost" in rec:
+        return int(rec["cost"])
+    return max(100, int(round(float(rec.get("price", 1000)) * 0.35 / 50.0) * 50))
 
 
 def get_topping(topping_id: str) -> Optional[AttrDict]:

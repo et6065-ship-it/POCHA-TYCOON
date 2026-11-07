@@ -431,6 +431,8 @@ class PrepScene(BaseScene):
             if cid in CHARACTERS:
                 sound_fx.play_click()
                 self.inspected_character = cid
+                if self.scene_mgr is not None:
+                    self.scene_mgr.portrait_prep_idx = 0
 
         elif action_type == "chapter_page_delta":
             sound_fx.play_tab_switch()
@@ -878,54 +880,6 @@ class PrepScene(BaseScene):
 
             av_state = "SKILL" if selected else ("COOKING" if inspected and unlocked else ("IDLE" if unlocked else "LOCKED"))
 
-            if is_mob:
-                # 모바일 그림 중심 캐릭터 카드: 스킬/패시브/직함 줄글을 모두 제거하고 대형 아바타(96x96)와 대표 음식 아이콘 배치
-                r_badge = pygame.Rect(crect.x + 8, crect.y + 8, 52, 24)
-                pygame.draw.rect(surface, theme_col, r_badge, border_radius=6)
-                rb_s = xs_f.render(cdata["country"], True, config.WHITE)
-                surface.blit(rb_s, rb_s.get_rect(center=r_badge.center))
-
-                nm_s = card_name_f.render(cdata["name"], True, config.WHITE if unlocked else config.TEXT_MUTED)
-                surface.blit(nm_s, (r_badge.right + 8, crect.y + 8))
-
-                av_rect = pygame.Rect(crect.x + 16, crect.y + 38, 106, 106)
-                pygame.draw.rect(surface, (20, 17, 32), av_rect.inflate(6, 6), border_radius=12)
-                pygame.draw.rect(surface, border_c, av_rect.inflate(6, 6), width=1, border_radius=12)
-                art_renderer.draw_chef_avatar(surface, av_rect, character_id=cid, state=av_state, time_tick=self.time_tick)
-
-                # 우측에 해당 국가의 대표 음식 일러스트 2종 크게 표시
-                ch_obj = CHAPTERS.get(cdata["country"], CHAPTERS["KR"])
-                st_list = ch_obj.get("stations", [])
-                for f_i in range(min(2, len(st_list))):
-                    st_m = STATIONS_CATALOG.get(st_list[f_i], {})
-                    f_rec = st_m["recipes"][0] if st_m.get("recipes") else "bungeoppang_redbean"
-                    fy_pos = crect.y + 62 + f_i * 52
-                    pygame.draw.circle(surface, (28, 24, 44), (crect.right - 56, fy_pos), 23)
-                    art_renderer.draw_food_icon(surface, (crect.right - 56, fy_pos), f_rec, size=42)
-
-                btn_rect = pygame.Rect(crect.x + 8, crect.bottom - 38, crect.width - 16, 32)
-                b_hov = btn_rect.collidepoint(mx, my)
-                if unlocked:
-                    if selected:
-                        pygame.draw.rect(surface, (46, 112, 68), btn_rect, border_radius=8)
-                        b_lbl = sub_f.render("✔", True, config.WHITE)
-                    else:
-                        pygame.draw.rect(surface, config.UI_BUTTON_HOVER if b_hov else config.UI_BUTTON, btn_rect, border_radius=8)
-                        pygame.draw.rect(surface, theme_col, btn_rect, width=1, border_radius=8)
-                        b_lbl = sub_f.render("▶ SELECT", True, config.WHITE)
-                        self._click_targets.append((btn_rect, "select_character", cid))
-                else:
-                    req_ch = cdata.get("unlock_chapter", "KR")
-                    cost = int(cdata.get("unlock_cost", 0))
-                    can_un = self.game_mgr.can_unlock_character(cid)
-                    pygame.draw.rect(surface, (212, 122, 32) if can_un else config.UI_DISABLED, btn_rect, border_radius=8)
-                    lbl_s = f"🔓 💰 {cost:,}" if self.game_mgr.is_chapter_unlocked(req_ch) else f"🔒 {req_ch}"
-                    b_lbl = sub_f.render(lbl_s, True, config.WHITE if can_un else config.TEXT_SECONDARY)
-                    self._click_targets.append((btn_rect, "unlock_character", cid))
-                surface.blit(b_lbl, b_lbl.get_rect(center=btn_rect.center))
-                self._click_targets.append((crect, "inspect_character", cid))
-                continue
-
             # 국가·지역 배지
             reg_str = f"[{cdata['country']}] {cdata.get('region_name', cdata['country_name'])}"
             r_badge = pygame.Rect(crect.x + 10, crect.y + 8, min(156, xs_f.size(reg_str)[0] + 14), 24)
@@ -995,7 +949,7 @@ class PrepScene(BaseScene):
         if total_pages > 1:
             prev_r = pygame.Rect(area.x + 612, area.y + 458, 76, 36)
             next_r = pygame.Rect(area.x + 748, area.y + 458, 76, 36)
-            for r_btn, lbl_t, d_val in ((prev_r, "◀" if is_mob else "◀ 이전", -1), (next_r, "▶" if is_mob else "다음 ▶", 1)):
+            for r_btn, lbl_t, d_val in ((prev_r, "◀ 이전", -1), (next_r, "다음 ▶", 1)):
                 bh = r_btn.collidepoint(mx, my)
                 pygame.draw.rect(surface, (62, 54, 92) if bh else (42, 36, 64), r_btn, border_radius=8)
                 pygame.draw.rect(surface, config.GOLD, r_btn, width=1, border_radius=8)
@@ -1014,62 +968,6 @@ class PrepScene(BaseScene):
 
         i_unlocked = self.game_mgr.is_character_unlocked(insp_id)
         big_name_f = config.get_font(22, bold=True)
-
-        if is_mob:
-            # 모바일 그림 중심 상세 패널: 대사/패시브/스킬 줄글 박스 3개를 모두 없애고 초대형 야시장 배경 + 168x168 마스터 초상화 + 4종 대표 요리 일러스트 배치
-            bg_banner = pygame.Rect(insp_rect.x + 12, insp_rect.y + 12, insp_rect.width - 24, 232)
-            art_renderer.draw_country_background(surface, bg_banner, country_id=ic["country"], time_tick=self.time_tick)
-            art_renderer.draw_alpha_overlay(surface, bg_banner, (12, 10, 22, 95), border_radius=12)
-            pygame.draw.rect(surface, ic["accent_color"], bg_banner, width=2, border_radius=12)
-
-            big_av = pygame.Rect(bg_banner.centerx - 84, bg_banner.y + 14, 168, 168)
-            art_renderer.draw_chef_avatar(
-                surface,
-                big_av,
-                character_id=insp_id,
-                state="SKILL" if i_unlocked else "LOCKED",
-                time_tick=self.time_tick,
-            )
-            nm_banner = big_name_f.render(f"[{ic['country']}] {ic['name']}", True, config.WHITE)
-            surface.blit(nm_banner, nm_banner.get_rect(center=(bg_banner.centerx, bg_banner.bottom - 22)))
-
-            food_showcase = pygame.Rect(insp_rect.x + 12, insp_rect.y + 254, insp_rect.width - 24, 116)
-            pygame.draw.rect(surface, (28, 24, 44), food_showcase, border_radius=12)
-            pygame.draw.rect(surface, config.UI_BORDER, food_showcase, width=1, border_radius=12)
-            ch_info = CHAPTERS.get(ic["country"], CHAPTERS["KR"])
-            st_ids = ch_info.get("stations", [])
-            step_w = food_showcase.width // (max(1, len(st_ids)) + 1)
-            for idx_st, st_id in enumerate(st_ids[:4]):
-                st_m = STATIONS_CATALOG.get(st_id, {})
-                rec_id = st_m["recipes"][0] if st_m.get("recipes") else "bungeoppang_redbean"
-                cx_f = food_showcase.x + step_w * (idx_st + 1)
-                cy_f = food_showcase.centery
-                pygame.draw.circle(surface, (42, 36, 66), (cx_f, cy_f), 32)
-                art_renderer.draw_food_icon(surface, (cx_f, cy_f), rec_id, size=56)
-
-            insp_btn = pygame.Rect(insp_rect.x + 12, insp_rect.bottom - 54, insp_rect.width - 24, 42)
-            ib_hov = insp_btn.collidepoint(mx, my)
-            if i_unlocked:
-                if self.game_mgr.selected_character == insp_id:
-                    pygame.draw.rect(surface, (46, 118, 72), insp_btn, border_radius=10)
-                    pygame.draw.rect(surface, config.TEXT_SUCCESS, insp_btn, width=2, border_radius=10)
-                    ib_lbl = big_name_f.render("✔ SELECTED", True, config.WHITE)
-                else:
-                    pygame.draw.rect(surface, config.UI_BUTTON_HOVER if ib_hov else config.UI_BUTTON, insp_btn, border_radius=10)
-                    pygame.draw.rect(surface, config.GOLD, insp_btn, width=2, border_radius=10)
-                    ib_lbl = big_name_f.render("👨‍🍳 ▶ SELECT", True, config.WHITE)
-                    self._click_targets.append((insp_btn, "select_character", insp_id))
-            else:
-                req_ch = ic.get("unlock_chapter", "KR")
-                cost = int(ic.get("unlock_cost", 0))
-                can_un = self.game_mgr.can_unlock_character(insp_id)
-                pygame.draw.rect(surface, (218, 128, 32) if can_un else config.UI_DISABLED, insp_btn, border_radius=10)
-                pygame.draw.rect(surface, config.GOLD if can_un else config.UI_BORDER, insp_btn, width=2, border_radius=10)
-                lbl_s = f"🔓 💰 {cost:,}" if self.game_mgr.is_chapter_unlocked(req_ch) else f"🔒 {req_ch} ({cost:,})"
-                ib_lbl = sub_f.render(lbl_s, True, config.WHITE if can_un else config.TEXT_SECONDARY)
-                self._click_targets.append((insp_btn, "unlock_character", insp_id))
-            surface.blit(ib_lbl, ib_lbl.get_rect(center=insp_btn.center))
-            return
 
         # 상단 야시장 미니 배경 + 대형 118x118 도트 일러스트 초상화
         bg_banner = pygame.Rect(insp_rect.x + 12, insp_rect.y + 12, insp_rect.width - 24, 134)
@@ -1161,7 +1059,7 @@ class PrepScene(BaseScene):
         name_f = config.get_font(19, bold=True)
         sub_f = config.get_font(13, bold=True)
         xs_f = config.get_font(11, bold=True)
-        body_f = config.get_font(12, bold=False)
+        body_f = config.get_font(12, bold=True)
 
         if not is_mob:
             guide = title_f.render(
@@ -1178,7 +1076,7 @@ class PrepScene(BaseScene):
 
         prev_r = pygame.Rect(area.right - 236, area.y + 10, 78, 32)
         next_r = pygame.Rect(area.right - 98, area.y + 10, 78, 32)
-        for r_btn, lbl_t, d_val in ((prev_r, "◀" if is_mob else "◀ 이전", -1), (next_r, "▶" if is_mob else "다음 ▶", 1)):
+        for r_btn, lbl_t, d_val in ((prev_r, "◀ 이전", -1), (next_r, "다음 ▶", 1)):
             bh = r_btn.collidepoint(mx, my)
             pygame.draw.rect(surface, (62, 54, 92) if bh else (42, 36, 64), r_btn, border_radius=8)
             pygame.draw.rect(surface, config.GOLD, r_btn, width=1, border_radius=8)
@@ -1208,66 +1106,6 @@ class PrepScene(BaseScene):
 
             pygame.draw.rect(surface, bg_col, crect, border_radius=16)
             pygame.draw.rect(surface, border_col, crect, width=3 if selected else 2, border_radius=16)
-
-            if is_mob:
-                # 모바일 그림 중심 장인 카드: 설명 줄글을 없애고 8종 음식 일러스트를 대형 그리드로 배치
-                t_surf = name_f.render(f"{sp['emoji']} {sp['name']}", True, config.WHITE if is_open else (188, 182, 210))
-                surface.blit(t_surf, t_surf.get_rect(center=(crect.centerx, crect.y + 28)))
-
-                MenuBox = pygame.Rect(crect.x + 12, crect.y + 54, crect.width - 24, 268)
-                pygame.draw.rect(surface, (20, 17, 32) if is_open else (16, 14, 24), MenuBox, border_radius=12)
-                pygame.draw.rect(surface, accent if is_open else (54, 48, 74), MenuBox, width=1, border_radius=12)
-
-                if is_open:
-                    all_rids = list(sp.get("all_recipes", []))[:8]
-                    cell_w = (MenuBox.width - 16) // 2
-                    cell_h = 62
-                    for m_idx, rid in enumerate(all_rids):
-                        r_meta = RECIPES.get(rid, {})
-                        mc = m_idx % 2
-                        mr = m_idx // 2
-                        cell_r = pygame.Rect(MenuBox.x + 8 + mc * cell_w, MenuBox.y + 10 + mr * cell_h, cell_w - 4, cell_h - 6)
-                        is_topped = bool(r_meta.get("toppings"))
-                        pygame.draw.rect(surface, (44, 34, 64) if is_topped else (30, 26, 46), cell_r, border_radius=9)
-                        pygame.draw.rect(surface, config.GOLD if is_topped else (68, 60, 96), cell_r, width=1, border_radius=9)
-                        art_renderer.draw_food_icon(surface, (cell_r.x + 22, cell_r.centery), rid, size=36)
-                        r_short = str(r_meta.get("short_name", r_meta.get("name", rid)))[:8]
-                        nm_f = xs_f if xs_f.size(r_short)[0] <= cell_r.width - 44 else config.get_font(10, bold=True)
-                        nm_s = nm_f.render(r_short, True, config.GOLD if is_topped else config.WHITE)
-                        surface.blit(nm_s, (cell_r.x + 42, cell_r.centery - nm_s.get_height() // 2))
-                else:
-                    lock_f = config.get_font(28, bold=True)
-                    lk_s = lock_f.render(f"🚧 {sp['emoji']}", True, config.TEXT_SECONDARY)
-                    surface.blit(lk_s, lk_s.get_rect(center=MenuBox.center))
-
-                if is_open:
-                    s_day = int(self.game_mgr.specialist_days.get(spec_id, 1))
-                    t_gold = int(sp.get("base_target_gold", 14000)) + (s_day - 1) * int(sp.get("daily_target_growth", 3600))
-                    tg_s = sub_f.render(f"📅 D-{s_day}  |  🎯 {t_gold:,}", True, config.GOLD)
-                else:
-                    tg_s = sub_f.render("🔒 SOON", True, config.TEXT_MUTED)
-                surface.blit(tg_s, tg_s.get_rect(center=(crect.centerx, crect.y + 346)))
-
-                btn_rect = pygame.Rect(crect.x + 14, crect.bottom - 52, crect.width - 28, 40)
-                b_hov = btn_rect.collidepoint(mx, my)
-                if is_open:
-                    if selected:
-                        pygame.draw.rect(surface, (44, 126, 76), btn_rect, border_radius=10)
-                        pygame.draw.rect(surface, config.NEON_GREEN, btn_rect, width=2, border_radius=10)
-                        b_lbl = sub_f.render("✔ SELECTED", True, config.WHITE)
-                    else:
-                        pygame.draw.rect(surface, (228, 122, 34) if b_hov else (58, 50, 86), btn_rect, border_radius=10)
-                        pygame.draw.rect(surface, config.GOLD if b_hov else accent, btn_rect, width=2, border_radius=10)
-                        b_lbl = sub_f.render(f"{sp['emoji']} ▶ PLAY", True, config.WHITE)
-                        self._click_targets.append((btn_rect, "select_specialist", spec_id))
-                    self._click_targets.append((crect, "select_specialist", spec_id))
-                else:
-                    pygame.draw.rect(surface, (38, 34, 54), btn_rect, border_radius=10)
-                    pygame.draw.rect(surface, (78, 70, 108), btn_rect, width=1, border_radius=10)
-                    b_lbl = sub_f.render("🚧", True, config.TEXT_SECONDARY)
-                    self._click_targets.append((crect, "preview_coming_soon_specialist", spec_id))
-                surface.blit(b_lbl, b_lbl.get_rect(center=btn_rect.center))
-                continue
 
             # 상단 오픈 상태 배지
             badge_rect = pygame.Rect(crect.x + 12, crect.y + 12, 148, 24)
@@ -1457,7 +1295,7 @@ class PrepScene(BaseScene):
             )
 
             # 미니 야시장 배경 프리뷰
-            preview_rect = pygame.Rect(crect.x + 12, crect.y + 12, crect.width - 24, 128 if is_mob else 110)
+            preview_rect = pygame.Rect(crect.x + 12, crect.y + 12, crect.width - 24, 110)
             art_renderer.draw_country_background(surface, preview_rect, country_id=ch_id, time_tick=self.time_tick)
             pygame.draw.rect(surface, theme_col, preview_rect, width=2, border_radius=8)
 
@@ -1470,87 +1308,58 @@ class PrepScene(BaseScene):
             surface.blit(st_surf, st_surf.get_rect(center=star_badge.center))
 
             chef_cnt = len(get_characters_by_country(ch_id))
-            cnt_badge = pygame.Rect(preview_rect.x + 6, preview_rect.y + 6, 62 if is_mob else 94, 24)
+            cnt_badge = pygame.Rect(preview_rect.x + 6, preview_rect.y + 6, 94, 24)
             pygame.draw.rect(surface, (20, 16, 30), cnt_badge, border_radius=6)
-            cb_surf = body_f.render(f"👨‍🍳 {chef_cnt}" if is_mob else f"👨‍🍳 마스터 {chef_cnt}명", True, config.NEON_CYAN)
+            cb_surf = body_f.render(f"👨‍🍳 마스터 {chef_cnt}명", True, config.NEON_CYAN)
             surface.blit(cb_surf, cb_surf.get_rect(center=cnt_badge.center))
 
             ch_day = self.game_mgr.chapter_days.get(ch_id, 1)
             target_gold = ch_data["base_target_gold"] + (ch_day - 1) * ch_data["daily_target_growth"]
 
-            if is_mob:
-                # 모바일 그림 중심 챕터 카드: 부제는 생략하되 4종 음식 아이콘과 음식/기구 이름은 표시
-                ch_title_str = f"[{ch_id}] {ch_data['name']}"
-                nm = config.get_font(18, bold=True).render(ch_title_str, True, config.WHITE if unlocked else config.TEXT_MUTED)
-                surface.blit(nm, nm.get_rect(center=(crect.centerx, crect.y + 158)))
+            # 챕터명 & 부제
+            ch_title_str = f"[{ch_id}] {ch_data['name']}"
+            active_name_f = name_f
+            max_ch_w = crect.width - 28
+            for f_sz in (18, 16, 15, 14):
+                if active_name_f.size(ch_title_str)[0] <= max_ch_w:
+                    break
+                active_name_f = config.get_font(f_sz, bold=True)
+            nm = active_name_f.render(ch_title_str, True, config.WHITE if unlocked else config.TEXT_MUTED)
+            sub_str = str(ch_data["subtitle"])
+            active_sub_f = body_f
+            if active_sub_f.size(sub_str)[0] > max_ch_w:
+                active_sub_f = config.get_font(11, bold=False)
+                while len(sub_str) > 10 and active_sub_f.size(sub_str)[0] > max_ch_w:
+                    sub_str = sub_str[:-2] + "…"
+            sb = active_sub_f.render(sub_str, True, ch_data["accent_color"])
+            surface.blit(nm, (crect.x + 14, crect.y + 130))
+            surface.blit(sb, (crect.x + 14, crect.y + 158))
 
-                info_s = sub_f.render(f"📅 D-{ch_day}  |  🎯 {target_gold:,}", True, config.NEON_CYAN)
-                surface.blit(info_s, info_s.get_rect(center=(crect.centerx, crect.y + 186)))
+            # 일차 & 목표 매출 정보
+            info_s = sub_f.render(f"📅 Day {ch_day}  |  🎯 목표: {target_gold:,}원", True, config.NEON_CYAN)
+            surface.blit(info_s, (crect.x + 14, crect.y + 182))
 
-                st_box = pygame.Rect(crect.x + 12, crect.y + 206, crect.width - 24, 158)
-                pygame.draw.rect(surface, (22, 19, 34), st_box, border_radius=12)
-                pygame.draw.rect(surface, (68, 62, 92), st_box, width=1, border_radius=12)
+            # 챕터 전용 조리 기구 4종 목록 박스
+            st_box = pygame.Rect(crect.x + 12, crect.y + 210, crect.width - 24, 154)
+            pygame.draw.rect(surface, (22, 19, 34), st_box, border_radius=10)
+            pygame.draw.rect(surface, (68, 62, 92), st_box, width=1, border_radius=10)
 
-                grid_pts = [
-                    (st_box.x + st_box.width // 4, st_box.y + 34),
-                    (st_box.x + (st_box.width * 3) // 4, st_box.y + 34),
-                    (st_box.x + st_box.width // 4, st_box.y + 108),
-                    (st_box.x + (st_box.width * 3) // 4, st_box.y + 108),
-                ]
-                for s_idx, st_id in enumerate(ch_data["stations"][:4]):
-                    st_meta = STATIONS_CATALOG[st_id]
-                    first_rec = st_meta["recipes"][0] if st_meta["recipes"] else "bungeoppang_redbean"
-                    gx, gy = grid_pts[s_idx]
-                    pygame.draw.circle(surface, (36, 30, 56), (gx, gy), 24)
-                    art_renderer.draw_food_icon(surface, (gx, gy), first_rec, size=42)
-                    st_short = str(st_meta.get("short_name", st_meta["name"]))[:7]
-                    st_lbl = config.get_font(11, bold=True).render(st_short, True, config.WHITE)
-                    surface.blit(st_lbl, st_lbl.get_rect(center=(gx, gy + 32)))
-            else:
-                # 챕터명 & 부제
-                ch_title_str = f"[{ch_id}] {ch_data['name']}"
-                active_name_f = name_f
-                max_ch_w = crect.width - 28
-                for f_sz in (18, 16, 15, 14):
-                    if active_name_f.size(ch_title_str)[0] <= max_ch_w:
-                        break
-                    active_name_f = config.get_font(f_sz, bold=True)
-                nm = active_name_f.render(ch_title_str, True, config.WHITE if unlocked else config.TEXT_MUTED)
-                sub_str = str(ch_data["subtitle"])
-                active_sub_f = body_f
-                if active_sub_f.size(sub_str)[0] > max_ch_w:
-                    active_sub_f = config.get_font(11, bold=False)
-                    while len(sub_str) > 10 and active_sub_f.size(sub_str)[0] > max_ch_w:
-                        sub_str = sub_str[:-2] + "…"
-                sb = active_sub_f.render(sub_str, True, ch_data["accent_color"])
-                surface.blit(nm, (crect.x + 14, crect.y + 130))
-                surface.blit(sb, (crect.x + 14, crect.y + 158))
-
-                # 일차 & 목표 매출 정보
-                info_s = sub_f.render(f"📅 Day {ch_day}  |  🎯 목표: {target_gold:,}원", True, config.NEON_CYAN)
-                surface.blit(info_s, (crect.x + 14, crect.y + 182))
-
-                # 챕터 전용 조리 기구 4종 목록 박스
-                st_box = pygame.Rect(crect.x + 12, crect.y + 210, crect.width - 24, 154)
-                pygame.draw.rect(surface, (22, 19, 34), st_box, border_radius=10)
-                pygame.draw.rect(surface, (68, 62, 92), st_box, width=1, border_radius=10)
-
-                for s_idx, st_id in enumerate(ch_data["stations"]):
-                    st_meta = STATIONS_CATALOG[st_id]
-                    ry = st_box.y + 10 + s_idx * 35
-                    first_rec = st_meta["recipes"][0] if st_meta["recipes"] else "bungeoppang_redbean"
-                    slot_type = str(st_meta["slot_type"])
-                    slot_open = True
-                    if selected and self.game_mgr.mode == "WORLD_TOUR":
-                        slot_open = self.game_mgr.is_slot_unlocked_in_story(slot_type, day=ch_day)
-                    art_renderer.draw_food_icon(surface, (st_box.x + 24, ry + 14), first_rec, size=28)
-                    label_prefix = "" if slot_open else "🔒 "
-                    st_txt = body_f.render(
-                        f"{label_prefix}{st_meta['name']}",
-                        True,
-                        config.TEXT_PRIMARY if slot_open else config.TEXT_SECONDARY,
-                    )
-                    surface.blit(st_txt, (st_box.x + 44, ry + 5))
+            for s_idx, st_id in enumerate(ch_data["stations"]):
+                st_meta = STATIONS_CATALOG[st_id]
+                ry = st_box.y + 10 + s_idx * 35
+                first_rec = st_meta["recipes"][0] if st_meta["recipes"] else "bungeoppang_redbean"
+                slot_type = str(st_meta["slot_type"])
+                slot_open = True
+                if selected and self.game_mgr.mode == "WORLD_TOUR":
+                    slot_open = self.game_mgr.is_slot_unlocked_in_story(slot_type, day=ch_day)
+                art_renderer.draw_food_icon(surface, (st_box.x + 24, ry + 14), first_rec, size=28)
+                label_prefix = "" if slot_open else "🔒 "
+                st_txt = body_f.render(
+                    f"{label_prefix}{st_meta['name']}",
+                    True,
+                    config.TEXT_PRIMARY if slot_open else config.TEXT_SECONDARY,
+                )
+                surface.blit(st_txt, (st_box.x + 44, ry + 5))
 
             # 하단 선택 / 해금 버튼
             btn_rect = pygame.Rect(crect.x + 14, crect.bottom - 52, crect.width - 28, 40)
@@ -1560,11 +1369,11 @@ class PrepScene(BaseScene):
                 if selected:
                     pygame.draw.rect(surface, (52, 118, 72), btn_rect, border_radius=10)
                     pygame.draw.rect(surface, config.TEXT_SUCCESS, btn_rect, width=2, border_radius=10)
-                    b_lbl = sub_f.render("✔ SELECTED" if is_mob else "✔ 현재 영업 지역", True, config.WHITE)
+                    b_lbl = sub_f.render("✔ 현재 영업 지역", True, config.WHITE)
                 else:
                     pygame.draw.rect(surface, config.UI_BUTTON_HOVER if is_hov else config.UI_BUTTON, btn_rect, border_radius=10)
                     pygame.draw.rect(surface, config.WHITE if is_hov else theme_col, btn_rect, width=2, border_radius=10)
-                    b_lbl = sub_f.render("▶ SELECT" if is_mob else "이 챕터에서 영업하기", True, config.WHITE)
+                    b_lbl = sub_f.render("이 챕터에서 영업하기", True, config.WHITE)
                     self._click_targets.append((btn_rect, "select_chapter", ch_id))
             else:
                 cost = int(ch_data.get("unlock_cost", 0))
@@ -1574,9 +1383,9 @@ class PrepScene(BaseScene):
                 pygame.draw.rect(surface, btn_col, btn_rect, border_radius=10)
                 pygame.draw.rect(surface, config.GOLD if can_unlock else config.UI_BORDER, btn_rect, width=2, border_radius=10)
                 if prev_ch and not self.game_mgr.is_chapter_unlocked(prev_ch):
-                    lbl_str = f"🔒 {prev_ch}" if is_mob else f"🔒 {prev_ch} 해금 필요 ({cost:,}원)"
+                    lbl_str = f"🔒 {prev_ch} 해금 필요 ({cost:,}원)"
                 else:
-                    lbl_str = f"🔓 💰 {cost:,}" if is_mob else f"🔓 챕터 해금 ({cost:,}원)"
+                    lbl_str = f"🔓 챕터 해금 ({cost:,}원)"
                 b_lbl = sub_f.render(lbl_str, True, config.WHITE if can_unlock else config.TEXT_SECONDARY)
                 self._click_targets.append((btn_rect, "unlock_chapter", ch_id))
 
@@ -1608,7 +1417,7 @@ class PrepScene(BaseScene):
 
         prev_r = pygame.Rect(area.right - 236, area.y + 10, 78, 32)
         next_r = pygame.Rect(area.right - 98, area.y + 10, 78, 32)
-        for r_btn, lbl_t, d_val in ((prev_r, "◀" if is_mob else "◀ 이전", -1), (next_r, "▶" if is_mob else "다음 ▶", 1)):
+        for r_btn, lbl_t, d_val in ((prev_r, "◀ 이전", -1), (next_r, "다음 ▶", 1)):
             bh = r_btn.collidepoint(mx, my)
             pygame.draw.rect(surface, (62, 54, 92) if bh else (42, 36, 64), r_btn, border_radius=8)
             pygame.draw.rect(surface, config.NEON_CYAN, r_btn, width=1, border_radius=8)
@@ -1624,8 +1433,6 @@ class PrepScene(BaseScene):
         start_x = area.x + 22
         col_y = area.y + 50
 
-        slot_icons = {"mold": "🐟", "dispenser": "🥤", "grill": "🔥", "batch_pot": "🥘"}
-
         for s_idx, slot_type in enumerate(SLOT_TYPES):
             col_rect = pygame.Rect(start_x + s_idx * (col_w + gap), col_y, col_w, col_h)
             pygame.draw.rect(surface, (22, 19, 34), col_rect, border_radius=14)
@@ -1633,7 +1440,7 @@ class PrepScene(BaseScene):
 
             hdr_rect = pygame.Rect(col_rect.x + 8, col_rect.y + 8, col_rect.width - 16, 34)
             pygame.draw.rect(surface, (44, 38, 66), hdr_rect, border_radius=8)
-            h_lbl = f"{slot_icons.get(slot_type, '🍴')} #{s_idx + 1}" if is_mob else SLOT_KOR_NAMES[slot_type]
+            h_lbl = SLOT_KOR_NAMES[slot_type]
             h_txt = slot_f.render(h_lbl, True, config.GOLD)
             surface.blit(h_txt, h_txt.get_rect(center=hdr_rect.center))
 
@@ -1656,41 +1463,29 @@ class PrepScene(BaseScene):
                 rec_ids = st_meta["recipes"]
                 first_rec = rec_ids[0] if rec_ids else "bungeoppang_redbean"
 
-                if is_mob:
-                    # 모바일 그림 중심 기구 카드: 기구 하드웨어 + 기구명 + 대표 음식 아이콘 배치
-                    hw_r = pygame.Rect(irect.x + 8, irect.y + 13, 64, 64)
-                    art_renderer.draw_station_hardware(surface, hw_r, station_type=slot_type, station_id=st_id)
-                    c_badge = card_f.render(f"[{st_meta['country']}] {st_meta['short_name']}", True, config.GOLD)
-                    surface.blit(c_badge, (hw_r.right + 10, irect.y + 8))
-                    for r_i, r_id in enumerate(rec_ids[:2]):
-                        art_renderer.draw_food_icon(surface, (hw_r.right + 34 + r_i * 58, irect.y + 58), r_id, size=44)
-                    if is_eq:
-                        eq_s = config.get_font(18, bold=True).render("✔", True, config.NEON_CYAN)
-                        surface.blit(eq_s, (irect.right - 28, irect.y + 10))
-                else:
-                    art_renderer.draw_food_icon(surface, (irect.x + 32, irect.centery), first_rec, size=44)
+                art_renderer.draw_food_icon(surface, (irect.x + 32, irect.centery), first_rec, size=44)
 
-                    c_tag = f"[{st_meta['country']}] {st_meta['short_name']}"
-                    nm_surf = card_f.render(c_tag, True, config.WHITE if is_eq else config.TEXT_PRIMARY)
-                    surface.blit(nm_surf, (irect.x + 62, irect.y + 10))
+                c_tag = f"[{st_meta['country']}] {st_meta['short_name']}"
+                nm_surf = card_f.render(c_tag, True, config.WHITE if is_eq else config.TEXT_PRIMARY)
+                surface.blit(nm_surf, (irect.x + 62, irect.y + 10))
 
-                    rec_names = [RECIPES[r]["name"] for r in rec_ids[:2] if r in RECIPES]
-                    menu_str = ", ".join(rec_names)
-                    if len(rec_ids) > 2:
-                        menu_str += f" 외 {len(rec_ids) - 2}종"
-                    active_menu_f = small_f
-                    max_menu_w = irect.width - 68
-                    for f_sz in (11, 10, 9):
-                        if active_menu_f.size(menu_str)[0] <= max_menu_w:
-                            break
-                        active_menu_f = config.get_font(f_sz, bold=False)
-                    m_surf = active_menu_f.render(menu_str, True, config.TEXT_SECONDARY)
-                    surface.blit(m_surf, (irect.x + 62, irect.y + 34))
+                rec_names = [RECIPES[r]["name"] for r in rec_ids[:2] if r in RECIPES]
+                menu_str = ", ".join(rec_names)
+                if len(rec_ids) > 2:
+                    menu_str += f" 외 {len(rec_ids) - 2}종"
+                active_menu_f = small_f
+                max_menu_w = irect.width - 68
+                for f_sz in (11, 10, 9):
+                    if active_menu_f.size(menu_str)[0] <= max_menu_w:
+                        break
+                    active_menu_f = config.get_font(f_sz, bold=False)
+                m_surf = active_menu_f.render(menu_str, True, config.TEXT_SECONDARY)
+                surface.blit(m_surf, (irect.x + 62, irect.y + 34))
 
-                    status_str = "✔ 현재 장착됨" if is_eq else "클릭하여 장착"
-                    st_col = config.NEON_CYAN if is_eq else config.TEXT_GOLD
-                    st_surf = small_f.render(status_str, True, st_col)
-                    surface.blit(st_surf, (irect.x + 62, irect.y + 58))
+                status_str = "✔ 현재 장착됨" if is_eq else "터치/클릭하여 장착"
+                st_col = config.NEON_CYAN if is_eq else config.TEXT_GOLD
+                st_surf = small_f.render(status_str, True, st_col)
+                surface.blit(st_surf, (irect.x + 62, irect.y + 58))
 
                 self._click_targets.append((irect, "set_global_station", (slot_type, st_id)))
 
@@ -1698,15 +1493,14 @@ class PrepScene(BaseScene):
     # 탭 3: 기구 업그레이드 5종 & 포차 인테리어 4종 상점
     # ------------------------------------------------------------------
     def _draw_upgrade_tab(self, surface: pygame.Surface, area: pygame.Rect) -> None:
-        is_mob = config.is_mobile_ui()
         mx, my = self._hover_pos
         sec_f = config.get_font(19, bold=True)
         name_f = config.get_font(16, bold=True)
         body_f = config.get_font(13, bold=False)
-        btn_f = config.get_font(15 if is_mob else 14, bold=True)
+        btn_f = config.get_font(14, bold=True)
 
         left_x = area.x + 20
-        s_hdr = sec_f.render("🛠️ Lv.1 ~ Lv.3" if is_mob else "🛠️ 조리 기구 & 트레이 강화 (최대 Lv.3)", True, config.GOLD)
+        s_hdr = sec_f.render("🛠️ 조리 기구 & 트레이 강화 (최대 Lv.3)", True, config.GOLD)
         surface.blit(s_hdr, (left_x, area.y + 14))
 
         row_w = 595
@@ -1721,69 +1515,53 @@ class PrepScene(BaseScene):
             pygame.draw.rect(surface, (34, 30, 50), rrect, border_radius=12)
             pygame.draw.rect(surface, config.UI_BORDER, rrect, width=1, border_radius=12)
 
-            hw_rect = pygame.Rect(rrect.x + 10, rrect.y + 8 if is_mob else rrect.y + 11, 66 if is_mob else 60, 66 if is_mob else 60)
+            hw_rect = pygame.Rect(rrect.x + 10, rrect.y + 11, 60, 60)
             art_renderer.draw_station_hardware(surface, hw_rect, station_type=up_data["slot_type"])
 
-            if is_mob:
-                # 모바일 그림 중심 강화 카드: 긴 효과 설명 줄글을 없애고 레벨 블록 게이지를 큼직하게 표시
-                for l_i in range(max_lvl):
-                    dot_rect = pygame.Rect(rrect.x + 96 + l_i * 64, rrect.centery - 14, 54, 28)
-                    pygame.draw.rect(
-                        surface,
-                        config.GOLD if l_i < lvl else (54, 48, 72),
-                        dot_rect,
-                        border_radius=7,
-                    )
-                    pygame.draw.rect(surface, config.WHITE if l_i < lvl else config.UI_BORDER, dot_rect, width=1, border_radius=7)
-                    st_lbl = btn_f.render("★" if l_i < lvl else "☆", True, (24, 18, 32) if l_i < lvl else config.TEXT_SECONDARY)
-                    surface.blit(st_lbl, st_lbl.get_rect(center=dot_rect.center))
-            else:
-                nm = name_f.render(f"{up_data['name']}  (Lv.{lvl}/{max_lvl})", True, config.WHITE)
-                surface.blit(nm, (rrect.x + 82, rrect.y + 10))
+            nm = name_f.render(f"{up_data['name']}  (Lv.{lvl}/{max_lvl})", True, config.WHITE)
+            surface.blit(nm, (rrect.x + 82, rrect.y + 10))
 
-                next_lvl = min(max_lvl, lvl + 1)
-                desc_str = up_data["levels"][next_lvl]["description"]
-                active_desc_f = body_f if body_f.size(desc_str)[0] <= 350 else config.get_font(12, bold=False)
-                ds = active_desc_f.render(desc_str, True, config.NEON_CYAN if lvl < max_lvl else config.TEXT_SUCCESS)
-                surface.blit(ds, (rrect.x + 82, rrect.y + 35))
+            next_lvl = min(max_lvl, lvl + 1)
+            desc_str = up_data["levels"][next_lvl]["description"]
+            active_desc_f = body_f if body_f.size(desc_str)[0] <= 350 else config.get_font(12, bold=False)
+            ds = active_desc_f.render(desc_str, True, config.NEON_CYAN if lvl < max_lvl else config.TEXT_SUCCESS)
+            surface.blit(ds, (rrect.x + 82, rrect.y + 35))
 
-                for l_i in range(max_lvl):
-                    dot_rect = pygame.Rect(rrect.x + 82 + l_i * 28, rrect.y + 58, 22, 10)
-                    pygame.draw.rect(
-                        surface,
-                        config.GOLD if l_i < lvl else (60, 56, 78),
-                        dot_rect,
-                        border_radius=4,
-                    )
+            for l_i in range(max_lvl):
+                dot_rect = pygame.Rect(rrect.x + 82 + l_i * 28, rrect.y + 58, 22, 10)
+                pygame.draw.rect(
+                    surface,
+                    config.GOLD if l_i < lvl else (60, 56, 78),
+                    dot_rect,
+                    border_radius=4,
+                )
 
             btn_rect = pygame.Rect(rrect.right - 148, rrect.centery - 22, 134, 44)
             is_hov = btn_rect.collidepoint(mx, my)
             story_max = self.game_mgr.get_story_max_station_level(up_key)
             if cost is None:
                 pygame.draw.rect(surface, (46, 105, 68), btn_rect, border_radius=10)
-                bt = btn_f.render("✔ MAX" if is_mob else "MAX 완료", True, config.WHITE)
+                bt = btn_f.render("MAX 완료", True, config.WHITE)
             elif lvl >= story_max:
                 pygame.draw.rect(surface, (44, 40, 62), btn_rect, border_radius=10)
                 pygame.draw.rect(surface, config.UI_BORDER, btn_rect, width=1, border_radius=10)
-                bt = config.get_font(15 if is_mob else 12, bold=True).render("🔒" if is_mob else "🔒 스토리 해금 대기", True, config.TEXT_SECONDARY)
+                bt = config.get_font(12, bold=True).render("🔒 스토리 해금 대기", True, config.TEXT_SECONDARY)
                 self._click_targets.append((btn_rect, "upgrade_station", up_key))
             else:
                 can_buy = self.game_mgr.can_upgrade_station(up_key)
                 bg = (225, 118, 38) if (can_buy and is_hov) else ((195, 95, 32) if can_buy else config.UI_DISABLED)
                 pygame.draw.rect(surface, bg, btn_rect, border_radius=10)
                 pygame.draw.rect(surface, config.GOLD if can_buy else config.UI_BORDER, btn_rect, width=2 if can_buy else 1, border_radius=10)
-                bt = btn_f.render(f"💰 {cost:,}" if is_mob else f"강화 {cost:,}원", True, config.WHITE if can_buy else config.TEXT_SECONDARY)
+                bt = btn_f.render(f"강화 {cost:,}원", True, config.WHITE if can_buy else config.TEXT_SECONDARY)
                 self._click_targets.append((btn_rect, "upgrade_station", up_key))
             surface.blit(bt, bt.get_rect(center=btn_rect.center))
 
         right_x = area.x + 632
-        i_hdr = sec_f.render("🏮 INTERIOR" if is_mob else "🏮 포차 감성 인테리어 소품 (영구 패시브 보너스)", True, config.NEON_PINK)
+        i_hdr = sec_f.render("🏮 포차 감성 인테리어 소품 (영구 패시브 보너스)", True, config.NEON_PINK)
         surface.blit(i_hdr, (right_x, area.y + 14))
 
         i_row_w = 572
         i_row_h = 104
-        interior_icons = ["💡", "🪧", "📻", "🪑"]
-        interior_foods = ["bungeoppang_redbean", "takoyaki_mayo", "taco_salsa", "boba_milktea"]
         for idx, in_key in enumerate(INTERIOR_UPGRADE_ORDER):
             in_data = INTERIOR_UPGRADES[in_key]
             lvl = self.game_mgr.get_interior_level(in_key)
@@ -1799,49 +1577,36 @@ class PrepScene(BaseScene):
                 border_radius=12,
             )
 
-            if is_mob:
-                # 모바일 그림 중심 인테리어 카드: 줄글 대신 대형 소품 아이콘 + 음식 아이콘 + 상태 표시
-                ic_box = pygame.Rect(irect.x + 14, irect.y + 16, 72, 72)
-                pygame.draw.rect(surface, (24, 20, 38), ic_box, border_radius=12)
-                pygame.draw.rect(surface, config.GOLD if lvl > 0 else config.UI_BORDER, ic_box, width=2, border_radius=12)
-                ic_f = config.get_font(32, bold=True)
-                ic_s = ic_f.render(interior_icons[idx % len(interior_icons)], True, config.GOLD if lvl > 0 else config.WHITE)
-                surface.blit(ic_s, ic_s.get_rect(center=ic_box.center))
+            nm = name_f.render(in_data["name"], True, config.GOLD if lvl > 0 else config.WHITE)
+            surface.blit(nm, (irect.x + 18, irect.y + 14))
 
-                art_renderer.draw_food_icon(surface, (irect.x + 136, irect.centery), interior_foods[idx % len(interior_foods)], size=54)
-                nm = name_f.render(in_data["name"].split("(")[0].strip(), True, config.GOLD if lvl > 0 else config.WHITE)
-                surface.blit(nm, (irect.x + 180, irect.centery - nm.get_height() // 2))
-            else:
-                nm = name_f.render(in_data["name"], True, config.GOLD if lvl > 0 else config.WHITE)
-                surface.blit(nm, (irect.x + 18, irect.y + 14))
-
-                self._draw_wrapped_text(
-                    surface,
-                    in_data["description"],
-                    body_f,
-                    config.TEXT_PRIMARY,
-                    irect.x + 18,
-                    irect.y + 42,
-                    irect.width - 178,
-                )
+            self._draw_wrapped_text(
+                surface,
+                in_data["description"],
+                body_f,
+                config.TEXT_PRIMARY,
+                irect.x + 18,
+                irect.y + 42,
+                irect.width - 178,
+            )
 
             btn_rect = pygame.Rect(irect.right - 146, irect.centery - 22, 132, 44)
             is_hov = btn_rect.collidepoint(mx, my)
             in_unlocked = self.game_mgr.is_interior_unlocked_in_story(in_key)
             if cost is None or lvl >= 1:
                 pygame.draw.rect(surface, (46, 105, 68), btn_rect, border_radius=10)
-                bt = btn_f.render("✔" if is_mob else "✔ 설치 완료", True, config.WHITE)
+                bt = btn_f.render("✔ 설치 완료", True, config.WHITE)
             elif not in_unlocked:
                 pygame.draw.rect(surface, (44, 40, 62), btn_rect, border_radius=10)
                 pygame.draw.rect(surface, config.UI_BORDER, btn_rect, width=1, border_radius=10)
-                bt = config.get_font(15 if is_mob else 12, bold=True).render("🔒" if is_mob else "🔒 스토리 해금 대기", True, config.TEXT_SECONDARY)
+                bt = config.get_font(12, bold=True).render("🔒 스토리 해금 대기", True, config.TEXT_SECONDARY)
                 self._click_targets.append((btn_rect, "upgrade_interior", in_key))
             else:
                 can_buy = self.game_mgr.can_upgrade_interior(in_key)
                 bg = (225, 118, 38) if (can_buy and is_hov) else ((195, 95, 32) if can_buy else config.UI_DISABLED)
                 pygame.draw.rect(surface, bg, btn_rect, border_radius=10)
                 pygame.draw.rect(surface, config.GOLD if can_buy else config.UI_BORDER, btn_rect, width=2 if can_buy else 1, border_radius=10)
-                bt = btn_f.render(f"💰 {cost:,}" if is_mob else f"구매 {cost:,}원", True, config.WHITE if can_buy else config.TEXT_SECONDARY)
+                bt = btn_f.render(f"구매 {cost:,}원", True, config.WHITE if can_buy else config.TEXT_SECONDARY)
                 self._click_targets.append((btn_rect, "upgrade_interior", in_key))
             surface.blit(bt, bt.get_rect(center=btn_rect.center))
 
@@ -1849,7 +1614,6 @@ class PrepScene(BaseScene):
     # 탭 4: 32강 월드 포차 그랑프리 (배너 일러스트 + 9개국 32시드 + AI 보스 대결 출격)
     # ------------------------------------------------------------------
     def _draw_tournament_tab(self, surface: pygame.Surface, area: pygame.Rect) -> None:
-        is_mob = config.is_mobile_ui()
         mx, my = self._hover_pos
         sec_f = config.get_font(17, bold=True)
         name_f = config.get_font(14, bold=True)
@@ -1857,11 +1621,10 @@ class PrepScene(BaseScene):
 
         # 좌측: 32강 월드 그랑프리 메인 일러스트 배너 + AI 보스전 출격 카드
         left_x = area.x + 20
-        if not is_mob:
-            l_hdr = sec_f.render("🌍 9개국 32인 월드 포차 그랑프리 (영토 면적·식문화 비례 시드)", True, config.NEON_CYAN)
-            surface.blit(l_hdr, (left_x, area.y + 12))
+        l_hdr = sec_f.render("🌍 9개국 32인 월드 포차 그랑프리 (영토 면적·식문화 비례 시드)", True, config.NEON_CYAN)
+        surface.blit(l_hdr, (left_x, area.y + 12))
 
-        banner_frame = pygame.Rect(left_x, area.y + (16 if is_mob else 42), 560, 238 if is_mob else 212)
+        banner_frame = pygame.Rect(left_x, area.y + 42, 560, 212)
         pygame.draw.rect(surface, (18, 16, 28), banner_frame, border_radius=12)
         banner_img = art_renderer.get_story_illustration(
             "assets/story/world_32_masters_banner.png",
@@ -1873,13 +1636,11 @@ class PrepScene(BaseScene):
             art_renderer.draw_country_background(surface, banner_frame.inflate(-8, -8), country_id="CN", time_tick=self.time_tick)
         pygame.draw.rect(surface, config.GOLD, banner_frame, width=2, border_radius=12)
 
-        if not is_mob:
-            # 배너 하단 오버레이 캡션 (PC 전용)
-            cap_r = pygame.Rect(banner_frame.x + 8, banner_frame.bottom - 34, banner_frame.width - 16, 26)
-            art_renderer.draw_alpha_overlay(surface, cap_r, (14, 12, 24, 215), border_radius=6)
-            cap_f = config.get_font(11, bold=True)
-            cap_s = cap_f.render("중국(6) · 인도(6) · 미국(5) · 러시아(3) · 브라질(3) · 멕시코(3) · 일본(3) · 대만(2) · 한국(1) = 총 32명", True, config.GOLD)
-            surface.blit(cap_s, cap_s.get_rect(center=cap_r.center))
+        cap_r = pygame.Rect(banner_frame.x + 8, banner_frame.bottom - 34, banner_frame.width - 16, 26)
+        art_renderer.draw_alpha_overlay(surface, cap_r, (14, 12, 24, 215), border_radius=6)
+        cap_f = config.get_font(11, bold=True)
+        cap_s = cap_f.render("중국(6) · 인도(6) · 미국(5) · 러시아(3) · 브라질(3) · 멕시코(3) · 일본(3) · 대만(2) · 한국(1) = 총 32명", True, config.GOLD)
+        surface.blit(cap_s, cap_s.get_rect(center=cap_r.center))
 
         # 현재 토너먼트 라운드 AI 라이벌 매치업 박스
         opp_id = self._get_current_tournament_opponent()
@@ -1892,71 +1653,58 @@ class PrepScene(BaseScene):
         pygame.draw.rect(surface, config.NEON_ORANGE, vs_box, width=2, border_radius=12)
 
         my_char = self.game_mgr.get_selected_character_data()
-        vs_f = config.get_font(24 if is_mob else 20, bold=True)
+        vs_f = config.get_font(20, bold=True)
 
-        if is_mob:
-            # 모바일 그림 중심 VS 박스: 텍스트를 없애고 대형 아바타(116x116) 대결 구도와 승리 보상 골드만 표시
-            my_av = pygame.Rect(vs_box.x + 36, vs_box.y + 24, 118, 118)
-            opp_av = pygame.Rect(vs_box.right - 154, vs_box.y + 24, 118, 118)
-            art_renderer.draw_chef_avatar(surface, my_av, character_id=self.game_mgr.selected_character, state="SKILL", time_tick=self.time_tick)
-            art_renderer.draw_chef_avatar(surface, opp_av, character_id=opp_id, state="SKILL", time_tick=self.time_tick)
+        surface.blit(
+            name_f.render(f"🔥 현재 출전 라운드: {rnd_names[rnd_idx]}   |   승리 보상: +{3000 + min(4, rnd_idx) * 2000:,}원", True, config.GOLD),
+            (vs_box.x + 14, vs_box.y + 10),
+        )
 
-            vs_s = vs_f.render("⚡ VS ⚡", True, config.GOLD)
-            surface.blit(vs_s, vs_s.get_rect(center=(vs_box.centerx, vs_box.centery - 14)))
-            rw_s = sec_f.render(f"🏆 +{3000 + min(4, rnd_idx) * 2000:,}", True, config.NEON_GREEN)
-            surface.blit(rw_s, rw_s.get_rect(center=(vs_box.centerx, vs_box.centery + 24)))
-        else:
-            surface.blit(
-                name_f.render(f"🔥 현재 출전 라운드: {rnd_names[rnd_idx]}   |   승리 보상: +{3000 + min(4, rnd_idx) * 2000:,}원", True, config.GOLD),
-                (vs_box.x + 14, vs_box.y + 10),
-            )
+        my_av = pygame.Rect(vs_box.x + 20, vs_box.y + 42, 82, 82)
+        opp_av = pygame.Rect(vs_box.right - 102, vs_box.y + 42, 82, 82)
+        art_renderer.draw_chef_avatar(surface, my_av, character_id=self.game_mgr.selected_character, state="SKILL", time_tick=self.time_tick)
+        art_renderer.draw_chef_avatar(surface, opp_av, character_id=opp_id, state="SKILL", time_tick=self.time_tick)
 
-            my_av = pygame.Rect(vs_box.x + 20, vs_box.y + 42, 82, 82)
-            opp_av = pygame.Rect(vs_box.right - 102, vs_box.y + 42, 82, 82)
-            art_renderer.draw_chef_avatar(surface, my_av, character_id=self.game_mgr.selected_character, state="SKILL", time_tick=self.time_tick)
-            art_renderer.draw_chef_avatar(surface, opp_av, character_id=opp_id, state="SKILL", time_tick=self.time_tick)
+        surface.blit(name_f.render(f"나: {my_char['name']}", True, config.NEON_GREEN), (my_av.right + 10, vs_box.y + 44))
+        surface.blit(xs_f.render(f"[{my_char.get('region_name', '')}]", True, config.GOLD), (my_av.right + 10, vs_box.y + 68))
+        surface.blit(xs_f.render(f"{my_char['skill_name'][:11]}", True, config.TEXT_PRIMARY), (my_av.right + 10, vs_box.y + 88))
 
-            surface.blit(name_f.render(f"나: {my_char['name']}", True, config.NEON_GREEN), (my_av.right + 10, vs_box.y + 44))
-            surface.blit(xs_f.render(f"[{my_char.get('region_name', '')}]", True, config.GOLD), (my_av.right + 10, vs_box.y + 68))
-            surface.blit(xs_f.render(f"{my_char['skill_name'][:11]}", True, config.TEXT_PRIMARY), (my_av.right + 10, vs_box.y + 88))
+        vs_s = vs_f.render("⚡ VS ⚡", True, config.GOLD)
+        surface.blit(vs_s, vs_s.get_rect(center=(vs_box.centerx, vs_box.y + 82)))
 
-            vs_s = vs_f.render("⚡ VS ⚡", True, config.GOLD)
-            surface.blit(vs_s, vs_s.get_rect(center=(vs_box.centerx, vs_box.y + 82)))
+        opp_lbl = name_f.render(f"AI: {opp_char['name']}", True, (255, 138, 138))
+        opp_reg = xs_f.render(f"[{opp_char.get('region_name', '')}]", True, config.GOLD)
+        opp_sub = xs_f.render(f"{opp_char.get('specialty_tag', '')[:11]}", True, config.TEXT_PRIMARY)
+        surface.blit(opp_lbl, (opp_av.left - opp_lbl.get_width() - 10, vs_box.y + 44))
+        surface.blit(opp_reg, (opp_av.left - opp_reg.get_width() - 10, vs_box.y + 68))
+        surface.blit(opp_sub, (opp_av.left - opp_sub.get_width() - 10, vs_box.y + 88))
 
-            opp_lbl = name_f.render(f"AI: {opp_char['name']}", True, (255, 138, 138))
-            opp_reg = xs_f.render(f"[{opp_char.get('region_name', '')}]", True, config.GOLD)
-            opp_sub = xs_f.render(f"{opp_char.get('specialty_tag', '')[:11]}", True, config.TEXT_PRIMARY)
-            surface.blit(opp_lbl, (opp_av.left - opp_lbl.get_width() - 10, vs_box.y + 44))
-            surface.blit(opp_reg, (opp_av.left - opp_reg.get_width() - 10, vs_box.y + 68))
-            surface.blit(opp_sub, (opp_av.left - opp_sub.get_width() - 10, vs_box.y + 88))
-
-            surface.blit(
-                xs_f.render("※ 출격 시 영업 화면 상단에 실시간 [나 vs AI 라이벌] 매출 줄다리기 게이지가 가동됩니다!", True, config.NEON_CYAN),
-                (vs_box.x + 14, vs_box.bottom - 26),
-            )
+        surface.blit(
+            xs_f.render("※ 출격 시 영업 화면 상단에 실시간 [나 vs AI 라이벌] 매출 줄다리기 게이지가 가동됩니다!", True, config.NEON_CYAN),
+            (vs_box.x + 14, vs_box.bottom - 26),
+        )
 
         # 좌측 하단 [⚔️ 32강 토너먼트 AI 보스전 출격!] 버튼
         match_btn = pygame.Rect(left_x, area.bottom - 62, 560, 46)
         m_hov = match_btn.collidepoint(mx, my)
         pygame.draw.rect(surface, (228, 72, 48) if m_hov else (188, 52, 38), match_btn, border_radius=12)
         pygame.draw.rect(surface, config.GOLD, match_btn, width=2, border_radius=12)
-        m_lbl_str = f"⚔️ VS {opp_char['name']} ▶" if is_mob else f"⚔️ {rnd_names[rnd_idx].split(' ')[0]} AI 보스전 즉시 출격! (VS {opp_char['name']})"
+        m_lbl_str = f"⚔️ {rnd_names[rnd_idx].split(' ')[0]} AI 보스전 즉시 출격! (VS {opp_char['name']})"
         m_txt = sec_f.render(m_lbl_str, True, config.WHITE)
         surface.blit(m_txt, m_txt.get_rect(center=match_btn.center))
         self._click_targets.append((match_btn, "start_tournament_match", opp_id))
 
         # 우측: 32강 월드 포차 그랑프리 5라운드 & 32인 셰프 시드 일람
         right_x = area.x + 602
-        if not is_mob:
-            r_hdr = sec_f.render("🏆 32강 월드 포차 그랑프리 대진표 (32인 지역 마스터 시드)", True, config.GOLD)
-            surface.blit(r_hdr, (right_x, area.y + 12))
+        r_hdr = sec_f.render("🏆 32강 월드 포차 그랑프리 대진표 (32인 지역 마스터 시드)", True, config.GOLD)
+        surface.blit(r_hdr, (right_x, area.y + 12))
 
         r_w = 602
-        row_y = area.y + (16 if is_mob else 42)
+        row_y = area.y + 42
         for tier_num in (5, 4, 3, 2, 1):
             t_meta = TOURNAMENT_TIERS[tier_num]
             chefs = [c for c in TOURNAMENT_32_ROSTER.values() if c["tier"] == tier_num]
-            box_h = 86 if is_mob else 82
+            box_h = 82
             t_rect = pygame.Rect(right_x, row_y, r_w, box_h)
             is_curr_round = (rnd_idx + 1) == tier_num
             is_cleared_round = (rnd_idx + 1) > tier_num
@@ -1964,30 +1712,20 @@ class PrepScene(BaseScene):
             b_col = config.NEON_GREEN if is_cleared_round else (config.GOLD if (tier_num == 5 or is_curr_round) else config.UI_BORDER)
             pygame.draw.rect(surface, b_col, t_rect, width=2 if (is_curr_round or tier_num >= 4) else 1, border_radius=10)
 
-            if is_mob:
-                # 모바일 그림 중심 대진표: 셰프 이름 텍스트 목록 대신 라운드 배지 + 대표 셰프 도트 아바타 행렬 배치
-                badge_str = "✔" if is_cleared_round else ("🔥" if is_curr_round else f"T{tier_num}")
-                b_surf = sec_f.render(badge_str, True, b_col)
-                surface.blit(b_surf, (t_rect.x + 14, t_rect.centery - b_surf.get_height() // 2))
-                vis_chefs = chefs[:8]
-                for c_idx, c_item in enumerate(vis_chefs):
-                    av_r = pygame.Rect(t_rect.x + 68 + c_idx * 64, t_rect.y + 15, 56, 56)
-                    art_renderer.draw_chef_avatar(surface, av_r, character_id=c_item["id"], state="IDLE", time_tick=self.time_tick)
-            else:
-                status_prefix = "✔ [돌파] " if is_cleared_round else ("🔥 [현재 라운드] " if is_curr_round else "★ ")
-                hdr_txt = name_f.render(
-                    f"{status_prefix}{t_meta['round_name']} [{t_meta['label']} · {len(chefs)}명] — 목표 분당 {t_meta['expected_gold_per_min']:,}원",
-                    True,
-                    config.NEON_GREEN if is_cleared_round else (config.GOLD if tier_num >= 4 or is_curr_round else config.NEON_CYAN),
-                )
-                surface.blit(hdr_txt, (t_rect.x + 12, t_rect.y + 7))
+            status_prefix = "✔ [돌파] " if is_cleared_round else ("🔥 [현재 라운드] " if is_curr_round else "★ ")
+            hdr_txt = name_f.render(
+                f"{status_prefix}{t_meta['round_name']} [{t_meta['label']} · {len(chefs)}명] — 목표 분당 {t_meta['expected_gold_per_min']:,}원",
+                True,
+                config.NEON_GREEN if is_cleared_round else (config.GOLD if tier_num >= 4 or is_curr_round else config.NEON_CYAN),
+            )
+            surface.blit(hdr_txt, (t_rect.x + 12, t_rect.y + 7))
 
-                chef_tags = [f"[{c['country']}·{c.get('region_name', '')[:3]}]{c['name']}" for c in chefs]
-                per_line = 4
-                for ln_i in range(0, len(chef_tags), per_line):
-                    chunk = "  ·  ".join(chef_tags[ln_i : ln_i + per_line])
-                    c_surf = xs_f.render(chunk, True, config.TEXT_PRIMARY)
-                    surface.blit(c_surf, (t_rect.x + 14, t_rect.y + 32 + (ln_i // per_line) * 21))
+            chef_tags = [f"[{c['country']}·{c.get('region_name', '')[:3]}]{c['name']}" for c in chefs]
+            per_line = 4
+            for ln_i in range(0, len(chef_tags), per_line):
+                chunk = "  ·  ".join(chef_tags[ln_i : ln_i + per_line])
+                c_surf = xs_f.render(chunk, True, config.TEXT_PRIMARY)
+                surface.blit(c_surf, (t_rect.x + 14, t_rect.y + 32 + (ln_i // per_line) * 21))
 
             row_y += box_h + 9
 

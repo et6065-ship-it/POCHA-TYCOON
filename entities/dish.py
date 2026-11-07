@@ -10,13 +10,20 @@ import pygame
 
 from core.art_renderer import draw_food_icon
 from core.game_manager import GameManager
-from data.recipes import RECIPES, can_add_topping as _recipe_can_add_topping, get_recipe, resolve_recipe
+from data.recipes import (
+    RECIPES,
+    can_add_topping as _recipe_can_add_topping,
+    get_recipe,
+    get_recipe_cost,
+    resolve_recipe,
+)
 
 
 class Dish:
     """
     조리 기구에서 생성되어 조립 트레이 또는 손님에게 전달되는 음식 객체.
-    베이스 레시피 ID와 추가된 토핑 목록을 기반으로 최종 레시피를 동적으로 판별한다.
+    베이스 레시피 ID와 추가된 토핑 목록을 기반으로 최종 레시피를 동적으로 판별하며,
+    동일 메뉴 무한 스택(quantity) 및 재료 원가(cost) 계산을 지원한다.
     """
 
     def __init__(
@@ -24,10 +31,12 @@ class Dish:
         base_recipe_id: str,
         toppings: Optional[Iterable[str]] = None,
         burnt: bool = False,
+        quantity: int = 1,
     ) -> None:
         self.base_recipe_id: str = str(base_recipe_id)
         self.toppings: List[str] = [str(t) for t in toppings if t] if toppings else []
         self.burnt: bool = bool(burnt)
+        self.quantity: int = max(1, int(quantity))
 
     @property
     def recipe_id(self) -> str:
@@ -112,12 +121,24 @@ class Dish:
         rec = RECIPES.get(self.recipe_id)
         return int(rec["price"]) if rec else 0
 
-    def copy(self) -> "Dish":
+    def get_cost(self, game_mgr: Any = None) -> int:
+        """현재 음식 1개당 재료 원가(폐기 손실 비용)를 반환한다."""
+        mgr = game_mgr or GameManager.get_instance()
+        if mgr and hasattr(mgr, "get_recipe_cost"):
+            return int(mgr.get_recipe_cost(self.recipe_id))
+        return get_recipe_cost(self.recipe_id)
+
+    def get_total_cost(self, game_mgr: Any = None) -> int:
+        """현재 중첩된 스택 수량(quantity) 전체의 재료 원가 합계를 반환한다."""
+        return self.get_cost(game_mgr) * max(1, int(self.quantity))
+
+    def copy(self, quantity: Optional[int] = None) -> "Dish":
         """동일한 상태를 가진 Dish 복제본을 반환한다."""
         return Dish(
             base_recipe_id=self.base_recipe_id,
             toppings=list(self.toppings),
             burnt=self.burnt,
+            quantity=self.quantity if quantity is None else max(1, int(quantity)),
         )
 
     def draw(
@@ -140,5 +161,5 @@ class Dish:
     def __repr__(self) -> str:
         return (
             f"Dish(base={self.base_recipe_id!r}, toppings={self.toppings!r}, "
-            f"recipe_id={self.recipe_id!r}, burnt={self.burnt!r})"
+            f"recipe_id={self.recipe_id!r}, burnt={self.burnt!r}, quantity={self.quantity!r})"
         )

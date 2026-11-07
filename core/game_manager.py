@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import config
 from data.characters import AttrDict, CHARACTER_ORDER, CHARACTERS, get_character
-from data.recipes import RECIPES, TOPPINGS, get_recipe, get_recipes_by_station
+from data.recipes import RECIPES, TOPPINGS, get_recipe, get_recipe_cost, get_recipes_by_station
 from data.chapters import (
     CHAPTER_ORDER,
     CHAPTERS,
@@ -269,8 +269,12 @@ class GameManager:
                 "fullscreen": False,
             }
 
-        # 일일 영업/콤보/액티브 스킬 런타임 상태
+        # 일일 영업/콤보/액티브 스킬/폐기 손실 런타임 상태
         self.daily_gold: int = 0
+        self.daily_gross_gold: int = 0
+        self.daily_discard_loss: int = 0
+        self.daily_discard_count: int = 0
+        self.daily_discard_items: Dict[str, int] = {}
         self.combo: int = 0
         self.max_combo: int = 0
         self.combo_timer: float = 0.0
@@ -847,6 +851,10 @@ class GameManager:
     # 별칭 호환
     get_menu_price = get_recipe_price
 
+    def get_recipe_cost(self, recipe_id: str) -> int:
+        """메뉴의 기본 재료 원가(폐기 시 1개당 손실 비용, 기본 판매가의 약 35%)를 반환한다."""
+        return get_recipe_cost(recipe_id)
+
     def get_combo_tip_multiplier(self) -> float:
         """
         콤보 보너스 팁 배율을 반환한다.
@@ -1026,11 +1034,15 @@ class GameManager:
         )
 
     # ==========================================================================
-    # 영업일(Day) 진행 및 서빙 보상 처리
+    # 영업일(Day) 진행 및 서빙 보상 / 폐기 손실 처리
     # ==========================================================================
     def start_day(self) -> None:
         """새로운 하루 영업을 시작하기 위해 일일 런타임 카운터를 초기화한다."""
         self.daily_gold = 0
+        self.daily_gross_gold = 0
+        self.daily_discard_loss = 0
+        self.daily_discard_count = 0
+        self.daily_discard_items = {}
         self.combo = 0
         self.max_combo = 0
         self.combo_timer = 0.0
@@ -1063,6 +1075,7 @@ class GameManager:
         total = base_price + tip
 
         self.daily_gold += total
+        self.daily_gross_gold += total
         self.add_gold(total)
 
         return AttrDict(
@@ -1076,6 +1089,37 @@ class GameManager:
             }
         )
 
+    def record_discard_loss(
+        self,
+        recipe_id: str,
+        count: int = 1,
+        reason: str = "discard",
+        deduct_immediately: bool = True,
+    ) -> int:
+        """
+        음식 폐기(휴지통 수동 폐기, 탄 음식 폐기, 마감 시 잔여 재고 폐기)에 따른
+        재료 원가 손실(100% 원가 차감)을 기록하고 손실액(원)을 반환한다.
+        """
+        qty = max(1, int(count))
+        unit_cost = self.get_recipe_cost(recipe_id) if recipe_id else 350
+        if unit_cost <= 0:
+            unit_cost = 350
+        loss = unit_cost * qty
+
+        # 외부에서 daily_gold만 직접 증가시킨 경우 gross_gold 동기화
+        if self.daily_gross_gold < self.daily_gold + self.daily_discard_loss:
+            self.daily_gross_gold = self.daily_gold + self.daily_discard_loss
+
+        self.daily_discard_loss += loss
+        self.daily_discard_count += qty
+        if recipe_id:
+            self.daily_discard_items[recipe_id] = int(self.daily_discard_items.get(recipe_id, 0)) + qty
+
+        if deduct_immediately:
+            self.daily_gold = max(0, self.daily_gold - loss)
+            self.gold = max(0, self.gold - loss)
+        return loss
+
     def break_combo(self) -> None:
         """손님이 화내며 떠나거나 음식을 태웠을 때 콤보를 초기화한다."""
         self.combo = 0
@@ -1088,6 +1132,7 @@ class GameManager:
         - GLOBAL_ENDLESS 모드에서는 chapter_days를 덮어쓰지 않고 endless_day에 별도 저장한다.
         """
         actual_earned = self.daily_gold if earned_gold is None else int(earned_gold)
+        gross_gold = max(actual_earned + self.daily_discard_loss, self.daily_gross_gold)
         target = self.get_target_gold(self.day)
         stars = calculate_stars(actual_earned, target)
         cleared = actual_earned >= target
@@ -1116,6 +1161,10 @@ class GameManager:
             {
                 "day": completed_day,
                 "next_day": self.day,
+                "gross_gold": gross_gold,
+                "discard_loss": self.daily_discard_loss,
+                "discard_count": self.daily_discard_count,
+                "discard_items": dict(self.daily_discard_items),
                 "earned_gold": actual_earned,
                 "target_gold": target,
                 "stars": stars,

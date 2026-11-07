@@ -431,6 +431,7 @@ class DuelPlayScene(PlayScene):
             return
         self._day_finished = True
         sound_fx.play_day_end()
+        self._settle_end_of_day_leftovers()
         self._send_state_sync(finished=True)
 
         if self.opp_stats.get("finished", False) or not self.net.connected:

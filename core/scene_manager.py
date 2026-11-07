@@ -219,6 +219,12 @@ class SceneManager:
         self.loading_cycle_themes: bool = False
         self._loading_theme_timer: float = 0.0
 
+        # 모바일 세로 모드(720x1280) 1패널 확대 뷰 상태 (4분할 제거 -> 1개 대형 패널 전환)
+        self.portrait_title_idx: int = 1  # 0: 마스터 프로필, 1: 스토리 모드, 2: 장인 모드, 3: 글로벌 모드
+        self.portrait_prep_idx: int = 0   # 상점/준비 각 탭별 현재 보고 있는 단일 카드/패널 인덱스
+        self.portrait_play_idx: int = 0   # 인게임 조리 스테이션 단일 패널 인덱스
+        self._portrait_swipe_start: Optional[Tuple[int, int, int]] = None
+
         config.sync_browser_display_and_fullscreen(None)
         self._register_default_scenes()
 
@@ -454,6 +460,7 @@ class SceneManager:
 
         self.current_scene = scene_obj
         self.current_scene_name = key
+        self._sync_portrait_state_on_scene_enter(key)
 
         ch_id = str(getattr(self.game_mgr, "current_chapter", "KR") or "KR").upper()
         play_bgm_map = {
@@ -487,6 +494,49 @@ class SceneManager:
     set_scene = change_scene
     goto = change_scene
 
+    def _sync_portrait_state_on_scene_enter(self, key: str) -> None:
+        """씬 전환 시 세로 모드 단일 패널 인덱스를 현재 선택된 항목에 맞게 동기화한다."""
+        if key in ("play", "duel_play"):
+            self.portrait_play_idx = 0
+        elif key == "prep":
+            self._sync_portrait_prep_idx_to_selection()
+
+    def _sync_portrait_prep_idx_to_selection(self) -> None:
+        """PrepScene의 현재 탭 및 모드에 맞춰 세로 단일 패널 인덱스를 활성 항목으로 맞춘다."""
+        sc = self.current_scene
+        active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
+        if active_tab == "chapter":
+            mode = getattr(self.game_mgr, "mode", "WORLD_TOUR")
+            if mode == "SPECIALIST":
+                from data.specialist_menus import SPECIALIST_ORDER
+                sp_id = getattr(self.game_mgr, "selected_specialist", "bungeo")
+                self.portrait_prep_idx = SPECIALIST_ORDER.index(sp_id) if sp_id in SPECIALIST_ORDER else 0
+            elif mode == "GLOBAL_ENDLESS":
+                self.portrait_prep_idx = 0
+            else:
+                from data.chapters import CHAPTER_ORDER
+                ch_id = getattr(self.game_mgr, "current_chapter", "KR")
+                self.portrait_prep_idx = CHAPTER_ORDER.index(ch_id) if ch_id in CHAPTER_ORDER else 0
+        else:
+            self.portrait_prep_idx = 0
+
+    def _sync_prep_logical_page_for_portrait(self) -> None:
+        """세로 모드에서 1개 카드씩 넘길 때 PrepScene의 내부 페이지(chapter_page / specialist_page)를 자동 동기화한다."""
+        if self.current_scene_name != "prep" or self.current_scene is None:
+            return
+        sc = self.current_scene
+        active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
+        if active_tab == "chapter":
+            mode = getattr(self.game_mgr, "mode", "WORLD_TOUR")
+            if mode == "SPECIALIST":
+                from data.specialist_menus import SPECIALIST_ORDER
+                idx = self.portrait_prep_idx % max(1, len(SPECIALIST_ORDER))
+                sc.specialist_page = idx // 4
+            elif mode == "WORLD_TOUR":
+                from data.chapters import CHAPTER_ORDER
+                idx = self.portrait_prep_idx % max(1, len(CHAPTER_ORDER))
+                sc.chapter_page = idx // 4
+
     # ==========================================================================
     # 다중 화면비(가로 16:9 / 20:9 & 세로 9:16 / 9:18) 등비 뷰포트 계산 및 터치·마우스 좌표 역변환
     # ==========================================================================
@@ -507,10 +557,258 @@ class SceneManager:
         oy = (win_h - vp_h) // 2
         return ox, oy, vp_w, vp_h, scale
 
+    def _window_to_portrait_point(self, wx: float, wy: float, win_w: int, win_h: int) -> Tuple[int, int]:
+        """실제 윈도우 좌표를 720x1280 세로 캔버스 좌표(px, py)로 변환한다."""
+        ox, oy, vp_w, vp_h, _scale = self._compute_viewport(win_w, win_h)
+        if win_h > win_w:
+            px = (wx - ox) * config.PORTRAIT_WIDTH / float(max(1, vp_w))
+            py = (wy - oy) * config.PORTRAIT_HEIGHT / float(max(1, vp_h))
+        else:
+            px = wx * config.PORTRAIT_WIDTH / float(max(1, win_w))
+            py = wy * config.PORTRAIT_HEIGHT / float(max(1, win_h))
+        return int(round(px)), int(round(py))
+
     def _get_portrait_region_mappings(self) -> List[Tuple[pygame.Rect, pygame.Rect, Tuple[int, int, int]]]:
         """
-        세로 모드(720x1280)에서 1280x720 논리 화면의 핵심 구역(src_rect)을
-        원본 종횡비(Aspect Ratio)를 유지한 채 세로 화면(dst_rect)으로 배치하는 매핑 목록을 반환한다.
+        세로 모드(720x1280)에서 기존의 4개 패널 동시 분할을 완전히 제거하고,
+        현재 선택된 **단 1개의 대형 메인 패널(Single Giant Panel)**만 2.0~2.5배로 큼직하게 확대 매핑한다.
+        """
+        sc = self.current_scene
+        if self.options_open:
+            return [
+                (
+                    pygame.Rect(216, 52, 848, 616),
+                    pygame.Rect(12, 210, 696, 860),
+                    config.GOLD,
+                )
+            ]
+        if self.loading_active:
+            return [
+                (
+                    pygame.Rect(106, 32, 1068, 656),
+                    pygame.Rect(12, 230, 696, 820),
+                    config.GOLD,
+                )
+            ]
+        if self.current_scene_name == "result" and getattr(sc, "active_cutscene", None) is None:
+            return [
+                (
+                    pygame.Rect(186, 36, 908, 648),
+                    pygame.Rect(12, 210, 696, 860),
+                    config.GOLD,
+                )
+            ]
+        has_modal = (
+            getattr(sc, "active_cutscene", None) is not None
+            or bool(getattr(sc, "paused", False))
+            or bool(getattr(sc, "show_roster_modal", False))
+            or self.current_scene_name in ("duel_result", "duel_lobby")
+        )
+        if has_modal:
+            return [
+                (
+                    pygame.Rect(0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
+                    pygame.Rect(8, 280, 704, 720),
+                    config.GOLD,
+                )
+            ]
+
+        # ------------------------------------------------------------------
+        # 1) 인게임(PlayScene / DuelPlayScene): 단 1개의 대형 조리 스테이션 패널만 표시!
+        # ------------------------------------------------------------------
+        if self.current_scene_name in ("play", "duel_play"):
+            is_spec = (
+                self.current_scene_name == "play"
+                and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "SPECIALIST"
+            )
+            if is_spec:
+                # 장인 모드 3패널: 0=①속재료 투입, 1=②6구 전문 화로, 2=③조립·토핑 트레이
+                spec_srcs = [
+                    (pygame.Rect(14, 352, 412, 358), config.POCHA_ORANGE),
+                    (pygame.Rect(436, 352, 452, 358), config.GOLD),
+                    (pygame.Rect(898, 352, 368, 358), config.NEON_CYAN),
+                ]
+                idx = self.portrait_play_idx % len(spec_srcs)
+                station_src, st_border = spec_srcs[idx]
+            else:
+                # 일반 모드 5패널: 0=①몰드, 1=②음료, 2=③트레이, 3=④그릴, 4=⑤대량팬
+                norm_srcs = [
+                    (pygame.Rect(12, 352, 228, 358), config.POCHA_ORANGE),
+                    (pygame.Rect(244, 352, 224, 358), config.NEON_CYAN),
+                    (pygame.Rect(470, 352, 340, 358), config.GOLD),
+                    (pygame.Rect(812, 352, 224, 358), config.POCHA_ORANGE),
+                    (pygame.Rect(1038, 352, 230, 358), config.NEON_PINK),
+                ]
+                idx = self.portrait_play_idx % len(norm_srcs)
+                station_src, st_border = norm_srcs[idx]
+
+            return [
+                # 상단 우측 [⚙️ 옵션] & [🏪 상점] 버튼
+                (pygame.Rect(1054, 8, 216, 48), pygame.Rect(464, 8, 248, 48), config.GOLD),
+                # 중앙 초대형 단일 조리 스테이션 패널 (688x752 — 글자와 버튼이 2.2~3.0배 커짐!)
+                (station_src, pygame.Rect(16, 426, 688, 752), st_border),
+            ]
+
+        # ------------------------------------------------------------------
+        # 2) 타이틀 화면(TitleScene): 4개 카드를 2x2로 쪼개지 않고 1개 초대형 카드로 표시!
+        # ------------------------------------------------------------------
+        if self.current_scene_name == "title":
+            card_srcs = [
+                (pygame.Rect(34, 212, 290, 346), config.UI_BORDER),
+                (pygame.Rect(340, 212, 290, 346), config.POCHA_ORANGE),
+                (pygame.Rect(646, 212, 290, 346), config.GOLD),
+                (pygame.Rect(952, 212, 294, 346), config.NEON_CYAN),
+            ]
+            t_idx = self.portrait_title_idx % len(card_srcs)
+            active_card_src, active_card_col = card_srcs[t_idx]
+            return [
+                # 1) 상단 9개국 배경 미리보기 버튼 바
+                (pygame.Rect(615, 14, 635, 38), pygame.Rect(12, 12, 696, 42), config.UI_BORDER),
+                # 2) 현재 선택된 단 1개의 초대형 카드 패널 (290x346 -> 656x728, 약 2.2배 확대!)
+                (active_card_src, pygame.Rect(32, 252, 656, 728), active_card_col),
+                # 3) 하단 유틸리티 1열 ([세이브 로드] · [초기화] · [사운드·화면 설정])
+                (pygame.Rect(36, 644, 524, 54), pygame.Rect(12, 994, 696, 72), config.UI_BORDER),
+                # 4) 하단 유틸리티 2열 ([가로모드 전환] · [전체화면 전환])
+                (pygame.Rect(564, 644, 360, 54), pygame.Rect(84, 1078, 552, 72), config.NEON_CYAN),
+            ]
+
+        # ------------------------------------------------------------------
+        # 3) 준비/상점 화면(PrepScene): 모든 탭에서 단 1개의 대형 카드/패널만 표시!
+        # ------------------------------------------------------------------
+        if self.current_scene_name == "prep":
+            self._sync_prep_logical_page_for_portrait()
+            active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
+            base_regions: List[Tuple[pygame.Rect, pygame.Rect, Tuple[int, int, int]]] = [
+                # 상단 좌측 네비게이션 버튼 ([⬅ 타이틀로] · [모드 전환] · [⚙️ 옵션])
+                (pygame.Rect(24, 10, 476, 52), pygame.Rect(8, 8, 456, 52), config.UI_BORDER),
+                # 상단 우측 보유 골드 박스
+                (pygame.Rect(988, 10, 266, 52), pygame.Rect(472, 8, 240, 52), config.GOLD),
+                # 4대 메인 탭 버튼 바
+                (pygame.Rect(24, 68, 1232, 54), pygame.Rect(8, 66, 704, 52), config.UI_BORDER),
+            ]
+
+            if active_tab == "character":
+                if (self.portrait_prep_idx % 2) == 0:
+                    # 단일 마스터 상세 도감 카드 (382x440 -> 672x848 초대형 1패널!)
+                    base_regions.append(
+                        (pygame.Rect(852, 178, 382, 440), pygame.Rect(24, 188, 672, 848), config.NEON_CYAN)
+                    )
+                else:
+                    # 32인 전체 목록/국가 필터 그리드 뷰 (선택 시 즉시 단일 상세 카드로 복귀)
+                    base_regions.append(
+                        (pygame.Rect(28, 126, 1224, 50), pygame.Rect(12, 188, 696, 48), config.UI_BORDER)
+                    )
+                    base_regions.append(
+                        (pygame.Rect(28, 176, 816, 452), pygame.Rect(12, 242, 696, 794), config.POCHA_ORANGE)
+                    )
+            elif active_tab == "chapter":
+                mode = getattr(self.game_mgr, "mode", "WORLD_TOUR")
+                if mode == "SPECIALIST":
+                    from data.specialist_menus import SPECIALIST_ORDER
+                    idx = self.portrait_prep_idx % max(1, len(SPECIALIST_ORDER))
+                    col = idx % 4
+                    card_src = pygame.Rect(50 + col * 300, 178, 282, 434)
+                elif mode == "GLOBAL_ENDLESS":
+                    col = self.portrait_prep_idx % 4
+                    card_src = pygame.Rect(50 + col * 300, 176, 282, 434)
+                else:
+                    from data.chapters import CHAPTER_ORDER
+                    idx = self.portrait_prep_idx % max(1, len(CHAPTER_ORDER))
+                    col = idx % 4
+                    card_src = pygame.Rect(50 + col * 300, 178, 282, 434)
+                # 단 1개의 챕터/장인/기구슬롯 카드를 672x848 초대형 단일 패널로 확대!
+                base_regions.append(
+                    (card_src, pygame.Rect(24, 188, 672, 848), config.GOLD)
+                )
+            elif active_tab == "upgrade":
+                if (self.portrait_prep_idx % 2) == 0:
+                    # 0: 🛠️ 조리 기구 & 트레이 강화 (5종) 단일 패널
+                    up_src = pygame.Rect(38, 134, 610, 488)
+                    up_col = config.GOLD
+                else:
+                    # 1: 🏮 포차 감성 인테리어 소품 (4종) 단일 패널
+                    up_src = pygame.Rect(646, 134, 594, 488)
+                    up_col = config.NEON_PINK
+                base_regions.append(
+                    (up_src, pygame.Rect(16, 188, 688, 848), up_col)
+                )
+            else:  # tournament
+                if (self.portrait_prep_idx % 2) == 0:
+                    # 0: ⚔️ 현재 라운드 AI 보스 대결 & 즉시 출격 단일 패널
+                    tn_src = pygame.Rect(38, 134, 576, 488)
+                    tn_col = config.POCHA_ORANGE
+                else:
+                    # 1: 🏆 32강 월드 그랑프리 전체 대진표 단일 패널
+                    tn_src = pygame.Rect(616, 134, 624, 488)
+                    tn_col = config.GOLD
+                base_regions.append(
+                    (tn_src, pygame.Rect(16, 188, 688, 848), tn_col)
+                )
+
+            # 최하단 [🏮 오늘 영업 시작! (START)] 대형 엄지 버튼
+            base_regions.append(
+                (pygame.Rect(900, 638, 356, 68), pygame.Rect(80, 1162, 560, 96), config.GOLD)
+            )
+            return base_regions
+
+        return [
+            (
+                pygame.Rect(0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
+                pygame.Rect(8, 280, 704, 720),
+                config.GOLD,
+            )
+        ]
+
+    def _step_portrait_panel(self, delta: int) -> None:
+        """세로 모드에서 [◀] / [▶] 버튼 또는 좌우 스와이프 시 현재 단일 패널을 이전/다음으로 전환한다."""
+        sound_fx.play_tab_switch()
+        sc = self.current_scene
+        if self.current_scene_name == "title":
+            self.portrait_title_idx = (self.portrait_title_idx + delta) % 4
+            return
+
+        if self.current_scene_name in ("play", "duel_play"):
+            is_spec = (
+                self.current_scene_name == "play"
+                and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "SPECIALIST"
+            )
+            cnt = 3 if is_spec else 5
+            self.portrait_play_idx = (self.portrait_play_idx + delta) % cnt
+            return
+
+        if self.current_scene_name == "prep" and sc is not None:
+            active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
+            if active_tab == "character":
+                if (self.portrait_prep_idx % 2) == 0 and hasattr(sc, "_get_filtered_characters"):
+                    filtered = sc._get_filtered_characters()
+                    if filtered:
+                        cur_id = getattr(sc, "inspected_character", filtered[0])
+                        cur_i = filtered.index(cur_id) if cur_id in filtered else 0
+                        next_i = (cur_i + delta) % len(filtered)
+                        sc.inspected_character = filtered[next_i]
+                        sc.char_page = next_i // 6
+                else:
+                    if hasattr(sc, "_handle_action"):
+                        sc._handle_action("char_page_delta", delta, (640, 360))
+            elif active_tab == "chapter":
+                mode = getattr(self.game_mgr, "mode", "WORLD_TOUR")
+                if mode == "SPECIALIST":
+                    from data.specialist_menus import SPECIALIST_ORDER
+                    self.portrait_prep_idx = (self.portrait_prep_idx + delta) % len(SPECIALIST_ORDER)
+                    sc.specialist_page = self.portrait_prep_idx // 4
+                elif mode == "GLOBAL_ENDLESS":
+                    self.portrait_prep_idx = (self.portrait_prep_idx + delta) % 4
+                else:
+                    from data.chapters import CHAPTER_ORDER
+                    self.portrait_prep_idx = (self.portrait_prep_idx + delta) % len(CHAPTER_ORDER)
+                    sc.chapter_page = self.portrait_prep_idx // 4
+            else:
+                self.portrait_prep_idx = (self.portrait_prep_idx + delta) % 2
+
+    def _handle_portrait_native_click(self, px: int, py: int) -> bool:
+        """
+        720x1280 세로 화면 전용 네이티브 탭 바 / [◀][▶] 전환 버튼 / 손님 주문 카드 / 하단 스킬 바 클릭을 처리한다.
+        네이티브 컨트롤을 소비했으면 True를 반환한다.
         """
         sc = self.current_scene
         has_modal = (
@@ -522,112 +820,128 @@ class SceneManager:
             or self.current_scene_name in ("result", "duel_result", "duel_lobby")
         )
         if has_modal:
-            # 16:9 비율(704x404) 그대로 중앙 배치하여 글자·일러스트 찌그러짐 0% 보장
-            return [
-                (
-                    pygame.Rect(0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
-                    pygame.Rect(8, 410, 704, 404),
-                    config.GOLD,
-                )
-            ]
+            return False
 
-        if self.current_scene_name in ("play", "duel_play"):
+        # 1) 타이틀 화면(TitleScene) 상단 카드 전환 바 (y=182..242)
+        if self.current_scene_name == "title":
+            if pygame.Rect(12, 182, 56, 60).collidepoint(px, py):
+                self._step_portrait_panel(-1)
+                return True
+            if pygame.Rect(652, 182, 56, 60).collidepoint(px, py):
+                self._step_portrait_panel(1)
+                return True
+            for i in range(4):
+                pill_r = pygame.Rect(74 + i * 144, 182, 140, 60)
+                if pill_r.collidepoint(px, py):
+                    sound_fx.play_tab_switch()
+                    self.portrait_title_idx = i
+                    return True
+            return False
+
+        # 2) 준비/상점 화면(PrepScene) 서브 패널 전환 바 (y=124..180) 및 메인 탭 동기화
+        if self.current_scene_name == "prep" and sc is not None:
+            # 상단 모드 토글 버튼(132..346, 8..60) 또는 메인 탭 바(8..712, 66..118) 클릭 시 인덱스 동기화 예약
+            if pygame.Rect(8, 124, 68, 56).collidepoint(px, py):
+                self._step_portrait_panel(-1)
+                return True
+            if pygame.Rect(644, 124, 68, 56).collidepoint(px, py):
+                self._step_portrait_panel(1)
+                return True
+
+            active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
+            if active_tab == "character":
+                # [👨‍🍳 상세 카드] vs [📋 32인 목록/필터] 전환 버튼
+                if pygame.Rect(454, 128, 182, 48).collidepoint(px, py):
+                    sound_fx.play_tab_switch()
+                    self.portrait_prep_idx = 0 if (self.portrait_prep_idx % 2) == 1 else 1
+                    return True
+            elif active_tab == "chapter" and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "GLOBAL_ENDLESS":
+                # 글로벌 모드: 4개 슬롯 탭 + [국가 ◀/▶] 버튼
+                for s_i in range(4):
+                    sr = pygame.Rect(82 + s_i * 102, 128, 96, 48)
+                    if sr.collidepoint(px, py):
+                        sound_fx.play_tab_switch()
+                        self.portrait_prep_idx = s_i
+                        return True
+                if pygame.Rect(494, 128, 142, 48).collidepoint(px, py):
+                    if hasattr(sc, "_handle_action"):
+                        sc._handle_action("global_page_delta", 1, (640, 360))
+                    return True
+            elif active_tab in ("upgrade", "tournament"):
+                for sub_i in range(2):
+                    sr = pygame.Rect(84 + sub_i * 278, 128, 270, 48)
+                    if sr.collidepoint(px, py):
+                        sound_fx.play_tab_switch()
+                        self.portrait_prep_idx = sub_i
+                        return True
+            return False
+
+        # 3) 인게임(PlayScene / DuelPlayScene) 손님 카운터, 조리대 탭 바, 하단 스킬/전환 바
+        if self.current_scene_name in ("play", "duel_play") and sc is not None:
+            # 3-A) 손님 주문 카운터 (y=110..346) 터치 시: 트레이에 완성 접시가 있으면 자동 서빙 시도
+            if pygame.Rect(8, 110, 704, 236).collidepoint(px, py):
+                if hasattr(sc, "assembly_tray"):
+                    for sl_r in getattr(sc.assembly_tray, "slot_rects", []):
+                        res = sc.assembly_tray.handle_click(sl_r.center, auto_serve_cb=sc.try_auto_serve, button=1)
+                        if res and res.get("action") in ("auto_served", "served"):
+                            sc._handle_station_feedback(res, sl_r.center)
+                            return True
+                return True
+
+            # 3-B) 조리 스테이션 탭 바 (y=352..420)
+            if pygame.Rect(8, 352, 52, 68).collidepoint(px, py):
+                self._step_portrait_panel(-1)
+                return True
+            if pygame.Rect(660, 352, 52, 68).collidepoint(px, py):
+                self._step_portrait_panel(1)
+                return True
+
+            is_spec = (
+                self.current_scene_name == "play"
+                and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "SPECIALIST"
+            )
+            tab_cnt = 3 if is_spec else 5
+            avail_w = 592
+            tab_w = (avail_w - (tab_cnt - 1) * 6) // tab_cnt
+            for t_i in range(tab_cnt):
+                tr = pygame.Rect(64 + t_i * (tab_w + 6), 352, tab_w, 68)
+                if tr.collidepoint(px, py):
+                    sound_fx.play_tab_switch()
+                    self.portrait_play_idx = t_i
+                    return True
+
+            # 3-C) 최하단 빠른 전환 & 마스터 스킬 & 스토리 바 (y=1186..1268)
+            if pygame.Rect(8, 1186, 116, 82).collidepoint(px, py):
+                self._step_portrait_panel(-1)
+                return True
+            if pygame.Rect(596, 1186, 116, 82).collidepoint(px, py):
+                self._step_portrait_panel(1)
+                return True
+
             show_story_btn = (
                 self.current_scene_name == "play"
                 and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "WORLD_TOUR"
             )
-            avatar_dst_h = 452 if show_story_btn else 522
-            regions: List[Tuple[pygame.Rect, pygame.Rect, Tuple[int, int, int]]] = [
-                # 1) 상단 우측 [옵션] & [준비/상점] 버튼
-                (pygame.Rect(1054, 8, 216, 48), pygame.Rect(464, 10, 248, 52), config.GOLD),
-                # 2) 손님 대기 카운터 & 주문 말풍선 (세로 높이 228px로 확대하여 주문 시인성 극대화)
-                (pygame.Rect(190, 64, 1090, 286), pygame.Rect(8, 114, 704, 228), config.UI_BORDER),
-                # 3) 좌측 조리 기구 2종 (① 몰드 구이 + ② 음료 디스펜서 · 세로 높이 316px 대형화)
-                (pygame.Rect(10, 350, 456, 362), pygame.Rect(8, 350, 348, 316), config.POCHA_ORANGE),
-                # 4) 우측 조리 기구 2종 (④ 직화 그릴 + ⑤ 대량 조리 팬 · 세로 높이 316px 대형화)
-                (pygame.Rect(814, 350, 456, 362), pygame.Rect(364, 350, 348, 316), config.POCHA_ORANGE),
-                # 5) 하단 좌측 엄지 존: 마스터 아바타 & 원터치 액티브 스킬 패널
-                (pygame.Rect(8, 70, 182, 270), pygame.Rect(8, 674, 256, avatar_dst_h), config.NEON_CYAN),
-                # 6) 하단 우측 엄지 존: 중앙 조립 & 토핑 트레이 (세로 높이 522px 대형 토핑 버튼)
-                (pygame.Rect(468, 350, 344, 362), pygame.Rect(272, 674, 440, 522), config.GOLD),
-            ]
-            if show_story_btn:
-                # 7) 하단 좌측 스토리 다시보기 버튼 (WORLD_TOUR 모드 전용)
-                regions.append(
-                    (pygame.Rect(194, 70, 122, 26), pygame.Rect(8, 1134, 256, 62), config.POCHA_ORANGE)
-                )
-            return regions
+            skill_r = pygame.Rect(130, 1186, 338 if show_story_btn else 460, 82)
+            if skill_r.collidepoint(px, py):
+                if hasattr(sc, "activate_skill"):
+                    sc.activate_skill()
+                return True
+            if show_story_btn and pygame.Rect(474, 1186, 116, 82).collidepoint(px, py):
+                sound_fx.play_click()
+                if hasattr(sc, "_queue_start_cutscenes"):
+                    sc._queue_start_cutscenes()
+                return True
 
-        if self.current_scene_name == "title":
-            return [
-                # 1) 상단 9개국 배경 미리보기 버튼 바 (원본 비율 유지)
-                (pygame.Rect(615, 14, 635, 38), pygame.Rect(12, 12, 696, 42), config.UI_BORDER),
-                # 2) 현재 포차 마스터 프로필 카드 (2x2 그리드 좌상단 배치)
-                (pygame.Rect(34, 212, 290, 346), pygame.Rect(16, 192, 336, 314), config.UI_BORDER),
-                # 3) 게임 모드 1: 월드 투어 스토리 카드 (2x2 그리드 우상단 배치)
-                (pygame.Rect(340, 212, 290, 346), pygame.Rect(368, 192, 336, 314), config.POCHA_ORANGE),
-                # 4) 게임 모드 2: 단일 메뉴 장인 모드 카드 (2x2 그리드 좌하단 배치)
-                (pygame.Rect(646, 212, 290, 346), pygame.Rect(16, 520, 336, 314), config.GOLD),
-                # 5) 게임 모드 3: 글로벌 통합 모드 카드 (2x2 그리드 우하단 배치)
-                (pygame.Rect(952, 212, 294, 346), pygame.Rect(368, 520, 336, 314), config.NEON_CYAN),
-                # 6) 하단 유틸리티 1열 ([세이브 로드] · [초기화] · [사운드·화면 설정] 원본 비율 유지)
-                (pygame.Rect(36, 644, 524, 54), pygame.Rect(12, 948, 696, 72), config.UI_BORDER),
-                # 7) 하단 유틸리티 2열 ([가로모드 전환] · [전체화면 전환] 원본 비율 유지)
-                (pygame.Rect(564, 644, 360, 54), pygame.Rect(108, 1032, 504, 76), config.NEON_CYAN),
-            ]
-
-        if self.current_scene_name == "prep":
-            active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
-            if active_tab == "character":
-                return [
-                    # 1) 상단 네비게이션 버튼 ([◀ 타이틀로] · [9개국 투어] · [⚙️ 옵션] 1:1 비율)
-                    (pygame.Rect(24, 10, 476, 52), pygame.Rect(8, 8, 456, 52), config.UI_BORDER),
-                    # 2) 상단 우측 보유 골드 박스 (1:1 비율)
-                    (pygame.Rect(988, 10, 266, 52), pygame.Rect(472, 8, 240, 52), config.GOLD),
-                    # 3) 4대 메인 탭 버튼 바 (전폭 배치)
-                    (pygame.Rect(24, 68, 1232, 54), pygame.Rect(8, 66, 704, 50), config.UI_BORDER),
-                    # 4) 국가 필터 서브 헤더
-                    (pygame.Rect(28, 126, 1224, 50), pygame.Rect(8, 122, 704, 44), config.UI_BORDER),
-                    # 5) 3x2 마스터 카드 그리드 (종횡비 보존: 816x452 -> 704x396)
-                    (pygame.Rect(28, 176, 816, 452), pygame.Rect(8, 172, 704, 396), config.POCHA_ORANGE),
-                    # 6) 선택된 마스터 상세 도감 패널 (원본 0.88 비율 100% 보존: 400x452 -> 420x472)
-                    (pygame.Rect(848, 176, 404, 452), pygame.Rect(150, 576, 420, 472), config.NEON_CYAN),
-                    # 7) 최하단 [오늘 영업 시작! (START)] 대형 엄지 버튼 (원본 비율 보존)
-                    (pygame.Rect(900, 638, 356, 68), pygame.Rect(150, 1170, 420, 92), config.GOLD),
-                ]
-            split_map = {"chapter": 641, "upgrade": 652, "tournament": 620}
-            split_x = split_map.get(active_tab, 641)
-            return [
-                (pygame.Rect(24, 10, 476, 52), pygame.Rect(8, 8, 456, 52), config.UI_BORDER),
-                (pygame.Rect(988, 10, 266, 52), pygame.Rect(472, 8, 240, 52), config.GOLD),
-                (pygame.Rect(24, 68, 1232, 54), pygame.Rect(8, 66, 704, 50), config.UI_BORDER),
-                (pygame.Rect(28, 126, 1224, 50), pygame.Rect(8, 122, 704, 44), config.UI_BORDER),
-                (pygame.Rect(28, 176, split_x - 28, 452), pygame.Rect(8, 172, 704, 434), config.POCHA_ORANGE),
-                (pygame.Rect(split_x, 176, 1252 - split_x, 452), pygame.Rect(8, 612, 704, 434), config.NEON_CYAN),
-                (pygame.Rect(900, 638, 356, 68), pygame.Rect(150, 1170, 420, 92), config.GOLD),
-            ]
-
-        return [
-            (
-                pygame.Rect(0, 0, config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
-                pygame.Rect(8, 410, 704, 404),
-                config.GOLD,
-            )
-        ]
+        return False
 
     def _map_window_point_to_logical(self, wx: float, wy: float, win_w: int, win_h: int) -> Tuple[int, int]:
         """실제 윈도우 좌표(wx, wy)를 가로/세로 모드에 맞춰 1280x720 논리 좌표(lx, ly)로 변환한다."""
         ox, oy, vp_w, vp_h, _scale = self._compute_viewport(win_w, win_h)
         if win_h > win_w or self.is_portrait_mode:
-            # 세로 모드(720x1280 뷰포트 또는 Emscripten 9:16 CSS 캔버스) -> 영역 매핑 역변환
-            if win_h > win_w:
-                px = (wx - ox) * config.PORTRAIT_WIDTH / float(max(1, vp_w))
-                py = (wy - oy) * config.PORTRAIT_HEIGHT / float(max(1, vp_h))
-            else:
-                px = wx * config.PORTRAIT_WIDTH / float(max(1, win_w))
-                py = wy * config.PORTRAIT_HEIGHT / float(max(1, win_h))
+            px, py = self._window_to_portrait_point(wx, wy, win_w, win_h)
             for src_r, dst_r, _bcol in self._get_portrait_region_mappings():
-                if dst_r.inflate(6, 6).collidepoint(int(round(px)), int(round(py))):
+                if dst_r.inflate(6, 6).collidepoint(px, py):
                     rx = (px - dst_r.x) / float(max(1, dst_r.width))
                     ry = (py - dst_r.y) / float(max(1, dst_r.height))
                     rx = max(0.0, min(1.0, rx))
@@ -669,10 +983,10 @@ class SceneManager:
             fy = float(getattr(event, "y", 0.5)) * win_h
             lx, ly = self._map_window_point_to_logical(fx, fy, win_w, win_h)
             if event.type == pygame.FINGERDOWN:
-                return pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"pos": (lx, ly), "button": 1, "touch": True})
+                return pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"pos": (lx, ly), "raw_pos": (fx, fy), "button": 1, "touch": True})
             if event.type == pygame.FINGERUP:
-                return pygame.event.Event(pygame.MOUSEBUTTONUP, {"pos": (lx, ly), "button": 1, "touch": True})
-            return pygame.event.Event(pygame.MOUSEMOTION, {"pos": (lx, ly), "rel": (0, 0), "buttons": (1, 0, 0), "touch": True})
+                return pygame.event.Event(pygame.MOUSEBUTTONUP, {"pos": (lx, ly), "raw_pos": (fx, fy), "button": 1, "touch": True})
+            return pygame.event.Event(pygame.MOUSEMOTION, {"pos": (lx, ly), "raw_pos": (fx, fy), "rel": (0, 0), "buttons": (1, 0, 0), "touch": True})
 
         if event.type not in (pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP):
             return event
@@ -685,7 +999,7 @@ class SceneManager:
 
         lx, ly = self._map_window_point_to_logical(float(pos[0]), float(pos[1]), win_w, win_h)
 
-        attrs = {"pos": (lx, ly)}
+        attrs: Dict[str, Any] = {"pos": (lx, ly), "raw_pos": (float(pos[0]), float(pos[1]))}
         if hasattr(event, "button"):
             attrs["button"] = event.button
         if hasattr(event, "buttons"):
@@ -697,7 +1011,7 @@ class SceneManager:
         return pygame.event.Event(event.type, attrs)
 
     # ==========================================================================
-    # 이벤트 처리 (옵션 모달 우선 가로채기 지원)
+    # 이벤트 처리 (옵션 모달 및 세로 모드 단일 패널 전환 우선 가로채기 지원)
     # ==========================================================================
     def handle_event(self, event: pygame.event.Event) -> None:
         now_ticks = pygame.time.get_ticks()
@@ -715,21 +1029,6 @@ class SceneManager:
                 return
 
         mapped_event = self._remap_event_to_logical(event)
-
-        # 동일 좌표 영역에서 110ms 이내에 연속 발생하는 터치 바운스(중복 클릭) 방지
-        if mapped_event.type == pygame.MOUSEBUTTONDOWN and getattr(mapped_event, "button", 1) == 1:
-            pos = getattr(mapped_event, "pos", (-999, -999))
-            if pos != (-999, -999):
-                last_click_t = int(getattr(self, "_last_click_ticks", -9999))
-                last_click_p = getattr(self, "_last_click_pos", (-999, -999))
-                if (
-                    (now_ticks - last_click_t) < 110
-                    and abs(pos[0] - last_click_p[0]) < 28
-                    and abs(pos[1] - last_click_p[1]) < 28
-                ):
-                    return
-                self._last_click_ticks = now_ticks
-                self._last_click_pos = pos
 
         # F10 단축키: 언제든 옵션 모달 열기/닫기, F11 단축키: 전체화면 전환
         if mapped_event.type == pygame.KEYDOWN:
@@ -757,8 +1056,59 @@ class SceneManager:
             self._handle_options_event(mapped_event)
             return
 
+        # 세로 모드(Portrait) 전용 네이티브 탭/버튼 클릭 및 좌우 스와이프 처리
+        disp = pygame.display.get_surface()
+        win_w, win_h = disp.get_size() if disp is not None else config.WINDOW_SIZE
+        if win_h > win_w or self.is_portrait_mode:
+            raw_pos = getattr(mapped_event, "raw_pos", None) or getattr(event, "pos", None)
+            if raw_pos is not None:
+                px, py = self._window_to_portrait_point(float(raw_pos[0]), float(raw_pos[1]), win_w, win_h)
+                if mapped_event.type == pygame.MOUSEBUTTONDOWN and getattr(mapped_event, "button", 1) == 1:
+                    # 세로 네이티브 전환 바 / 버튼 우선 처리
+                    if self._handle_portrait_native_click(px, py):
+                        self._portrait_swipe_start = None
+                        return
+                    self._portrait_swipe_start = (px, py, now_ticks)
+                elif mapped_event.type == pygame.MOUSEBUTTONUP and getattr(mapped_event, "button", 1) == 1:
+                    if self._portrait_swipe_start is not None:
+                        sx, sy, st = self._portrait_swipe_start
+                        self._portrait_swipe_start = None
+                        dx = px - sx
+                        dy = py - sy
+                        if (
+                            (now_ticks - st) <= 650
+                            and abs(dx) >= 90
+                            and abs(dx) > abs(dy) * 1.45
+                            and 180 <= sy <= 1180
+                        ):
+                            self._step_portrait_panel(-1 if dx > 0 else 1)
+                            return
+
+        # 동일 좌표 영역에서 110ms 이내에 연속 발생하는 터치 바운스(중복 클릭) 방지
+        if mapped_event.type == pygame.MOUSEBUTTONDOWN and getattr(mapped_event, "button", 1) == 1:
+            pos = getattr(mapped_event, "pos", (-999, -999))
+            if pos != (-999, -999):
+                last_click_t = int(getattr(self, "_last_click_ticks", -9999))
+                last_click_p = getattr(self, "_last_click_pos", (-999, -999))
+                if (
+                    (now_ticks - last_click_t) < 110
+                    and abs(pos[0] - last_click_p[0]) < 28
+                    and abs(pos[1] - last_click_p[1]) < 28
+                ):
+                    return
+                self._last_click_ticks = now_ticks
+                self._last_click_pos = pos
+
+        prev_tab = getattr(self.current_scene, "active_tab", None)
+        prev_mode = getattr(self.game_mgr, "mode", None)
         if self.current_scene is not None and hasattr(self.current_scene, "handle_event"):
             self.current_scene.handle_event(mapped_event)
+        # PrepScene에서 탭이나 모드가 바뀐 경우 세로 단일 패널 인덱스를 활성 항목으로 동기화
+        if self.current_scene_name == "prep":
+            new_tab = getattr(self.current_scene, "active_tab", None)
+            new_mode = getattr(self.game_mgr, "mode", None)
+            if new_tab != prev_tab or new_mode != prev_mode:
+                self._sync_portrait_prep_idx_to_selection()
 
     def _set_volume_by_key(self, skey: str, value: float, play_sample: bool = False) -> None:
         clamped = round(max(0.0, min(1.0, float(value))), 2)
@@ -1007,11 +1357,102 @@ class SceneManager:
             pygame.draw.line(surface, config.GOLD, (0, top_r.bottom - 1), (win_w, top_r.bottom - 1), 2)
             pygame.draw.line(surface, config.POCHA_ORANGE, (0, bot_r.y), (win_w, bot_r.y), 2)
 
+    def _draw_portrait_play_customers(self, portrait_surf: pygame.Surface, area: pygame.Rect, sc: Any) -> None:
+        """
+        세로 모드 인게임에서 손님 대기열과 주문 말풍선을 가로 압축 없이 1:1 네이티브 고해상도로 렌더링한다.
+        """
+        from data.recipes import RECIPES, TOPPINGS
+
+        bg_country = getattr(self.game_mgr, "current_chapter", "KR") or "KR"
+        art_renderer.draw_country_background(portrait_surf, area, country_id=bg_country, time_tick=self._loading_tick)
+        art_renderer.draw_alpha_overlay(portrait_surf, area, (14, 12, 26, 125), border_radius=12)
+        pygame.draw.rect(portrait_surf, config.UI_BORDER, area, width=2, border_radius=12)
+
+        customers = getattr(sc, "customers", []) or []
+        max_slots = max(1, min(4, int(getattr(sc, "max_customer_slots", len(customers) or 3))))
+        gap = 8
+        card_w = (area.width - 16 - (max_slots - 1) * gap) // max_slots
+        card_h = area.height - 14
+
+        name_f = config.get_font(15 if max_slots <= 3 else 13, bold=True)
+        top_f = config.get_font(13 if max_slots <= 3 else 12, bold=True)
+        badge_f = config.get_font(12, bold=True)
+
+        for idx in range(max_slots):
+            cx = area.x + 8 + idx * (card_w + gap)
+            cy = area.y + 7
+            crect = pygame.Rect(cx, cy, card_w, card_h)
+            cust = customers[idx] if idx < len(customers) else None
+
+            if cust is None:
+                pygame.draw.rect(portrait_surf, (22, 18, 36), crect, border_radius=10)
+                pygame.draw.rect(portrait_surf, (52, 46, 76), crect, width=1, border_radius=10)
+                empty_s = badge_f.render("손님 대기석", True, config.TEXT_SECONDARY)
+                portrait_surf.blit(empty_s, empty_s.get_rect(center=crect.center))
+                continue
+
+            p_ratio = max(0.0, min(1.0, float(getattr(cust, "patience_ratio", 1.0))))
+            is_vip = bool(getattr(cust, "is_vip", False))
+            b_col = config.GOLD if is_vip else (config.PATIENCE_LOW if p_ratio < 0.28 else config.UI_BORDER)
+            pygame.draw.rect(portrait_surf, (28, 24, 46), crect, border_radius=10)
+            pygame.draw.rect(portrait_surf, b_col, crect, width=2, border_radius=10)
+
+            # 1) 상단 주문 말풍선 카드 (음식 아이콘 + 한글 메뉴명 + 토핑 태그)
+            order = getattr(cust, "order", {}) or {}
+            rec_id = str(order.get("recipe_id", "bungeoppang_redbean"))
+            toppings = list(order.get("toppings", []) or [])
+            rec_data = RECIPES.get(rec_id, {})
+            rec_name = str(rec_data.get("short_name") or rec_data.get("name") or rec_id)
+
+            bub_r = pygame.Rect(crect.x + 6, crect.y + 6, crect.width - 12, 122)
+            pygame.draw.rect(portrait_surf, (248, 244, 232), bub_r, border_radius=9)
+            pygame.draw.rect(portrait_surf, config.GOLD if is_vip else (72, 62, 96), bub_r, width=2, border_radius=9)
+
+            art_renderer.draw_food_icon(portrait_surf, (bub_r.x + 30, bub_r.y + 34), rec_id, size=46)
+            nm_s = name_f.render(rec_name[:8], True, (24, 18, 34))
+            portrait_surf.blit(nm_s, (bub_r.x + 56, bub_r.y + 12))
+
+            price_val = int(order.get("total_price", rec_data.get("base_price", 1000)))
+            pr_s = badge_f.render(f"💰 {price_val:,}원", True, (168, 78, 18))
+            portrait_surf.blit(pr_s, (bub_r.x + 56, bub_r.y + 34))
+
+            if toppings:
+                t_names = [f"+{TOPPINGS.get(t, {}).get('short_name', t)}" for t in toppings[:2]]
+                t_str = " ".join(t_names)
+                tp_pill = pygame.Rect(bub_r.x + 6, bub_r.bottom - 52, bub_r.width - 12, 26)
+                pygame.draw.rect(portrait_surf, (42, 32, 64), tp_pill, border_radius=6)
+                tp_s = top_f.render(t_str[:12], True, config.NEON_YELLOW)
+                portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
+            else:
+                tp_pill = pygame.Rect(bub_r.x + 6, bub_r.bottom - 52, bub_r.width - 12, 26)
+                pygame.draw.rect(portrait_surf, (226, 220, 206), tp_pill, border_radius=6)
+                tp_s = badge_f.render("기본맛 (즉시서빙)", True, (76, 68, 92))
+                portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
+
+            # 인내심 게이지 바
+            p_bar = pygame.Rect(bub_r.x + 8, bub_r.bottom - 18, bub_r.width - 16, 10)
+            pygame.draw.rect(portrait_surf, (40, 36, 52), p_bar, border_radius=5)
+            p_col = config.PATIENCE_HIGH if p_ratio > 0.5 else (config.PATIENCE_MID if p_ratio > 0.25 else config.PATIENCE_LOW)
+            pw = int(p_bar.width * p_ratio)
+            if pw > 0:
+                pygame.draw.rect(portrait_surf, p_col, (p_bar.x, p_bar.y, pw, p_bar.height), border_radius=5)
+
+            # 2) 하단 손님 도트 캐릭터 & VIP 배지
+            av_r = pygame.Rect(crect.centerx - 32, crect.bottom - 86, 64, 78)
+            mood = getattr(cust, "mood", "NORMAL")
+            c_type = getattr(cust, "customer_type", "student")
+            art_renderer.draw_customer(portrait_surf, av_r, customer_type=c_type, mood=mood, time_tick=self._loading_tick)
+            if is_vip:
+                vip_b = pygame.Rect(crect.x + 6, crect.bottom - 28, 54, 22)
+                pygame.draw.rect(portrait_surf, (218, 148, 24), vip_b, border_radius=6)
+                vs = badge_f.render("👑VIP", True, config.WHITE)
+                portrait_surf.blit(vs, vs.get_rect(center=vip_b.center))
+
     def _compose_portrait_surface(self, logical_surf: pygame.Surface, portrait_surf: pygame.Surface) -> None:
         """
-        1280x720 논리 화면을 720x1280 세로 모바일 전용 레이아웃으로 합성한다.
-        - 각 구역의 원본 종횡비를 보존하여 폰트·도트 그래픽 찌그러짐을 원천 방지
-        - 상단바·탭·하단 버튼에는 1:1 네이티브 세로 전용 UI를 직접 렌더링하여 텍스트 흐림 현상을 100% 제거!
+        1280x720 논리 화면을 720x1280 세로 모바일 전용 **1패널 확대 레이아웃(Single Giant Panel)**으로 합성한다.
+        - 기존의 4분할/다중 분할을 없애고 현재 선택된 1개 대형 패널만 2.0~2.5배로 큼직하게 표시
+        - 상단바·패널 전환 탭·손님 주문 카드·하단 버튼은 1:1 네이티브 세로 UI로 선명하게 직접 렌더링!
         """
         portrait_surf.fill((14, 12, 24))
         mappings = self._get_portrait_region_mappings()
@@ -1028,92 +1469,91 @@ class SceneManager:
             except Exception:
                 scaled_part = pygame.transform.scale(sub, dst_r.size)
             portrait_surf.blit(scaled_part, dst_r.topleft)
-            pygame.draw.rect(portrait_surf, border_col, dst_r, width=2, border_radius=10)
+            pygame.draw.rect(portrait_surf, border_col, dst_r, width=3, border_radius=12)
 
-        # 1) 모달/로딩/결과 화면 등 단일 16:9 중앙 배치일 때 상·하단 네이티브 야시장 일러스트 배너 렌더링 (글자 최소화·그림 중심)
+        # 1) 모달/로딩/결과 화면 등 단일 대형 카드 배치일 때 상·하단 배너 렌더링
         if len(mappings) == 1:
-            top_banner = pygame.Rect(12, 24, 696, 360)
+            main_dst = mappings[0][1]
+            top_h = max(80, main_dst.top - 24)
+            top_banner = pygame.Rect(12, 12, 696, top_h)
             art_renderer.draw_country_background(portrait_surf, top_banner, country_id=bg_country, time_tick=self._loading_tick)
-            art_renderer.draw_alpha_overlay(portrait_surf, top_banner, (14, 12, 26, 115), border_radius=18)
-            pygame.draw.rect(portrait_surf, config.GOLD, top_banner, width=2, border_radius=18)
+            art_renderer.draw_alpha_overlay(portrait_surf, top_banner, (14, 12, 26, 135), border_radius=16)
+            pygame.draw.rect(portrait_surf, config.GOLD, top_banner, width=2, border_radius=16)
 
-            # 상단 배너: 줄글 대신 중앙 마스터 도트 아바타(116x116)와 세계 대표 음식 일러스트 5종(68px) 배치
-            av_top = pygame.Rect(360 - 58, 56, 116, 116)
-            pygame.draw.rect(portrait_surf, (22, 18, 38), av_top.inflate(10, 10), border_radius=16)
-            pygame.draw.rect(portrait_surf, config.GOLD, av_top.inflate(10, 10), width=2, border_radius=16)
-            sel_ch = getattr(self.game_mgr, "selected_character", "chef_kr")
-            art_renderer.draw_chef_avatar(portrait_surf, av_top, character_id=sel_ch, state="COOKING", time_tick=self._loading_tick)
+            tf = config.get_font(24, bold=True)
+            t_s = tf.render("🏮 전세계 길거리 음식 포차 타이쿤 🏮", True, config.GOLD)
+            portrait_surf.blit(t_s, t_s.get_rect(center=(360, top_banner.y + 34)))
 
             for idx, fid in enumerate(["bungeoppang_redbean", "skewer_spicy", "takoyaki_mayo", "taco_salsa", "boba_milktea"]):
                 fx = 120 + idx * 120
-                fy = 276 + int(math.sin(self._loading_tick * 4.0 + idx) * 4)
-                pygame.draw.circle(portrait_surf, (28, 22, 46), (fx, fy), 38)
-                pygame.draw.circle(portrait_surf, config.GOLD, (fx, fy), 38, width=1)
-                art_renderer.draw_food_icon(portrait_surf, (fx, fy), fid, size=66)
+                fy = min(top_banner.bottom - 42, top_banner.y + 112) + int(math.sin(self._loading_tick * 4.0 + idx) * 3)
+                pygame.draw.circle(portrait_surf, (28, 22, 46), (fx, fy), 32)
+                pygame.draw.circle(portrait_surf, config.GOLD, (fx, fy), 32, width=1)
+                art_renderer.draw_food_icon(portrait_surf, (fx, fy), fid, size=54)
 
-            bot_banner = pygame.Rect(12, 840, 696, 410)
-            pygame.draw.rect(portrait_surf, (22, 18, 38), bot_banner, border_radius=18)
-            pygame.draw.rect(portrait_surf, config.UI_BORDER, bot_banner, width=2, border_radius=18)
-
-            # 하단 배너: 긴 안내 문구 대신 2열 길거리 음식 일러스트 갤러리 배치
-            bot_foods = [
-                "tteokbokki_cheese", "odeng_soup", "ramen_chashu", "congzuobing_egg", "mala_tang",
-                "tandoori_chicken", "texas_brisket", "shashlik_kebab", "pao_de_queijo", "churros_choco",
-            ]
-            for b_idx, b_fid in enumerate(bot_foods):
-                b_col = b_idx % 5
-                b_row = b_idx // 5
-                bx = 120 + b_col * 120
-                by = 1054 + b_row * 108
-                pygame.draw.circle(portrait_surf, (34, 28, 54), (bx, by), 34)
-                art_renderer.draw_food_icon(portrait_surf, (bx, by), b_fid, size=56)
+            bot_y = main_dst.bottom + 12
+            bot_h = max(60, 1268 - bot_y)
+            bot_banner = pygame.Rect(12, bot_y, 696, bot_h)
+            pygame.draw.rect(portrait_surf, (22, 18, 38), bot_banner, border_radius=16)
+            pygame.draw.rect(portrait_surf, config.UI_BORDER, bot_banner, width=2, border_radius=16)
 
             if self.loading_active and self.loading_wait_for_tap and self.loading_progress >= 1.0:
                 pulse = 0.86 + 0.14 * math.sin(self._loading_tick * 6.5)
-                tap_btn = pygame.Rect(80, 882, 560, 96)
-                pygame.draw.rect(portrait_surf, (int(238 * pulse), int(98 * pulse), 34), tap_btn, border_radius=18)
-                pygame.draw.rect(portrait_surf, config.GOLD, tap_btn, width=3, border_radius=18)
-                tap_lbl = config.get_font(28, bold=True).render("🏮 ▶ START", True, config.WHITE)
+                tap_btn = pygame.Rect(60, bot_banner.centery - 42, 600, 84)
+                pygame.draw.rect(portrait_surf, (int(238 * pulse), int(98 * pulse), 34), tap_btn, border_radius=16)
+                pygame.draw.rect(portrait_surf, config.GOLD, tap_btn, width=3, border_radius=16)
+                tap_lbl = config.get_font(24, bold=True).render("🏮 화면을 터치하여 포차 오픈! ▶", True, config.WHITE)
                 portrait_surf.blit(tap_lbl, tap_lbl.get_rect(center=tap_btn.center))
             else:
-                # 조리 기구 하드웨어 일러스트 4종 미니 쇼케이스
                 for s_i, s_t in enumerate(("mold", "dispenser", "grill", "batch_pot")):
-                    hw_r = pygame.Rect(96 + s_i * 142, 888, 102, 82)
+                    hw_r = pygame.Rect(96 + s_i * 142, bot_banner.centery - 38, 102, 76)
                     art_renderer.draw_station_hardware(portrait_surf, hw_r, station_type=s_t)
 
-        # 2) 타이틀 화면(TitleScene) 세로 모드 전용 그림 중심 헤더 & 아이콘 버튼 오버레이
+        # 2) 타이틀 화면(TitleScene) 세로 1패널 모드: 상단 카드 전환 탭 바 + 초대형 단일 카드 + 하단 버튼
         elif self.current_scene_name == "title":
-            hdr_r = pygame.Rect(12, 62, 696, 120)
+            hdr_r = pygame.Rect(12, 62, 696, 110)
             art_renderer.draw_alpha_overlay(portrait_surf, hdr_r, (26, 20, 44, 238), border_radius=16)
-            pygame.draw.rect(portrait_surf, config.GOLD, hdr_r, width=3, border_radius=16)
-            tf = config.get_font(28, bold=True)
-            t_s = tf.render("🏮 길거리 음식 포차 타이쿤 🏮", True, (255, 238, 120))
+            pygame.draw.rect(portrait_surf, config.GOLD, hdr_r, width=2, border_radius=16)
+            tf = config.get_font(26, bold=True)
+            sub_f = config.get_font(15, bold=True)
+            t_s = tf.render("🏮 전세계 길거리 음식 포차 타이쿤 🏮", True, (255, 238, 120))
+            s_s = sub_f.render("9개국 32인 마스터 월드 스트리트 푸드 투어", True, config.NEON_CYAN)
             portrait_surf.blit(t_s, t_s.get_rect(center=(360, 96)))
-            for idx_h, h_fid in enumerate(["bungeoppang_redbean", "skewer_spicy", "takoyaki_mayo", "taco_salsa", "boba_milktea"]):
-                art_renderer.draw_food_icon(portrait_surf, (160 + idx_h * 100, 150), h_fid, size=44)
+            portrait_surf.blit(s_s, s_s.get_rect(center=(360, 138)))
 
-            # 하단 가이드 박스: 2줄 설명 텍스트를 완전히 없애고 8종 대표 길거리 음식 일러스트 행렬 배치
-            guide_r = pygame.Rect(12, 850, 696, 84)
-            pygame.draw.rect(portrait_surf, (24, 20, 40), guide_r, border_radius=12)
-            pygame.draw.rect(portrait_surf, config.UI_BORDER, guide_r, width=2, border_radius=12)
-            title_parade = [
-                "bungeoppang_redbean", "odeng_soup", "tteokbokki_cheese", "takoyaki_mayo",
-                "taco_guac", "congzuobing_egg", "mala_tang", "tandoori_chicken",
+            # 상단 카드 전환 바 ([◀] + 4개 카드 탭 + [▶])
+            nav_f = config.get_font(16, bold=True)
+            arrow_f = config.get_font(22, bold=True)
+            for ar_rect, ar_lbl in ((pygame.Rect(12, 182, 56, 60), "◀"), (pygame.Rect(652, 182, 56, 60), "▶")):
+                pygame.draw.rect(portrait_surf, (48, 40, 76), ar_rect, border_radius=10)
+                pygame.draw.rect(portrait_surf, config.GOLD, ar_rect, width=2, border_radius=10)
+                as_s = arrow_f.render(ar_lbl, True, config.GOLD)
+                portrait_surf.blit(as_s, as_s.get_rect(center=ar_rect.center))
+
+            t_idx = self.portrait_title_idx % 4
+            card_tabs = [
+                ("👨‍🍳 프로필", config.NEON_GREEN),
+                ("🗺️ 스토리", config.POCHA_ORANGE),
+                ("🎯 장인모드", config.GOLD),
+                ("🏮 글로벌", config.NEON_CYAN),
             ]
-            for idx_p, p_fid in enumerate(title_parade):
-                px = 62 + idx_p * 85
-                py = guide_r.centery + int(math.sin(self._loading_tick * 4.0 + idx_p * 0.6) * 3)
-                pygame.draw.circle(portrait_surf, (38, 32, 58), (px, py), 30)
-                art_renderer.draw_food_icon(portrait_surf, (px, py), p_fid, size=52)
+            for i, (tlbl, tcol) in enumerate(card_tabs):
+                pill_r = pygame.Rect(74 + i * 144, 182, 140, 60)
+                is_sel = i == t_idx
+                bg = (232, 102, 36) if is_sel else (34, 28, 54)
+                pygame.draw.rect(portrait_surf, bg, pill_r, border_radius=10)
+                pygame.draw.rect(portrait_surf, config.WHITE if is_sel else tcol, pill_r, width=3 if is_sel else 1, border_radius=10)
+                ts = nav_f.render(tlbl, True, config.WHITE if is_sel else tcol)
+                portrait_surf.blit(ts, ts.get_rect(center=pill_r.center))
 
-            # 하단 유틸리티 버튼 1열/2열: 긴 글자 대신 직관적인 대형 아이콘 중심 버튼으로 렌더링
-            btn_f = config.get_font(24, bold=True)
-            row1_bg = pygame.Rect(12, 948, 696, 72)
+            # 하단 유틸리티 버튼 1열/2열: 선명한 한글+아이콘 버튼 오버레이
+            btn_f = config.get_font(17, bold=True)
+            row1_bg = pygame.Rect(12, 994, 696, 72)
             pygame.draw.rect(portrait_surf, (18, 15, 30), row1_bg, border_radius=12)
             r1_btns = [
-                (pygame.Rect(16, 954, 208, 60), "💾", config.NEON_CYAN),
-                (pygame.Rect(234, 954, 208, 60), "🗑️", config.TEXT_WARNING),
-                (pygame.Rect(452, 954, 252, 60), "⚙️", config.GOLD),
+                (pygame.Rect(16, 1000, 212, 60), "💾 세이브 로드", config.NEON_CYAN),
+                (pygame.Rect(236, 1000, 212, 60), "🗑️ 초기화", config.TEXT_WARNING),
+                (pygame.Rect(456, 1000, 248, 60), "⚙️ 사운드·화면 설정", config.GOLD),
             ]
             for br, blbl, bcol in r1_btns:
                 pygame.draw.rect(portrait_surf, (42, 36, 64), br, border_radius=10)
@@ -1121,11 +1561,11 @@ class SceneManager:
                 bs = btn_f.render(blbl, True, config.WHITE)
                 portrait_surf.blit(bs, bs.get_rect(center=br.center))
 
-            row2_bg = pygame.Rect(108, 1032, 504, 76)
+            row2_bg = pygame.Rect(84, 1078, 552, 72)
             pygame.draw.rect(portrait_surf, (18, 15, 30), row2_bg, border_radius=12)
             r2_btns = [
-                (pygame.Rect(114, 1038, 240, 64), "🔄 ↔", config.NEON_GREEN),
-                (pygame.Rect(366, 1038, 240, 64), "⛶", config.POCHA_ORANGE),
+                (pygame.Rect(90, 1084, 264, 60), "🔄 가로모드 전환", config.NEON_GREEN),
+                (pygame.Rect(366, 1084, 264, 60), "⛶ 전체화면 전환", config.POCHA_ORANGE),
             ]
             for br, blbl, bcol in r2_btns:
                 pygame.draw.rect(portrait_surf, (42, 36, 64), br, border_radius=10)
@@ -1133,91 +1573,229 @@ class SceneManager:
                 bs = btn_f.render(blbl, True, config.WHITE)
                 portrait_surf.blit(bs, bs.get_rect(center=br.center))
 
-        # 3) 인게임(PlayScene) 세로 모드 전용: 글자 설명을 없애고 아이콘·숫자 HUD 및 그림 조리 흐름 바 렌더링
-        elif self.current_scene_name in ("play", "duel_play"):
-            sc = self.current_scene
-            hf = config.get_font(20, bold=True)
-            btn_f = config.get_font(20, bold=True)
+            guide_r = pygame.Rect(12, 1162, 696, 102)
+            pygame.draw.rect(portrait_surf, (24, 20, 40), guide_r, border_radius=12)
+            pygame.draw.rect(portrait_surf, config.UI_BORDER, guide_r, width=2, border_radius=12)
+            g_txt = sub_f.render(
+                f"◀ 상단 탭·화살표 버튼 또는 좌우 스와이프로 카드를 전환하세요 ({t_idx + 1}/4) ▶",
+                True,
+                config.GOLD,
+            )
+            portrait_surf.blit(g_txt, g_txt.get_rect(center=(360, guide_r.y + 24)))
+            for idx_p, p_fid in enumerate(["bungeoppang_redbean", "odeng_soup", "tteokbokki_cheese", "takoyaki_mayo", "taco_guac", "boba_milktea"]):
+                px = 110 + idx_p * 100
+                art_renderer.draw_food_icon(portrait_surf, (px, guide_r.y + 68), p_fid, size=44)
 
-            # 1열 좌측: 아이콘 + Day + 골드 숫자만 깔끔하게 표시
-            hud_left = pygame.Rect(8, 10, 448, 52)
+        # 3) 인게임(PlayScene) 세로 1패널 모드: 상단 HUD + 네이티브 손님 카운터 + 조리대 탭 바 + 1개 대형 조리대 + 하단 스킬 바
+        elif self.current_scene_name in ("play", "duel_play"):
+            from stations.base_station import STATE_COOKING, STATE_READY
+            sc = self.current_scene
+            hf = config.get_font(18, bold=True)
+            btn_f = config.get_font(17, bold=True)
+            tab_f = config.get_font(15, bold=True)
+            badge_f = config.get_font(12, bold=True)
+
+            # 1열 좌측: 모드·국가·일차 & 자산
+            hud_left = pygame.Rect(8, 8, 448, 48)
             pygame.draw.rect(portrait_surf, (26, 22, 44), hud_left, border_radius=10)
             pygame.draw.rect(portrait_surf, config.GOLD, hud_left, width=2, border_radius=10)
             ch_id = getattr(self.game_mgr, "current_chapter", "KR")
             day_n = getattr(self.game_mgr, "day", 1)
             if getattr(self.game_mgr, "mode", "") == "SPECIALIST" and hasattr(self.game_mgr, "get_selected_specialist_data"):
                 sp = self.game_mgr.get_selected_specialist_data()
-                h_str = f"{sp['emoji']} D-{day_n}   💰 {self.game_mgr.gold:,}"
+                h_str = f"{sp['emoji']} {sp['short_name']} · Day {day_n}   💰 {self.game_mgr.gold:,}원"
             else:
-                h_str = f"🏮 {ch_id} · D-{day_n}   💰 {self.game_mgr.gold:,}"
+                h_str = f"🏮 [{ch_id}] Day {day_n}   💰 {self.game_mgr.gold:,}원"
             h_txt = hf.render(h_str, True, config.GOLD)
-            portrait_surf.blit(h_txt, (hud_left.x + 16, hud_left.centery - h_txt.get_height() // 2))
+            portrait_surf.blit(h_txt, (hud_left.x + 14, hud_left.centery - h_txt.get_height() // 2))
 
-            # 1열 우측: [⚙️] & [🏪] 아이콘 버튼
-            top_right_bg = pygame.Rect(464, 10, 248, 52)
+            # 1열 우측: [⚙️ 옵션] & [🏪 상점]
+            top_right_bg = pygame.Rect(464, 8, 248, 48)
             pygame.draw.rect(portrait_surf, (18, 15, 28), top_right_bg, border_radius=10)
-            opt_r = pygame.Rect(464, 10, 104, 52)
-            shop_r = pygame.Rect(574, 10, 138, 52)
+            opt_r = pygame.Rect(464, 8, 108, 48)
+            shop_r = pygame.Rect(578, 8, 134, 48)
             pygame.draw.rect(portrait_surf, (48, 42, 74), opt_r, border_radius=10)
             pygame.draw.rect(portrait_surf, config.GOLD, opt_r, width=2, border_radius=10)
-            os_txt = btn_f.render("⚙️", True, config.GOLD)
+            os_txt = btn_f.render("⚙️ 옵션", True, config.GOLD)
             portrait_surf.blit(os_txt, os_txt.get_rect(center=opt_r.center))
 
             pygame.draw.rect(portrait_surf, (58, 52, 88), shop_r, border_radius=10)
             pygame.draw.rect(portrait_surf, config.NEON_CYAN, shop_r, width=2, border_radius=10)
-            sh_txt = btn_f.render("🏪", True, config.WHITE)
+            sh_txt = btn_f.render("🏪 준비/상점", True, config.WHITE)
             portrait_surf.blit(sh_txt, sh_txt.get_rect(center=shop_r.center))
 
-            # 2열: 타이머·매출·콤보 아이콘+숫자 바 ("초", "매출:", "목표" 글자 제거)
-            stat_bar = pygame.Rect(8, 66, 704, 42)
+            # 2열: 타이머·매출·콤보 바
+            stat_bar = pygame.Rect(8, 60, 704, 44)
             pygame.draw.rect(portrait_surf, (24, 20, 40), stat_bar, border_radius=9)
             pygame.draw.rect(portrait_surf, config.UI_BORDER, stat_bar, width=2, border_radius=9)
             t_left = int(max(0.0, float(getattr(sc, "time_left", 90.0))))
             d_gold = int(getattr(self.game_mgr, "daily_gold", 0))
             t_gold = int(self.game_mgr.get_target_gold()) if hasattr(self.game_mgr, "get_target_gold") else 10000
             cmb = int(getattr(self.game_mgr, "combo", 0))
-            st_str = f"⏱️ {t_left}     💰 {d_gold:,} / 🎯 {t_gold:,}     🔥 x{cmb}"
+            st_str = f"⏱️ {t_left}초    💰 매출 {d_gold:,} / 목표 {t_gold:,}원    🔥 콤보 x{cmb}"
             st_s = btn_f.render(st_str, True, config.WHITE)
             portrait_surf.blit(st_s, st_s.get_rect(center=stat_bar.center))
 
-            # 좌측 하단 스토리 다시보기 아이콘 버튼 (WORLD_TOUR 모드 전용)
-            if self.current_scene_name == "play" and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "WORLD_TOUR":
-                story_r = pygame.Rect(8, 1134, 256, 62)
-                pygame.draw.rect(portrait_surf, (64, 42, 108), story_r, border_radius=10)
-                pygame.draw.rect(portrait_surf, config.GOLD, story_r, width=2, border_radius=10)
-                sr_txt = btn_f.render("🎬 ▶", True, config.GOLD)
+            # 3열: 1:1 네이티브 손님 주문 카운터 (y=110..346, 가로 찌그러짐 0%)
+            self._draw_portrait_play_customers(portrait_surf, pygame.Rect(8, 110, 704, 236), sc)
+
+            # 4열: 조리 스테이션 전환 탭 바 (y=352..420) + 실시간 조리/완성/접시 배지
+            for ar_r, ar_t in ((pygame.Rect(8, 352, 52, 68), "◀"), (pygame.Rect(660, 352, 52, 68), "▶")):
+                pygame.draw.rect(portrait_surf, (48, 40, 76), ar_r, border_radius=10)
+                pygame.draw.rect(portrait_surf, config.GOLD, ar_r, width=2, border_radius=10)
+                ar_s = hf.render(ar_t, True, config.GOLD)
+                portrait_surf.blit(ar_s, ar_s.get_rect(center=ar_r.center))
+
+            is_spec = (
+                self.current_scene_name == "play"
+                and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "SPECIALIST"
+            )
+            tray_cnt = 0
+            if hasattr(sc, "assembly_tray"):
+                if hasattr(sc.assembly_tray, "get_total_dish_count"):
+                    tray_cnt = int(sc.assembly_tray.get_total_dish_count())
+                else:
+                    tray_cnt = sum(1 for sl in getattr(sc.assembly_tray, "slots", []) if sl is not None)
+
+            if is_spec:
+                sp_st = getattr(sc, "specialist_station", None)
+                sp_slots = getattr(sp_st, "slots", []) if sp_st else []
+                ready_n = sum(1 for s in sp_slots if getattr(s, "state", "") == STATE_READY)
+                flip_n = sum(1 for s in sp_slots if getattr(s, "is_flip_ready", False))
+                cook_n = sum(1 for s in sp_slots if getattr(s, "state", "") == STATE_COOKING)
+                if ready_n > 0:
+                    app_badge, app_col = f"✨완료 {ready_n}!", config.NEON_GREEN
+                elif flip_n > 0:
+                    app_badge, app_col = f"🔄뒤집기 {flip_n}!", config.GOLD
+                elif cook_n > 0:
+                    app_badge, app_col = f"🔥조리중 {cook_n}", config.POCHA_ORANGE
+                else:
+                    app_badge, app_col = "6구 화로", config.TEXT_SECONDARY
+
+                tab_defs = [
+                    ("① 속재료 투입", "재료 선택", config.NEON_CYAN),
+                    ("② 6구 전문화로", app_badge, app_col),
+                    ("③ 조립 트레이", f"📦 {tray_cnt}개 적재" if tray_cnt > 0 else "무한적재·서빙", config.GOLD if tray_cnt > 0 else config.TEXT_SECONDARY),
+                ]
+            else:
+                def _st_status(st_obj: Any, slot_key: str) -> Tuple[str, Tuple[int, int, int]]:
+                    if hasattr(self.game_mgr, "is_slot_unlocked_in_story") and not self.game_mgr.is_slot_unlocked_in_story(slot_key):
+                        return "🔒 잠금", config.TEXT_SECONDARY
+                    slots = getattr(st_obj, "slots", []) if st_obj else []
+                    if any(getattr(s, "state", "") == STATE_READY for s in slots):
+                        return "✨완료!", config.NEON_GREEN
+                    if any(getattr(s, "is_flip_ready", False) for s in slots):
+                        return "🔄뒤집기!", config.GOLD
+                    if any(getattr(s, "state", "") == STATE_COOKING for s in slots):
+                        return "🔥조리중", config.POCHA_ORANGE
+                    return "대기중", config.TEXT_SECONDARY
+
+                m_b, m_c = _st_status(getattr(sc, "mold_station", None), "mold")
+                d_b, d_c = _st_status(getattr(sc, "dispenser_station", None), "dispenser")
+                g_b, g_c = _st_status(getattr(sc, "grill_station", None), "grill")
+                b_b, b_c = _st_status(getattr(sc, "batch_pot_station", None), "batch_pot")
+                tr_b = f"📦 {tray_cnt}개 적재!" if tray_cnt > 0 else "무한적재·서빙"
+                tr_c = config.GOLD if tray_cnt > 0 else config.TEXT_SECONDARY
+
+                tab_defs = [
+                    ("① 몰드", m_b, m_c),
+                    ("② 음료", d_b, d_c),
+                    ("③ 트레이", tr_b, tr_c),
+                    ("④ 그릴", g_b, g_c),
+                    ("⑤ 대량팬", b_b, b_c),
+                ]
+
+            tab_cnt = len(tab_defs)
+            avail_w = 592
+            tab_w = (avail_w - (tab_cnt - 1) * 6) // tab_cnt
+            active_p_idx = self.portrait_play_idx % tab_cnt
+
+            for t_i, (t_title, t_sub, t_scol) in enumerate(tab_defs):
+                tr = pygame.Rect(64 + t_i * (tab_w + 6), 352, tab_w, 68)
+                is_act = t_i == active_p_idx
+                bg = (232, 102, 36) if is_act else (32, 28, 52)
+                bdr = config.WHITE if is_act else (t_scol if t_scol in (config.NEON_GREEN, config.GOLD) else config.UI_BORDER)
+                pygame.draw.rect(portrait_surf, bg, tr, border_radius=10)
+                pygame.draw.rect(portrait_surf, bdr, tr, width=3 if is_act else 2, border_radius=10)
+
+                tt_s = tab_f.render(t_title, True, config.WHITE if is_act else config.TEXT_PRIMARY)
+                ts_s = badge_f.render(t_sub, True, config.WHITE if is_act else t_scol)
+                portrait_surf.blit(tt_s, tt_s.get_rect(center=(tr.centerx, tr.y + 22)))
+                portrait_surf.blit(ts_s, ts_s.get_rect(center=(tr.centerx, tr.y + 48)))
+
+            # 5열 최하단: [◀ 이전 기구] + [👨‍🍳 마스터 액티브 스킬 발동!] + [🎬 스토리] + [다음 기구 ▶] (y=1186..1268)
+            prev_btn = pygame.Rect(8, 1186, 116, 82)
+            next_btn = pygame.Rect(596, 1186, 116, 82)
+            for nav_r, nav_lbl in ((prev_btn, "◀ 이전기구"), (next_btn, "다음기구 ▶")):
+                pygame.draw.rect(portrait_surf, (44, 38, 70), nav_r, border_radius=12)
+                pygame.draw.rect(portrait_surf, config.NEON_CYAN, nav_r, width=2, border_radius=12)
+                ns = tab_f.render(nav_lbl, True, config.WHITE)
+                portrait_surf.blit(ns, ns.get_rect(center=nav_r.center))
+
+            show_story_btn = (
+                self.current_scene_name == "play"
+                and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "WORLD_TOUR"
+            )
+            skill_r = pygame.Rect(130, 1186, 338 if show_story_btn else 460, 82)
+            char_data = self.game_mgr.get_selected_character_data()
+            sk_unlocked = not hasattr(self.game_mgr, "is_slot_unlocked_in_story") or self.game_mgr.is_slot_unlocked_in_story("skill")
+            sk_active = sk_unlocked and float(getattr(self.game_mgr, "skill_active_timer", 0.0)) > 0.0
+            sk_ready = sk_unlocked and float(getattr(self.game_mgr, "skill_cooldown", 0.0)) <= 0.0
+
+            sk_bg = (238, 152, 28) if sk_active else ((218, 92, 34) if sk_ready else (38, 34, 58))
+            pygame.draw.rect(portrait_surf, sk_bg, skill_r, border_radius=12)
+            pygame.draw.rect(portrait_surf, config.GOLD if (sk_ready or sk_active) else config.UI_BORDER, skill_r, width=2, border_radius=12)
+
+            av_mini = pygame.Rect(skill_r.x + 10, skill_r.y + 9, 64, 64)
+            art_renderer.draw_chef_avatar(
+                portrait_surf,
+                av_mini,
+                character_id=self.game_mgr.selected_character,
+                state="SKILL" if sk_active else "COOKING",
+                time_tick=self._loading_tick,
+            )
+            if not sk_unlocked:
+                sk_t1 = "🔒 Day 4 마스터 스킬 해금"
+                sk_t2 = char_data["skill_name"]
+            elif sk_active:
+                sk_t1 = f"⚡ 스킬 발동 중! ({self.game_mgr.skill_active_timer:.1f}초)"
+                sk_t2 = char_data["skill_name"]
+            elif sk_ready:
+                sk_t1 = "⚡ 마스터 스킬 발동! (터치)"
+                sk_t2 = f"★ {char_data['skill_name']}"
+            else:
+                cd_sec = int(math.ceil(float(getattr(self.game_mgr, "skill_cooldown", 0.0))))
+                sk_t1 = f"⏳ 스킬 쿨타임 {cd_sec}초"
+                sk_t2 = char_data["skill_name"]
+
+            s1_surf = tab_f.render(sk_t1, True, config.WHITE)
+            s2_surf = badge_f.render(sk_t2, True, config.GOLD if sk_ready else config.TEXT_PRIMARY)
+            portrait_surf.blit(s1_surf, (av_mini.right + 12, skill_r.y + 16))
+            portrait_surf.blit(s2_surf, (av_mini.right + 12, skill_r.y + 46))
+
+            if show_story_btn:
+                story_r = pygame.Rect(474, 1186, 116, 82)
+                pygame.draw.rect(portrait_surf, (64, 42, 108), story_r, border_radius=12)
+                pygame.draw.rect(portrait_surf, config.GOLD, story_r, width=2, border_radius=12)
+                sr_txt = tab_f.render("🎬 스토리", True, config.GOLD)
                 portrait_surf.blit(sr_txt, sr_txt.get_rect(center=story_r.center))
 
-            # 최하단 바: 2줄 설명 문장을 완전히 제거하고 [조리기구 ➔ 기본요리 + 토핑 ➔ 완성요리 ➔ 손님] 그림 아이콘 플로우 배치
-            bot_info = pygame.Rect(8, 1204, 704, 64)
-            pygame.draw.rect(portrait_surf, (22, 18, 36), bot_info, border_radius=10)
-            pygame.draw.rect(portrait_surf, config.UI_BORDER, bot_info, width=2, border_radius=10)
-
-            hw_mini = pygame.Rect(68, 1212, 64, 48)
-            art_renderer.draw_station_hardware(portrait_surf, hw_mini, station_type="mold")
-            arr_s = btn_f.render("▶", True, config.GOLD)
-            portrait_surf.blit(arr_s, arr_s.get_rect(center=(174, bot_info.centery)))
-            art_renderer.draw_food_icon(portrait_surf, (238, bot_info.centery), "bungeoppang_redbean", size=48)
-            plus_s = btn_f.render("+", True, config.NEON_CYAN)
-            portrait_surf.blit(plus_s, plus_s.get_rect(center=(302, bot_info.centery)))
-            art_renderer.draw_topping_badge(portrait_surf, (356, bot_info.centery), "cheese", size=34)
-            portrait_surf.blit(arr_s, arr_s.get_rect(center=(416, bot_info.centery)))
-            art_renderer.draw_food_icon(portrait_surf, (482, bot_info.centery), "tteokbokki_cheese", size=50)
-            portrait_surf.blit(arr_s, arr_s.get_rect(center=(554, bot_info.centery)))
-            cust_mini = pygame.Rect(598, 1208, 52, 56)
-            art_renderer.draw_customer(portrait_surf, cust_mini, customer_type="tourist", mood="HAPPY", time_tick=self._loading_tick)
-
-        # 4) 상점/준비 화면(PrepScene) 세로 모드 전용: 아이콘 탭 & 아바타·음식 그림 요약 바
+        # 4) 상점/준비 화면(PrepScene) 세로 1패널 모드: 상단 탭 + 서브 패널 전환 바 + 1개 초대형 카드 + 하단 요약
         elif self.current_scene_name == "prep":
+            from data.chapters import CHAPTER_ORDER, CHAPTERS
+            from data.characters import CHARACTERS
+            from data.specialist_menus import SPECIALIST_MENUS, SPECIALIST_ORDER
+
             sc = self.current_scene
             active_tab = str(getattr(sc, "active_tab", "chapter")).lower()
             is_global = self.game_mgr.mode == "GLOBAL_ENDLESS"
             is_spec = self.game_mgr.mode == "SPECIALIST"
-            top_f = config.get_font(20, bold=True)
-            gold_f = config.get_font(20, bold=True)
-            tab_f = config.get_font(18, bold=True)
+            top_f = config.get_font(17, bold=True)
+            gold_f = config.get_font(19, bold=True)
+            tab_f = config.get_font(16, bold=True)
+            sub_f = config.get_font(15, bold=True)
 
-            # 상단 네비게이션 버튼 3종 (아이콘 중심)
+            # 상단 네비게이션 버튼 3종
             nav_bg = pygame.Rect(8, 8, 456, 52)
             pygame.draw.rect(portrait_surf, (16, 14, 26), nav_bg, border_radius=10)
             b_back = pygame.Rect(8, 8, 118, 52)
@@ -1226,18 +1804,18 @@ class SceneManager:
 
             pygame.draw.rect(portrait_surf, (44, 38, 66), b_back, border_radius=10)
             pygame.draw.rect(portrait_surf, config.UI_BORDER, b_back, width=2, border_radius=10)
-            bk_s = top_f.render("⬅", True, config.WHITE)
+            bk_s = top_f.render("⬅ 타이틀", True, config.WHITE)
             portrait_surf.blit(bk_s, bk_s.get_rect(center=b_back.center))
 
             if is_spec:
                 m_col = config.GOLD
-                m_lbl = "🎯 ⇄"
+                m_lbl = "🎯 장인 모드 ⇄"
             elif is_global:
                 m_col = config.NEON_CYAN
-                m_lbl = "🏮 ⇄"
+                m_lbl = "🏮 글로벌 모드 ⇄"
             else:
                 m_col = config.POCHA_ORANGE
-                m_lbl = "🗺️ ⇄"
+                m_lbl = "🗺️ 9개국 투어 ⇄"
             pygame.draw.rect(portrait_surf, (44, 38, 66), b_mode, border_radius=10)
             pygame.draw.rect(portrait_surf, m_col, b_mode, width=2, border_radius=10)
             ms = top_f.render(m_lbl, True, m_col)
@@ -1245,30 +1823,30 @@ class SceneManager:
 
             pygame.draw.rect(portrait_surf, (44, 38, 66), b_opt, border_radius=10)
             pygame.draw.rect(portrait_surf, config.GOLD, b_opt, width=2, border_radius=10)
-            os = top_f.render("⚙️", True, config.GOLD)
+            os = top_f.render("⚙️ 옵션", True, config.GOLD)
             portrait_surf.blit(os, os.get_rect(center=b_opt.center))
 
             # 상단 우측 보유 골드 박스
             gold_box = pygame.Rect(472, 8, 240, 52)
             pygame.draw.rect(portrait_surf, (36, 30, 52), gold_box, border_radius=10)
             pygame.draw.rect(portrait_surf, config.GOLD, gold_box, width=2, border_radius=10)
-            gs = gold_f.render(f"💰 {self.game_mgr.gold:,}", True, config.GOLD)
+            gs = gold_f.render(f"💰 {self.game_mgr.gold:,}원", True, config.GOLD)
             portrait_surf.blit(gs, gs.get_rect(center=gold_box.center))
 
-            # 4대 메인 탭 버튼 바 (긴 글자 제거, 직관적 아이콘+숫자 탭)
-            tab_bar_bg = pygame.Rect(8, 66, 704, 50)
+            # 4대 메인 탭 버튼 바
+            tab_bar_bg = pygame.Rect(8, 66, 704, 52)
             pygame.draw.rect(portrait_surf, (16, 14, 26), tab_bar_bg, border_radius=10)
             if is_spec:
-                tab2_lbl = "🎯 2"
+                tab2_lbl = "🎯 장인종목"
             elif is_global:
-                tab2_lbl = "🏮 2"
+                tab2_lbl = "🏮 기구배치"
             else:
-                tab2_lbl = f"🗺️ {len(self.game_mgr.unlocked_chapters)}/9"
+                tab2_lbl = f"🗺️ 챕터({len(self.game_mgr.unlocked_chapters)}/9)"
             portrait_tabs = [
-                ("character", pygame.Rect(8, 66, 170, 50), f"👨‍🍳 {len(self.game_mgr.unlocked_characters)}/32"),
-                ("chapter", pygame.Rect(182, 66, 180, 50), tab2_lbl),
-                ("upgrade", pygame.Rect(366, 66, 170, 50), "🛠️ Lv"),
-                ("tournament", pygame.Rect(540, 66, 172, 50), "🏆 32"),
+                ("character", pygame.Rect(8, 66, 172, 52), f"👨‍🍳 마스터({len(self.game_mgr.unlocked_characters)}/32)"),
+                ("chapter", pygame.Rect(184, 66, 176, 52), tab2_lbl),
+                ("upgrade", pygame.Rect(364, 66, 172, 52), "🛠️ 강화·상점"),
+                ("tournament", pygame.Rect(540, 66, 172, 52), "🏆 32강 대회"),
             ]
             for tkey, tr, tlbl in portrait_tabs:
                 is_act = active_tab == tkey
@@ -1280,12 +1858,91 @@ class SceneManager:
                 ts = tab_f.render(tlbl, True, tfg)
                 portrait_surf.blit(ts, ts.get_rect(center=tr.center))
 
-            # 하단 요약 카드: 2줄 설명 문구를 없애고 마스터 도트 아바타(82x82) + 4종 음식 일러스트(56px) + 목표 골드 표시
-            sum_bar = pygame.Rect(8, 1054, 704, 106)
+            # 서브 패널 전환 바 (y=124..180): [◀] + 현재 단일 패널 정보/서브탭 + [▶]
+            for ar_r, ar_t in ((pygame.Rect(8, 124, 68, 56), "◀"), (pygame.Rect(644, 124, 68, 56), "▶")):
+                pygame.draw.rect(portrait_surf, (48, 40, 76), ar_r, border_radius=10)
+                pygame.draw.rect(portrait_surf, config.GOLD, ar_r, width=2, border_radius=10)
+                ar_s = gold_f.render(ar_t, True, config.GOLD)
+                portrait_surf.blit(ar_s, ar_s.get_rect(center=ar_r.center))
+
+            mid_bar = pygame.Rect(82, 124, 556, 56)
+            pygame.draw.rect(portrait_surf, (26, 22, 44), mid_bar, border_radius=10)
+            pygame.draw.rect(portrait_surf, config.UI_BORDER, mid_bar, width=2, border_radius=10)
+
+            if active_tab == "character":
+                filtered = sc._get_filtered_characters() if hasattr(sc, "_get_filtered_characters") else list(CHARACTERS.keys())
+                insp_id = getattr(sc, "inspected_character", self.game_mgr.selected_character)
+                c_obj = CHARACTERS.get(insp_id, CHARACTERS["chef_kr"])
+                c_pos = (filtered.index(insp_id) + 1) if insp_id in filtered else 1
+                info_lbl = f"👨‍🍳 [{c_obj.get('region_name', '')}] {c_obj['name']} ({c_pos}/{len(filtered)})"
+                inf_s = tab_f.render(info_lbl, True, config.GOLD)
+                portrait_surf.blit(inf_s, (mid_bar.x + 14, mid_bar.centery - inf_s.get_height() // 2))
+
+                toggle_r = pygame.Rect(454, 128, 182, 48)
+                is_grid = (self.portrait_prep_idx % 2) == 1
+                pygame.draw.rect(portrait_surf, (62, 52, 98) if not is_grid else (218, 96, 36), toggle_r, border_radius=8)
+                pygame.draw.rect(portrait_surf, config.NEON_CYAN, toggle_r, width=2, border_radius=8)
+                tg_txt = sub_f.render("👨‍🍳 상세 카드 보기" if is_grid else "📋 32인 목록/필터", True, config.WHITE)
+                portrait_surf.blit(tg_txt, tg_txt.get_rect(center=toggle_r.center))
+
+            elif active_tab == "chapter":
+                if is_spec:
+                    idx = self.portrait_prep_idx % len(SPECIALIST_ORDER)
+                    sp_id = SPECIALIST_ORDER[idx]
+                    sp_d = SPECIALIST_MENUS[sp_id]
+                    ch_txt = gold_f.render(f"{sp_d['emoji']} {sp_d['name']}  ({idx + 1}/{len(SPECIALIST_ORDER)})", True, config.GOLD)
+                    portrait_surf.blit(ch_txt, ch_txt.get_rect(center=mid_bar.center))
+                elif is_global:
+                    slot_labels = ["① 몰드", "② 음료", "③ 그릴", "④ 대량팬"]
+                    cur_s = self.portrait_prep_idx % 4
+                    for s_i, sl_lbl in enumerate(slot_labels):
+                        sr = pygame.Rect(82 + s_i * 102, 128, 96, 48)
+                        is_sel = s_i == cur_s
+                        pygame.draw.rect(portrait_surf, (232, 102, 36) if is_sel else (38, 32, 60), sr, border_radius=8)
+                        pygame.draw.rect(portrait_surf, config.GOLD if is_sel else config.UI_BORDER, sr, width=2 if is_sel else 1, border_radius=8)
+                        ss = sub_f.render(sl_lbl, True, config.WHITE)
+                        portrait_surf.blit(ss, ss.get_rect(center=sr.center))
+                    pg_btn = pygame.Rect(494, 128, 142, 48)
+                    pygame.draw.rect(portrait_surf, (46, 40, 74), pg_btn, border_radius=8)
+                    pygame.draw.rect(portrait_surf, config.NEON_CYAN, pg_btn, width=2, border_radius=8)
+                    g_pg = int(getattr(sc, "global_station_page", 0)) + 1
+                    ps = sub_f.render(f"국가전환 {g_pg}/3 ▶", True, config.NEON_CYAN)
+                    portrait_surf.blit(ps, ps.get_rect(center=pg_btn.center))
+                else:
+                    idx = self.portrait_prep_idx % len(CHAPTER_ORDER)
+                    ch_id = CHAPTER_ORDER[idx]
+                    ch_d = CHAPTERS[ch_id]
+                    ch_txt = gold_f.render(f"🗺️ [{ch_id}] {ch_d['name']}  ({idx + 1}/{len(CHAPTER_ORDER)})", True, config.GOLD)
+                    portrait_surf.blit(ch_txt, ch_txt.get_rect(center=mid_bar.center))
+
+            elif active_tab == "upgrade":
+                sub_opts = ["🛠️ 기구·트레이 강화 (5종)", "🏮 포차 인테리어 (4종)"]
+                cur_u = self.portrait_prep_idx % 2
+                for u_i, u_lbl in enumerate(sub_opts):
+                    sr = pygame.Rect(84 + u_i * 278, 128, 270, 48)
+                    is_sel = u_i == cur_u
+                    pygame.draw.rect(portrait_surf, (232, 102, 36) if is_sel else (38, 32, 60), sr, border_radius=8)
+                    pygame.draw.rect(portrait_surf, config.GOLD if is_sel else config.UI_BORDER, sr, width=2 if is_sel else 1, border_radius=8)
+                    us = tab_f.render(u_lbl, True, config.WHITE)
+                    portrait_surf.blit(us, us.get_rect(center=sr.center))
+
+            else:  # tournament
+                sub_opts = ["⚔️ AI 보스전 출격", "🏆 32강 전체 대진표"]
+                cur_t = self.portrait_prep_idx % 2
+                for t_i, t_lbl in enumerate(sub_opts):
+                    sr = pygame.Rect(84 + t_i * 278, 128, 270, 48)
+                    is_sel = t_i == cur_t
+                    pygame.draw.rect(portrait_surf, (224, 72, 46) if is_sel else (38, 32, 60), sr, border_radius=8)
+                    pygame.draw.rect(portrait_surf, config.GOLD if is_sel else config.UI_BORDER, sr, width=2 if is_sel else 1, border_radius=8)
+                    ts = tab_f.render(t_lbl, True, config.WHITE)
+                    portrait_surf.blit(ts, ts.get_rect(center=sr.center))
+
+            # 하단 요약 카드 (y=1046..1152)
+            sum_bar = pygame.Rect(8, 1046, 704, 106)
             pygame.draw.rect(portrait_surf, (24, 20, 40), sum_bar, border_radius=12)
             pygame.draw.rect(portrait_surf, config.UI_BORDER, sum_bar, width=2, border_radius=12)
 
-            av_sum = pygame.Rect(sum_bar.x + 18, sum_bar.y + 12, 82, 82)
+            av_sum = pygame.Rect(sum_bar.x + 16, sum_bar.y + 12, 82, 82)
             pygame.draw.rect(portrait_surf, (36, 30, 56), av_sum.inflate(6, 6), border_radius=12)
             pygame.draw.rect(portrait_surf, config.GOLD, av_sum.inflate(6, 6), width=2, border_radius=12)
             art_renderer.draw_chef_avatar(
@@ -1296,24 +1953,18 @@ class SceneManager:
                 time_tick=self._loading_tick,
             )
 
-            active_sts = self.game_mgr.get_active_station_metas() if hasattr(self.game_mgr, "get_active_station_metas") else {}
-            for idx_st, st_slot in enumerate(("mold", "dispenser", "grill", "batch_pot")):
-                st_m = active_sts.get(st_slot, {})
-                rec_id = st_m["recipes"][0] if st_m.get("recipes") else "bungeoppang_redbean"
-                fx_s = sum_bar.x + 156 + idx_st * 76
-                pygame.draw.circle(portrait_surf, (38, 32, 58), (fx_s, sum_bar.centery), 30)
-                art_renderer.draw_food_icon(portrait_surf, (fx_s, sum_bar.centery), rec_id, size=52)
-
+            char_d = self.game_mgr.get_selected_character_data()
             t_gold = self.game_mgr.get_target_gold()
-            tg_f = config.get_font(20, bold=True)
-            tg_s = tg_f.render(f"📅 D-{self.game_mgr.day}   🎯 {t_gold:,}", True, config.GOLD)
-            portrait_surf.blit(tg_s, (sum_bar.right - tg_s.get_width() - 22, sum_bar.centery - tg_s.get_height() // 2))
+            s_line1 = top_f.render(f"👨‍🍳 [{char_d.get('region_name', '')}] {char_d['name']}  ·  ★ {char_d['skill_name']}", True, config.WHITE)
+            s_line2 = gold_f.render(f"📅 Day {self.game_mgr.day}   |   🎯 목표 매출: {t_gold:,}원", True, config.GOLD)
+            portrait_surf.blit(s_line1, (av_sum.right + 18, sum_bar.y + 18))
+            portrait_surf.blit(s_line2, (av_sum.right + 18, sum_bar.y + 56))
 
-            start_r = pygame.Rect(150, 1170, 420, 92)
+            start_r = pygame.Rect(80, 1162, 560, 96)
             pygame.draw.rect(portrait_surf, (238, 104, 36), start_r, border_radius=16)
             pygame.draw.rect(portrait_surf, config.GOLD, start_r, width=3, border_radius=16)
-            st_f = config.get_font(28, bold=True)
-            st_s = st_f.render("🏮 ▶ START", True, config.WHITE)
+            st_f = config.get_font(26, bold=True)
+            st_s = st_f.render("🏮 오늘 영업 시작! (START) ▶", True, config.WHITE)
             portrait_surf.blit(st_s, st_s.get_rect(center=start_r.center))
 
     def draw(self, surface: pygame.Surface) -> None:
@@ -1324,6 +1975,9 @@ class SceneManager:
         target_size = surface.get_size()
         logical_size = (config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
         want_portrait = (target_size[1] > target_size[0]) or self.is_portrait_mode
+
+        if want_portrait:
+            self._sync_prep_logical_page_for_portrait()
 
         if target_size == logical_size and not want_portrait:
             self.current_scene.draw(surface)
@@ -1743,52 +2397,6 @@ class SceneManager:
         pygame.draw.rect(surface, (22, 18, 38), card, border_radius=22)
         pygame.draw.rect(surface, accent, card, width=3, border_radius=22)
         pygame.draw.rect(surface, config.GOLD, card.inflate(-10, -10), width=1, border_radius=18)
-
-        if is_mob:
-            # 모바일 그림 중심 로딩 화면: 줄글 설명과 텍스트 칩을 모두 없애고 초대형 조리 기구 일러스트 + 10종 음식 아이콘 트랙 + START 버튼 배치
-            stage_rect = pygame.Rect(card.x + 44, card.y + 32, card.width - 88, 344)
-            self._draw_loading_appliance_illustration(surface, stage_rect, theme, p_ratio)
-
-            bar_rect = pygame.Rect(card.x + 60, stage_rect.bottom + 26, card.width - 264, 42)
-            pct_box = pygame.Rect(bar_rect.right + 16, bar_rect.y, 128, 42)
-            pygame.draw.rect(surface, (14, 12, 24), bar_rect, border_radius=20)
-
-            fill_w = max(24, int(round(bar_rect.width * p_ratio)))
-            fill_rect = pygame.Rect(bar_rect.x, bar_rect.y, fill_w, bar_rect.height)
-            pygame.draw.rect(surface, accent, fill_rect, border_radius=20)
-            pygame.draw.rect(surface, config.GOLD, bar_rect, width=2, border_radius=20)
-
-            cursor_x = max(bar_rect.x + 22, min(bar_rect.right - 18, fill_rect.right))
-            cursor_y = bar_rect.centery + int(math.sin(self._loading_tick * 10.0) * 3)
-            pygame.draw.circle(surface, (28, 22, 44), (cursor_x, cursor_y), 28)
-            pygame.draw.circle(surface, config.GOLD, (cursor_x, cursor_y), 28, width=2)
-            art_renderer.draw_food_icon(surface, (cursor_x, cursor_y), str(foods[0]), size=42)
-
-            pygame.draw.rect(surface, (38, 88, 54) if is_ready_tap else (28, 22, 46), pct_box, border_radius=20)
-            pygame.draw.rect(surface, config.GOLD if is_ready_tap else accent, pct_box, width=2, border_radius=20)
-            pct_surf = config.get_font(18, bold=True).render(f"{pct}%", True, config.NEON_GREEN if is_ready_tap else config.GOLD)
-            surface.blit(pct_surf, pct_surf.get_rect(center=pct_box.center))
-
-            # 10개 텍스트 칩 대신 10종 음식 아이콘 스텝 일렬 배치
-            track_y = bar_rect.bottom + 46
-            step_x = (card.width - 120) // len(LOADING_THEMES)
-            for idx, t_item in enumerate(LOADING_THEMES):
-                is_cur = idx == (self.loading_theme_idx % len(LOADING_THEMES))
-                cx_t = card.x + 60 + idx * step_x + step_x // 2
-                pygame.draw.circle(surface, t_item["accent"] if is_cur else (34, 28, 52), (cx_t, track_y), 32 if is_cur else 26)
-                pygame.draw.circle(surface, config.WHITE if is_cur else config.UI_BORDER, (cx_t, track_y), 32 if is_cur else 26, width=2 if is_cur else 1)
-                t_foods = t_item.get("foods", ("bungeoppang_redbean",))
-                art_renderer.draw_food_icon(surface, (cx_t, track_y), str(t_foods[0]), size=46 if is_cur else 36)
-
-            tip_rect = pygame.Rect(card.x + 180, card.bottom - 88, card.width - 360, 64)
-            if is_ready_tap:
-                pulse = 0.86 + 0.14 * math.sin(self._loading_tick * 6.5)
-                btn_bg = (int(238 * pulse), int(98 * pulse), 34)
-                pygame.draw.rect(surface, btn_bg, tip_rect, border_radius=16)
-                pygame.draw.rect(surface, config.GOLD, tip_rect, width=3, border_radius=16)
-                tap_s = config.get_font(26, bold=True).render("🏮 ▶ START", True, config.WHITE)
-                surface.blit(tap_s, tap_s.get_rect(center=tip_rect.center))
-            return
 
         title_f = config.get_font(28, bold=True)
         msg_f = config.get_font(24, bold=True)

@@ -348,6 +348,7 @@ class PlayScene(BaseScene):
 
         total_earned = base_price + tip
         self.game_mgr.daily_gold += total_earned
+        self.game_mgr.daily_gross_gold = int(getattr(self.game_mgr, "daily_gross_gold", 0)) + total_earned
         self.game_mgr.add_gold(total_earned)
 
         # 출발/도착 좌표 계산 및 포물선 비행 애니메이션(FlyingDishEffect) 생성
@@ -656,16 +657,6 @@ class PlayScene(BaseScene):
 
             # 조립 트레이 클릭 (좌클릭: 서빙/토핑/휴지통, 우클릭: 접시 폐기)
             if self.assembly_tray.rect.collidepoint(mx, my):
-                if not self.game_mgr.is_slot_unlocked_in_story("tray"):
-                    sound_fx.play_burn()
-                    self.particles.spawn_floating_text(
-                        self._get_slot_unlock_hint("tray"),
-                        self.assembly_tray.rect.centerx,
-                        self.assembly_tray.rect.top + 30,
-                        color=config.TEXT_WARNING,
-                        size=16,
-                    )
-                    return
                 res = self.assembly_tray.handle_click(
                     (mx, my),
                     auto_serve_cb=self.try_auto_serve,
@@ -738,8 +729,6 @@ class PlayScene(BaseScene):
         # [1]~[5]: 조립 트레이 접시 1~5번 빠른 자동 서빙
         tray_keys = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5]
         if key in tray_keys:
-            if not self.game_mgr.is_slot_unlocked_in_story("tray"):
-                return
             idx = tray_keys.index(key)
             if idx < len(self.assembly_tray.slot_rects):
                 s_rect = self.assembly_tray.slot_rects[idx]
@@ -872,12 +861,34 @@ class PlayScene(BaseScene):
         if action == "start_cook":
             sound_fx.play_sizzle(slot_type)
             self.particles.emit_smoke(px, py - 10, count=4)
+            if (
+                self.game_mgr.mode == "SPECIALIST"
+                and self.scene_mgr is not None
+                and getattr(self.scene_mgr, "is_portrait_mode", False)
+                and getattr(self.scene_mgr, "portrait_play_idx", 0) == 0
+                and getattr(self.specialist_station, "is_bungeoppang", False)
+            ):
+                self.scene_mgr.portrait_play_idx = 1
         elif action == "moved_to_tray":
             if slot_type == "batch_pot" or "remaining_servings" in res:
                 sound_fx.play_pot_scoop()
             else:
                 sound_fx.play_move_to_tray()
             self.particles.emit_stars(self.assembly_tray.rect.centerx, self.assembly_tray.rect.top + 80, count=5)
+            moved_rid = str(res.get("recipe_id", ""))
+            st_idx = self.assembly_tray.find_stack_slot(moved_rid, False)
+            if st_idx is not None and st_idx < len(self.assembly_tray.dishes):
+                st_dish = self.assembly_tray.dishes[st_idx]
+                if st_dish is not None and st_dish.quantity >= 2:
+                    self.particles.spawn_floating_text(
+                        f"📦 {st_dish.name} 적재 x{st_dish.quantity}!",
+                        self.assembly_tray.rect.centerx,
+                        self.assembly_tray.rect.top + 28,
+                        color=config.GOLD,
+                        size=17,
+                    )
+            if self.scene_mgr is not None and getattr(self.scene_mgr, "is_portrait_mode", False):
+                self.scene_mgr.portrait_play_idx = 2
         elif action in ("auto_served", "served"):
             if slot_type == "dispenser":
                 sound_fx.play_drink_pour()
@@ -891,7 +902,21 @@ class PlayScene(BaseScene):
         elif action in ("trash_burnt", "trash_dish"):
             sound_fx.play_trash()
             self.particles.emit_burn(px, py, count=7)
-            self.particles.spawn_floating_text("🗑️ 음식 폐기", px, py - 15, color=config.TEXT_WARNING, size=18)
+            rid = str(res.get("recipe_id", ""))
+            cnt = max(1, int(res.get("discard_count", 1)))
+            loss = 0
+            if hasattr(self.game_mgr, "record_discard_loss"):
+                loss = int(self.game_mgr.record_discard_loss(rid, count=cnt, reason=action, deduct_immediately=True))
+            if loss > 0:
+                self.particles.spawn_floating_text(
+                    f"🗑️ 폐기 원가 손실 -{loss:,}원",
+                    px,
+                    py - 15,
+                    color=config.RED,
+                    size=18,
+                )
+            else:
+                self.particles.spawn_floating_text("🗑️ 음식 폐기", px, py - 15, color=config.TEXT_WARNING, size=18)
         elif action == "toggle_trash_mode":
             sound_fx.play_click()
             msg = str(res.get("message", "버리기 모드 전환"))
@@ -904,10 +929,22 @@ class PlayScene(BaseScene):
             sound_fx.play_click()
             msg = str(res.get("message", "넣을 속재료 버튼을 터치하세요!"))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
+            if (
+                self.game_mgr.mode == "SPECIALIST"
+                and self.scene_mgr is not None
+                and getattr(self.scene_mgr, "is_portrait_mode", False)
+            ):
+                self.scene_mgr.portrait_play_idx = 0
         elif action == "select_recipe":
             sound_fx.play_click()
             msg = str(res.get("message", "🥣 속재료 선택 완료! 빈 틀을 터치해 부으세요!"))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
+            if (
+                self.game_mgr.mode == "SPECIALIST"
+                and self.scene_mgr is not None
+                and getattr(self.scene_mgr, "is_portrait_mode", False)
+            ):
+                self.scene_mgr.portrait_play_idx = 1
         elif action == "flip_mold":
             sound_fx.play_mold_flip()
             self.particles.emit_smoke(px, py - 8, count=5)
@@ -1155,11 +1192,64 @@ class PlayScene(BaseScene):
             self._handle_station_feedback(hold_fb, fb_pos)
         self.particles.update(dt)
 
+    def _settle_end_of_day_leftovers(self) -> int:
+        """
+        영업 종료(마감) 시 조립 트레이 및 조리 기구에 남아 있는 미판매 완성/탄 음식의
+        재료 원가 손실(100% 원가 차감)을 일괄 정산하고 차감된 총 손실액을 반환한다.
+        """
+        if not hasattr(self.game_mgr, "record_discard_loss"):
+            return 0
+        total_leftover_loss = 0
+
+        # 1. 중앙 조립 트레이에 남아 있는 적재 재고 정산
+        for dish in self.assembly_tray.dishes:
+            if dish is not None and dish.recipe_id:
+                qty = max(1, int(getattr(dish, "quantity", 1)))
+                total_leftover_loss += int(
+                    self.game_mgr.record_discard_loss(
+                        dish.recipe_id,
+                        count=qty,
+                        reason="leftover_tray",
+                        deduct_immediately=True,
+                    )
+                )
+
+        # 2. 조리 기구 슬롯에 남아 있는 완성(READY) / 탄(BURNT) 음식 정산 (음료 디스펜서 제외)
+        if self.game_mgr.mode == "SPECIALIST":
+            for slot in self.specialist_station.slots:
+                if slot.state in (STATE_READY, STATE_BURNT) and slot.recipe_id:
+                    qty = max(1, int(getattr(slot, "servings", 1)))
+                    total_leftover_loss += int(
+                        self.game_mgr.record_discard_loss(
+                            slot.recipe_id,
+                            count=qty,
+                            reason="leftover_station",
+                            deduct_immediately=True,
+                        )
+                    )
+        else:
+            for st in (self.mold_station, self.grill_station, self.batch_pot_station):
+                if not self.game_mgr.is_slot_unlocked_in_story(st.slot_type):
+                    continue
+                for slot in st.slots:
+                    if slot.state in (STATE_READY, STATE_BURNT) and slot.recipe_id:
+                        qty = max(1, int(getattr(slot, "servings", 1)))
+                        total_leftover_loss += int(
+                            self.game_mgr.record_discard_loss(
+                                slot.recipe_id,
+                                count=qty,
+                                reason="leftover_station",
+                                deduct_immediately=True,
+                            )
+                        )
+        return total_leftover_loss
+
     def _finish_day(self) -> None:
         if self._day_finished:
             return
         self._day_finished = True
         sound_fx.play_day_end()
+        self._settle_end_of_day_leftovers()
         ai_opp = getattr(self.game_mgr, "ai_opponent_id", "")
         if ai_opp:
             if self.game_mgr.daily_gold >= self.ai_rival_gold:
@@ -1674,19 +1764,6 @@ class PlayScene(BaseScene):
 
         hint_str = self._get_slot_unlock_hint(slot_key).split(":")[0]
 
-        if config.is_mobile_ui():
-            # 모바일 그림 중심 잠금 커버: 긴 설명 문구를 없애고 조리 기구 일러스트와 자물쇠 배지만 큼직하게 표시
-            hw_preview = pygame.Rect(inner_card.centerx - 42, inner_card.y + 14, 84, 72)
-            st_type = "mold" if slot_key == "tray" else slot_key
-            art_renderer.draw_station_hardware(surface, hw_preview, station_type=st_type)
-            badge_rect = pygame.Rect(inner_card.x + 12, inner_card.bottom - 48, inner_card.width - 24, 36)
-            pygame.draw.rect(surface, (62, 46, 88), badge_rect, border_radius=10)
-            pygame.draw.rect(surface, config.GOLD, badge_rect, width=2, border_radius=10)
-            f_lock = config.get_font(18, bold=True)
-            lk_s = f_lock.render(hint_str, True, config.GOLD)
-            surface.blit(lk_s, lk_s.get_rect(center=badge_rect.center))
-            return
-
         badge_rect = pygame.Rect(rect.centerx - 84, inner_card.y + 14, 168, 38)
         pygame.draw.rect(surface, (62, 46, 88), badge_rect, border_radius=10)
         pygame.draw.rect(surface, config.GOLD, badge_rect, width=2, border_radius=10)
@@ -1733,7 +1810,7 @@ class PlayScene(BaseScene):
         self.grill_station.draw(surface, time_tick=self.time_tick)
         self.batch_pot_station.draw(surface, time_tick=self.time_tick)
 
-        # 스토리 모드에서 아직 잠겨 있는 조리 기구/트레이에 잠금 커버 표시
+        # 스토리 모드에서 아직 잠겨 있는 조리 기구에 잠금 커버 표시 (트레이는 적재·서빙을 위해 상시 개방하고 내부 토핑 영역만 잠금 표시)
         if not self.game_mgr.is_slot_unlocked_in_story("dispenser"):
             self._draw_locked_slot_cover(
                 surface,
@@ -1741,14 +1818,6 @@ class PlayScene(BaseScene):
                 "dispenser",
                 self.dispenser_station.meta["name"],
                 "뜨끈한 국물·음료 자동 서버",
-            )
-        if not self.game_mgr.is_slot_unlocked_in_story("tray"):
-            self._draw_locked_slot_cover(
-                surface,
-                self.tray_rect,
-                "tray",
-                "중앙 조립 & 토핑 트레이",
-                "붕어빵·음료는 터치 즉시 서빙!",
             )
         if not self.game_mgr.is_slot_unlocked_in_story("grill"):
             self._draw_locked_slot_cover(

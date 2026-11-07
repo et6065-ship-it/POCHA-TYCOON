@@ -95,8 +95,16 @@ class ResultScene(BaseScene):
     def _extract_summary(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
         raw = kwargs.get("result_data") or kwargs.get("day_stats") or kwargs.get("summary")
         fallback_day = int(getattr(self.game_mgr, "last_played_day", max(1, self.game_mgr.day)))
+        mgr_discard_loss = int(getattr(self.game_mgr, "daily_discard_loss", 0))
+        mgr_discard_cnt = int(getattr(self.game_mgr, "daily_discard_count", 0))
+        mgr_discard_items = dict(getattr(self.game_mgr, "daily_discard_items", {}))
+        mgr_gross = int(getattr(self.game_mgr, "daily_gross_gold", self.game_mgr.daily_gold + mgr_discard_loss))
         if isinstance(raw, dict):
             earned = int(raw.get("earned_gold", self.game_mgr.daily_gold))
+            discard_loss = int(raw.get("discard_loss", mgr_discard_loss))
+            discard_count = int(raw.get("discard_count", mgr_discard_cnt))
+            discard_items = dict(raw.get("discard_items", mgr_discard_items))
+            gross = int(raw.get("gross_gold", max(earned + discard_loss, mgr_gross)))
             target = int(raw.get("target_gold", self.game_mgr.get_target_gold()))
             stars = int(raw.get("stars", calculate_stars(earned, target)))
             cleared = bool(raw.get("cleared", earned >= target))
@@ -107,6 +115,10 @@ class ResultScene(BaseScene):
             bonus_msg = str(raw.get("unlock_message", ""))
         else:
             earned = int(kwargs.get("earned_gold", self.game_mgr.daily_gold))
+            discard_loss = int(kwargs.get("discard_loss", mgr_discard_loss))
+            discard_count = int(kwargs.get("discard_count", mgr_discard_cnt))
+            discard_items = dict(kwargs.get("discard_items", mgr_discard_items))
+            gross = int(kwargs.get("gross_gold", max(earned + discard_loss, mgr_gross)))
             target = int(kwargs.get("target_gold", self.game_mgr.get_target_gold()))
             stars = int(kwargs.get("stars", calculate_stars(earned, target)))
             cleared = bool(kwargs.get("cleared", earned >= target))
@@ -121,6 +133,10 @@ class ResultScene(BaseScene):
 
         return {
             "day": day_num,
+            "gross_gold": gross,
+            "discard_loss": discard_loss,
+            "discard_count": discard_count,
+            "discard_items": discard_items,
             "earned_gold": earned,
             "target_gold": target,
             "stars": stars,
@@ -299,13 +315,37 @@ class ResultScene(BaseScene):
         row_f = config.get_font(20, bold=True)
         val_f = config.get_font(22, bold=True)
 
-        earned = self.summary["earned_gold"]
-        target = self.summary["target_gold"]
+        from data.recipes import RECIPES
+        earned = int(self.summary.get("earned_gold", 0))
+        discard_loss = int(self.summary.get("discard_loss", 0))
+        discard_cnt = int(self.summary.get("discard_count", 0))
+        discard_items = self.summary.get("discard_items") or {}
+        gross = int(self.summary.get("gross_gold", earned + discard_loss))
+        target = int(self.summary.get("target_gold", 10000))
+
+        if discard_loss > 0:
+            item_parts: List[str] = []
+            for rid, r_cnt in list(discard_items.items())[:2]:
+                r_name = RECIPES.get(str(rid), {}).get("name", str(rid))
+                item_parts.append(f"{r_name} {r_cnt}개")
+            if len(discard_items) > 2:
+                item_parts.append(f"외 {len(discard_items) - 2}종")
+            detail_str = ", ".join(item_parts) if item_parts else f"총 {discard_cnt}개"
+            waste_val_str = f"-{discard_loss:,}원 ({detail_str})"
+            waste_col = config.RED
+        else:
+            waste_val_str = "0원 (잔여 재고 0개 · 완판!)"
+            waste_col = config.NEON_GREEN
+
         rows = [
-            ("💰 오늘의 총 매출액", f"{earned:,}원", config.GOLD),
-            ("🎯 일일 목표 매출액", f"{target:,}원", config.TEXT_PRIMARY),
-            ("😊 서빙 완료한 손님", f"{self.summary['served_customers']}명", config.TEXT_SUCCESS),
-            ("💢 놓친 손님 (인내심 소진)", f"{self.summary['missed_customers']}명", config.TEXT_WARNING if self.summary["missed_customers"] > 0 else config.TEXT_SECONDARY),
+            ("💰 오늘의 총 매출액", f"+{gross:,}원", config.GOLD),
+            ("🗑️ 재고·음식 폐기 손실", waste_val_str, waste_col),
+            ("📊 최종 순수익 / 목표", f"{earned:,}원 / 목표 {target:,}원", config.GOLD if cleared else config.TEXT_WARNING),
+            (
+                "😊 서빙 완료 / 놓친 손님",
+                f"서빙 {self.summary['served_customers']}명 / 이탈 {self.summary['missed_customers']}명",
+                config.TEXT_SUCCESS if self.summary["missed_customers"] == 0 else config.TEXT_PRIMARY,
+            ),
             ("🔥 오늘 최고 연속 콤보", f"{self.summary['max_combo']} COMBO", config.NEON_CYAN),
             ("🏦 현재 총 보유 자금", f"{self.game_mgr.gold:,}원", config.GOLD),
         ]
@@ -313,9 +353,15 @@ class ResultScene(BaseScene):
         for idx, (label, val_str, col) in enumerate(rows):
             ry = stat_box.y + 16 + idx * 38
             l_surf = row_f.render(label, True, config.TEXT_SECONDARY)
-            v_surf = val_f.render(val_str, True, col)
+            active_vf = val_f
+            max_vw = stat_box.width - l_surf.get_width() - 68
+            for f_sz in (22, 20, 18, 16, 14):
+                active_vf = config.get_font(f_sz, bold=True)
+                if active_vf.size(val_str)[0] <= max_vw:
+                    break
+            v_surf = active_vf.render(val_str, True, col)
             surface.blit(l_surf, (stat_box.x + 26, ry))
-            surface.blit(v_surf, (stat_box.right - v_surf.get_width() - 26, ry))
+            surface.blit(v_surf, (stat_box.right - v_surf.get_width() - 26, ry + (l_surf.get_height() - v_surf.get_height()) // 2))
 
         # 하단 해금/축하 메시지 배너
         msg_box = pygame.Rect(board_rect.x + 42, board_rect.bottom - 76, board_rect.width - 84, 54)

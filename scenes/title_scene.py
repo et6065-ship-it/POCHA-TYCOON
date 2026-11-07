@@ -104,8 +104,10 @@ class TitleScene(BaseScene):
                     sound_fx.play_tab_switch()
                     return
 
-            # 1) 월드 투어 모드 카드 클릭
-            if self.world_tour_rect.collidepoint(mx, my):
+            is_portrait = bool(self.scene_mgr and getattr(self.scene_mgr, "is_portrait_mode", False))
+
+            # 1) 월드 투어 모드 카드 클릭 (세로 1패널 모드에서는 카드 상단 스와이프를 위해 하단 입장 버튼 영역 클릭 시 진입)
+            if self.world_tour_rect.collidepoint(mx, my) and (not is_portrait or my >= self.world_tour_rect.bottom - 76):
                 sound_fx.play_day_start()
                 self.game_mgr.set_mode("WORLD_TOUR")
                 if self.scene_mgr:
@@ -113,7 +115,7 @@ class TitleScene(BaseScene):
                 return
 
             # 2) 단일 메뉴 장인 모드 카드 클릭
-            if self.specialist_mode_rect.collidepoint(mx, my):
+            if self.specialist_mode_rect.collidepoint(mx, my) and (not is_portrait or my >= self.specialist_mode_rect.bottom - 76):
                 sound_fx.play_day_start()
                 self.game_mgr.set_mode("SPECIALIST")
                 if self.scene_mgr:
@@ -121,7 +123,7 @@ class TitleScene(BaseScene):
                 return
 
             # 3) 글로벌 야시장 통합 모드 카드 클릭
-            if self.global_mode_rect.collidepoint(mx, my):
+            if self.global_mode_rect.collidepoint(mx, my) and (not is_portrait or my >= self.global_mode_rect.bottom - 76):
                 sound_fx.play_day_start()
                 self.game_mgr.set_mode("GLOBAL_ENDLESS")
                 if self.scene_mgr:
@@ -136,7 +138,7 @@ class TitleScene(BaseScene):
                 return
 
             # 프로필 카드 클릭 시 주인공 선택 탭으로 이동
-            if self.profile_card_rect.collidepoint(mx, my):
+            if self.profile_card_rect.collidepoint(mx, my) and (not is_portrait or my >= self.profile_card_rect.bottom - 76):
                 sound_fx.play_click()
                 if self.scene_mgr:
                     self.scene_mgr.change_scene("prep", initial_tab="character", show_loading=True)
@@ -390,7 +392,6 @@ class TitleScene(BaseScene):
             surface.blit(c_txt, (crect.centerx - c_txt.get_width() // 2, crect.centery - c_txt.get_height() // 2))
 
     def _draw_profile_card(self, surface: pygame.Surface) -> None:
-        is_mob = config.is_mobile_ui()
         rect = self.profile_card_rect
         is_hover = self.hovered_card == "PROFILE"
         bg_col = (48, 42, 68) if is_hover else (34, 30, 50)
@@ -405,40 +406,9 @@ class TitleScene(BaseScene):
 
         char_data = self.game_mgr.get_selected_character_data()
         name_font = config.get_font(22, bold=True)
-        bold_small = config.get_font(15 if is_mob else 14, bold=True)
-
-        if is_mob:
-            # 모바일 그림 중심 프로필 카드: 줄글을 없애고 초대형 마스터 도트 아바타(148x148) + 골드 배지 + 버튼만 배치
-            avatar_rect = pygame.Rect(rect.centerx - 74, rect.y + 18, 148, 148)
-            pygame.draw.rect(surface, (24, 20, 38), avatar_rect.inflate(10, 10), border_radius=16)
-            pygame.draw.rect(surface, config.GOLD, avatar_rect.inflate(10, 10), width=2, border_radius=16)
-            art_renderer.draw_chef_avatar(
-                surface,
-                avatar_rect,
-                character_id=self.game_mgr.selected_character,
-                state="COOKING" if is_hover else "IDLE",
-                time_tick=self.time_tick,
-            )
-
-            name_s = name_font.render(f"{char_data['name']}", True, config.WHITE)
-            surface.blit(name_s, (rect.centerx - name_s.get_width() // 2, rect.y + 178))
-
-            gold_pill = pygame.Rect(rect.x + 20, rect.y + 214, rect.width - 40, 44)
-            pygame.draw.rect(surface, (26, 22, 40), gold_pill, border_radius=10)
-            pygame.draw.rect(surface, config.GOLD, gold_pill, width=2, border_radius=10)
-            gold_f = config.get_font(20, bold=True)
-            gold_s = gold_f.render(f"💰 {self.game_mgr.gold:,}", True, config.GOLD)
-            surface.blit(gold_s, gold_s.get_rect(center=gold_pill.center))
-
-            btn_rect = pygame.Rect(rect.x + 20, rect.bottom - 52, rect.width - 40, 38)
-            pygame.draw.rect(surface, config.UI_BUTTON_HOVER if is_hover else config.UI_BUTTON, btn_rect, border_radius=10)
-            pygame.draw.rect(surface, config.GOLD if is_hover else config.UI_BORDER, btn_rect, width=2, border_radius=10)
-            b_txt = bold_small.render("👨‍🍳 🛒 ▶", True, config.WHITE)
-            surface.blit(b_txt, b_txt.get_rect(center=btn_rect.center))
-            return
-
+        bold_small = config.get_font(15, bold=True)
         header_font = config.get_font(16, bold=True)
-        small_font = config.get_font(14, bold=False)
+        small_font = config.get_font(14, bold=True)
 
         hdr = header_font.render("👨‍🍳 현재 포차 마스터", True, config.TEXT_GOLD)
         surface.blit(hdr, (rect.centerx - hdr.get_width() // 2, rect.y + 14))
@@ -474,10 +444,10 @@ class TitleScene(BaseScene):
         surface.blit(skill_s, (rect.x + 22, rect.y + 268))
 
         # 마스터 변경 안내 버튼
-        btn_rect = pygame.Rect(rect.x + 20, rect.bottom - 44, rect.width - 40, 32)
+        btn_rect = pygame.Rect(rect.x + 20, rect.bottom - 46, rect.width - 40, 36)
         pygame.draw.rect(surface, config.UI_BUTTON_HOVER if is_hover else config.UI_BUTTON, btn_rect, border_radius=8)
-        pygame.draw.rect(surface, config.UI_HIGHLIGHT if is_hover else config.UI_BORDER, btn_rect, width=1, border_radius=8)
-        b_txt = bold_small.render("마스터 선택 / 상점 이동 ▶", True, config.WHITE)
+        pygame.draw.rect(surface, config.UI_HIGHLIGHT if is_hover else config.UI_BORDER, btn_rect, width=2, border_radius=8)
+        b_txt = bold_small.render("👨‍🍳 마스터 선택 / 상점 이동 ▶", True, config.WHITE)
         surface.blit(b_txt, (btn_rect.centerx - b_txt.get_width() // 2, btn_rect.centery - b_txt.get_height() // 2))
 
     def _draw_mode_card(
@@ -493,7 +463,6 @@ class TitleScene(BaseScene):
         accent_color: Tuple[int, int, int],
         button_label: str,
     ) -> None:
-        is_mob = config.is_mobile_ui()
         is_hover = self.hovered_card == mode_key
         draw_rect = rect.move(0, -4) if is_hover else rect
 
@@ -508,40 +477,6 @@ class TitleScene(BaseScene):
             border_radius=18,
         )
 
-        if is_mob:
-            # 모바일 그림 중심 모드 카드: 영문 부제 및 3줄 설명 글자를 완전히 제거하고 대형 2x2 음식 일러스트 쇼케이스 배치
-            title_font = config.get_font(22, bold=True)
-            t_surf = title_font.render(title_text, True, config.WHITE)
-            surface.blit(t_surf, t_surf.get_rect(center=(draw_rect.centerx, draw_rect.y + 34)))
-
-            showcase_rect = pygame.Rect(draw_rect.x + 16, draw_rect.y + 62, draw_rect.width - 32, 186)
-            pygame.draw.rect(surface, (22, 18, 34), showcase_rect, border_radius=14)
-            pygame.draw.rect(surface, accent_color, showcase_rect, width=2, border_radius=14)
-
-            grid_positions = [
-                (showcase_rect.x + showcase_rect.width // 4, showcase_rect.y + 48),
-                (showcase_rect.x + (showcase_rect.width * 3) // 4, showcase_rect.y + 48),
-                (showcase_rect.x + showcase_rect.width // 4, showcase_rect.y + 138),
-                (showcase_rect.x + (showcase_rect.width * 3) // 4, showcase_rect.y + 138),
-            ]
-            for i, fid in enumerate(food_icons[:4]):
-                gx, gy = grid_positions[i]
-                bob = int(math.sin(self.time_tick * 4.0 + i) * 3)
-                pygame.draw.circle(surface, (38, 32, 58), (gx, gy + bob), 36)
-                pygame.draw.circle(surface, (86, 76, 118), (gx, gy + bob), 36, width=1)
-                art_renderer.draw_food_icon(surface, (gx, gy + bob), fid, size=64)
-
-            btn_rect = pygame.Rect(draw_rect.x + 18, draw_rect.bottom - 56, draw_rect.width - 36, 44)
-            btn_bg = accent_color
-            btn_fg = (20, 16, 26)
-            pygame.draw.rect(surface, btn_bg, btn_rect, border_radius=12)
-            pygame.draw.rect(surface, config.WHITE, btn_rect, width=2, border_radius=12)
-
-            btn_font = config.get_font(20, bold=True)
-            btn_txt = btn_font.render("▶ PLAY", True, btn_fg)
-            surface.blit(btn_txt, btn_txt.get_rect(center=btn_rect.center))
-            return
-
         # 상단 배지
         badge_rect = pygame.Rect(draw_rect.x + 18, draw_rect.y + 16, 196, 24)
         pygame.draw.rect(surface, accent_color, badge_rect, border_radius=12)
@@ -552,7 +487,7 @@ class TitleScene(BaseScene):
         # 타이틀 & 서브타이틀
         title_font = config.get_font(23, bold=True)
         sub_font = config.get_font(13, bold=True)
-        desc_font = config.get_font(13, bold=False)
+        desc_font = config.get_font(13, bold=True)
 
         t_surf = title_font.render(title_text, True, config.WHITE)
         s_surf = sub_font.render(subtitle_text, True, accent_color)
@@ -568,33 +503,33 @@ class TitleScene(BaseScene):
         for i, fid in enumerate(food_icons):
             ix = showcase_rect.x + spacing * (i + 1)
             iy = showcase_rect.centery + (int(math.sin(self.time_tick * 4.0 + i) * 3) if is_hover else 0)
-            art_renderer.draw_food_icon(surface, (ix, iy), fid, size=44)
+            art_renderer.draw_food_icon(surface, (ix, iy), fid, size=46)
 
         # 설명 텍스트 라인
         for idx, line in enumerate(desc_lines):
             txt_line = f"• {line}"
             active_df = desc_font
             for f_sz in (13, 12, 11):
-                active_df = config.get_font(f_sz, bold=False)
+                active_df = config.get_font(f_sz, bold=True)
                 if active_df.size(txt_line)[0] <= draw_rect.width - 28:
                     break
             d_surf = active_df.render(txt_line, True, config.TEXT_PRIMARY if idx == 0 else config.TEXT_SECONDARY)
             surface.blit(d_surf, (draw_rect.x + 14, draw_rect.y + 196 + idx * 24))
 
         # 하단 액션 버튼
-        btn_rect = pygame.Rect(draw_rect.x + 18, draw_rect.bottom - 54, draw_rect.width - 36, 40)
-        btn_bg = accent_color if is_hover else (64, 58, 88)
-        btn_fg = (20, 16, 26) if is_hover else config.WHITE
+        btn_rect = pygame.Rect(draw_rect.x + 18, draw_rect.bottom - 54, draw_rect.width - 36, 42)
+        btn_bg = accent_color
+        btn_fg = (20, 16, 26)
         pygame.draw.rect(surface, btn_bg, btn_rect, border_radius=10)
-        pygame.draw.rect(surface, config.WHITE if is_hover else accent_color, btn_rect, width=2, border_radius=10)
+        pygame.draw.rect(surface, config.WHITE, btn_rect, width=2, border_radius=10)
 
-        btn_font = config.get_font(15, bold=True)
+        btn_font = config.get_font(16, bold=True)
         btn_txt = btn_font.render(button_label, True, btn_fg)
         surface.blit(btn_txt, (btn_rect.centerx - btn_txt.get_width() // 2, btn_rect.centery - btn_txt.get_height() // 2))
 
     def _draw_bottom_bar(self, surface: pygame.Surface) -> None:
         is_mob = config.is_mobile_ui()
-        # 조작 방법 가이드 바 (모바일에서는 설명 줄글을 없애고 10종 대표 길거리 음식 일러스트 쇼케이스 바로 전환)
+        # 조작 방법 가이드 바
         guide_rect = pygame.Rect(40, 572, 1200, 62)
         pygame.draw.rect(surface, (28, 24, 42), guide_rect, border_radius=12)
         pygame.draw.rect(surface, config.UI_BORDER, guide_rect, width=1, border_radius=12)
@@ -641,14 +576,14 @@ class TitleScene(BaseScene):
 
         # 세이브 불러오기 / 초기화 / 옵션 / 가로·세로 회전 / 브라우저 전체화면 / 1:1 결투 로비 버튼
         is_portrait = bool(getattr(self.scene_mgr, "is_portrait_mode", False))
-        rot_label = ("🔄 ↔" if is_portrait else "🔄 ↕") if is_mob else ("🔄 가로모드 전환" if is_portrait else "🔄 세로모드 전환")
+        rot_label = "🔄 가로모드 전환" if is_portrait else "🔄 세로모드 전환"
         btn_items = (
-            ("LOAD", self.load_btn_rect, "💾" if is_mob else "💾 세이브 로드", config.NEON_CYAN),
-            ("RESET", self.reset_btn_rect, "🗑️" if is_mob else "🗑️ 초기화", config.TEXT_WARNING),
-            ("OPTIONS", self.options_btn_rect, "⚙️" if is_mob else "⚙️ 사운드·화면 설정", config.GOLD),
+            ("LOAD", self.load_btn_rect, "💾 세이브 로드", config.NEON_CYAN),
+            ("RESET", self.reset_btn_rect, "🗑️ 초기화", config.TEXT_WARNING),
+            ("OPTIONS", self.options_btn_rect, "⚙️ 사운드·화면 설정", config.GOLD),
             ("ROTATE", self.rotate_btn_rect, rot_label, config.NEON_GREEN),
-            ("FULLSCREEN", self.fullscreen_btn_rect, "⛶" if is_mob else "⛶ 전체화면 전환", config.POCHA_ORANGE),
-            ("DUEL", self.duel_mode_rect, "⚔️ 1:1" if is_mob else "⚔️ 1:1 네트워크 결투 로비 [4]", (255, 110, 145)),
+            ("FULLSCREEN", self.fullscreen_btn_rect, "⛶ 전체화면 전환", config.POCHA_ORANGE),
+            ("DUEL", self.duel_mode_rect, "⚔️ 1:1 네트워크 결투 로비 [4]", (255, 110, 145)),
         )
         for key, rect, label, col in btn_items:
             is_hov = self.hovered_btn == key
@@ -659,6 +594,6 @@ class TitleScene(BaseScene):
                 border_radius=10,
             )
             pygame.draw.rect(surface, col if is_hov else config.UI_BORDER, rect, width=2 if is_hov else 1, border_radius=10)
-            bf = config.get_font(18 if is_mob else 14, bold=True)
+            bf = config.get_font(14, bold=True)
             bt = bf.render(label, True, config.WHITE if is_hov else col)
             surface.blit(bt, (rect.centerx - bt.get_width() // 2, rect.centery - bt.get_height() // 2))
