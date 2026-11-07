@@ -75,12 +75,14 @@ class MoldStation(BaseStation):
     def _rebuild_layout(self) -> None:
         super()._rebuild_layout()
         r = self.rect
-        slot_area_top = r.y + 42
-        btn_area_h = 80
-        slot_area_h = max(120, r.height - 48 - btn_area_h)
+        is_giant = r.height >= 500
+        slot_area_top = r.y + (68 if is_giant else 42)
+        btn_h = 124 if is_giant else 66
+        btn_area_h = (btn_h + 18) if is_giant else 80
+        slot_area_h = max(120, r.height - (74 if is_giant else 48) - btn_area_h)
 
         count = len(self.slots)
-        pad = 8
+        pad = 12 if is_giant else 8
         cols = 2
         rows = 1 if count <= 2 else 2
         cell_w = (r.width - pad * (cols + 1)) // cols
@@ -97,8 +99,7 @@ class MoldStation(BaseStation):
         self.recipe_buttons = []
         btn_cnt = max(1, len(self.recipe_ids))
         btn_w = (r.width - pad * (btn_cnt + 1)) // btn_cnt
-        btn_h = 66
-        btn_y = r.bottom - btn_h - 8
+        btn_y = r.bottom - btn_h - (10 if is_giant else 8)
         for i, rid in enumerate(self.recipe_ids):
             bx = r.x + pad + i * (btn_w + pad)
             self.recipe_buttons.append((pygame.Rect(bx, btn_y, btn_w, btn_h), rid))
@@ -174,7 +175,9 @@ class MoldStation(BaseStation):
                 }
 
             if slot.state == STATE_COOKING:
-                cancel_badge = pygame.Rect(slot.rect.right - 28, slot.rect.y + 3, 25, 24)
+                bw = 38 if self.rect.height >= 500 else 28
+                bh = 36 if self.rect.height >= 500 else 24
+                cancel_badge = pygame.Rect(slot.rect.right - bw - 4, slot.rect.y + 4, bw, bh)
                 trash_active = bool(assembly_tray is not None and getattr(assembly_tray, "trash_mode", False))
                 if cancel_badge.inflate(6, 6).collidepoint(pos) or trash_active:
                     old_rid = slot.recipe_id
@@ -255,6 +258,7 @@ class MoldStation(BaseStation):
         is_mobile = bool(
             getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
         )
+        is_giant = self.rect.height >= 500
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}구")
 
         for s_idx, slot in enumerate(self.slots):
@@ -262,39 +266,41 @@ class MoldStation(BaseStation):
             slot.draw_slot_box(
                 surface,
                 time_tick=t,
-                empty_label="👇 맛 선택!" if is_target else "👇 하단 맛 선택",
+                empty_label="👇 하단 맛 버튼 터치!" if is_target else "👇 하단 맛 선택",
             )
             if is_target:
-                pygame.draw.rect(surface, config.NEON_CYAN, slot.rect, width=3, border_radius=10)
+                pygame.draw.rect(surface, config.NEON_CYAN, slot.rect, width=3, border_radius=12 if is_giant else 10)
             elif slot.state == STATE_COOKING:
-                cancel_badge = pygame.Rect(slot.rect.right - 25, slot.rect.y + 4, 21, 21)
-                pygame.draw.rect(surface, (198, 42, 46), cancel_badge, border_radius=6)
-                pygame.draw.rect(surface, config.WHITE, cancel_badge, width=1, border_radius=6)
-                xt = config.get_font(12, bold=True).render("✕", True, config.WHITE)
+                bw = 36 if is_giant else 21
+                cancel_badge = pygame.Rect(slot.rect.right - bw - (8 if is_giant else 4), slot.rect.y + (8 if is_giant else 4), bw, bw)
+                pygame.draw.rect(surface, (198, 42, 46), cancel_badge, border_radius=8 if is_giant else 6)
+                pygame.draw.rect(surface, config.WHITE, cancel_badge, width=2 if is_giant else 1, border_radius=8 if is_giant else 6)
+                xt = config.get_font(18 if is_giant else 12, bold=True).render("✕", True, config.WHITE)
                 surface.blit(xt, xt.get_rect(center=cancel_badge.center))
 
         # 하단 레시피 선택/투입 버튼 렌더링
-        font_btn = config.get_font(15, bold=True)
+        font_btn = config.get_font(20 if is_giant else 15, bold=True)
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             is_sel = idx == self.selected_recipe_index
             bg_col = (235, 118, 32) if is_sel else (54, 72, 116)
             border_col = config.GOLD if is_sel else (136, 152, 198)
-            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
-            pygame.draw.rect(surface, border_col, btn_rect, width=3 if is_sel else 2, border_radius=10)
+            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=12 if is_giant else 10)
+            pygame.draw.rect(surface, border_col, btn_rect, width=3 if is_sel else 2, border_radius=12 if is_giant else 10)
 
-            icon_pos = (btn_rect.centerx, btn_rect.y + 22)
-            draw_food_icon(surface, icon_pos, rid, size=40 if is_mobile else 38, burnt=False)
+            icon_pos = (btn_rect.centerx, btn_rect.y + (44 if is_giant else 22))
+            draw_food_icon(surface, icon_pos, rid, size=68 if is_giant else (40 if is_mobile else 38), burnt=False)
 
             rec = RECIPES.get(rid)
             r_name = str(rec["name"]) if rec else rid
             active_f = font_btn
-            for f_sz in (14, 13, 12, 11):
-                if active_f.size(r_name)[0] <= btn_rect.width - 8:
+            sz_candidates = (20, 18, 17, 16, 15) if is_giant else (14, 13, 12, 11)
+            for f_sz in sz_candidates:
+                if active_f.size(r_name)[0] <= btn_rect.width - (16 if is_giant else 8):
                     break
                 active_f = config.get_font(f_sz, bold=True)
             sh_surf = active_f.render(r_name, True, (18, 12, 24))
             txt_surf = active_f.render(r_name, True, config.WHITE)
             tx = btn_rect.centerx - txt_surf.get_width() // 2
-            ty = btn_rect.bottom - 22
+            ty = btn_rect.bottom - (36 if is_giant else 22)
             surface.blit(sh_surf, (tx + 1, ty + 1))
             surface.blit(txt_surf, (tx, ty))

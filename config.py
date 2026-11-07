@@ -708,6 +708,9 @@ def sanitize_font_text(text: str) -> str:
     for k, v in _UNSUPPORTED_EMOJI_MAP.items():
         if k in s:
             s = s.replace(k, v)
+    for dup in ("[잠김] 잠금", "[잠김]잠금", "[잠김] 잠김", "[잠김]잠김"):
+        if dup in s:
+            s = s.replace(dup, "[잠김]")
     # 0x1F000 이상의 보충 평면 이모지가 남아 있으면 안전 기호로 대체
     if any(ord(ch) >= 0x1F000 for ch in s):
         s = "".join("◈" if ord(ch) >= 0x1F000 else ch for ch in s)

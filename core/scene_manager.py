@@ -624,20 +624,20 @@ class SceneManager:
             if is_spec:
                 # 장인 모드 3패널: 0=①속재료 투입, 1=②6구 전문 화로, 2=③조립·토핑 트레이
                 spec_srcs = [
-                    (pygame.Rect(14, 352, 412, 358), config.POCHA_ORANGE),
-                    (pygame.Rect(436, 352, 452, 358), config.GOLD),
-                    (pygame.Rect(898, 352, 368, 358), config.NEON_CYAN),
+                    (pygame.Rect(14, 355, 448, 352), config.POCHA_ORANGE),
+                    (pygame.Rect(818, 355, 448, 352), config.GOLD),
+                    (pygame.Rect(472, 355, 336, 352), config.NEON_CYAN),
                 ]
                 idx = self.portrait_play_idx % len(spec_srcs)
                 station_src, st_border = spec_srcs[idx]
             else:
                 # 일반 모드 5패널: 0=①몰드, 1=②음료, 2=③트레이, 3=④그릴, 4=⑤대량팬
                 norm_srcs = [
-                    (pygame.Rect(12, 352, 228, 358), config.POCHA_ORANGE),
-                    (pygame.Rect(244, 352, 224, 358), config.NEON_CYAN),
-                    (pygame.Rect(470, 352, 340, 358), config.GOLD),
-                    (pygame.Rect(812, 352, 224, 358), config.POCHA_ORANGE),
-                    (pygame.Rect(1038, 352, 230, 358), config.NEON_PINK),
+                    (pygame.Rect(14, 355, 224, 352), config.POCHA_ORANGE),
+                    (pygame.Rect(246, 355, 220, 352), config.NEON_CYAN),
+                    (pygame.Rect(472, 355, 336, 352), config.GOLD),
+                    (pygame.Rect(814, 355, 220, 352), config.POCHA_ORANGE),
+                    (pygame.Rect(1040, 355, 226, 352), config.NEON_PINK),
                 ]
                 idx = self.portrait_play_idx % len(norm_srcs)
                 station_src, st_border = norm_srcs[idx]
@@ -645,7 +645,7 @@ class SceneManager:
             return [
                 # 상단 우측 [⚙️ 옵션] & [🏪 상점] 버튼
                 (pygame.Rect(1054, 8, 216, 48), pygame.Rect(464, 8, 248, 48), config.GOLD),
-                # 중앙 초대형 단일 조리 스테이션 패널 (688x752 — 글자와 버튼이 2.2~3.0배 커짐!)
+                # 중앙 초대형 단일 조리 스테이션 패널 (688x752 — 1:1 네이티브 고해상도로 렌더링!)
                 (station_src, pygame.Rect(16, 426, 688, 752), st_border),
             ]
 
@@ -805,9 +805,138 @@ class SceneManager:
             else:
                 self.portrait_prep_idx = (self.portrait_prep_idx + delta) % 2
 
+    def _handle_portrait_play_station_click(self, px: int, py: int, sc: Any) -> bool:
+        """
+        세로 모드 인게임 대형 조리 스테이션 영역(dst_r = 16, 426, 688, 752) 클릭을
+        1:1 네이티브 레이아웃 좌표 그대로 정확히 처리한다.
+        """
+        dst_r = pygame.Rect(16, 426, 688, 752)
+        if not dst_r.collidepoint(px, py):
+            return False
+
+        is_spec = (
+            self.current_scene_name == "play"
+            and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "SPECIALIST"
+        )
+        if is_spec:
+            idx = self.portrait_play_idx % 3
+            if idx in (0, 1) and hasattr(sc, "specialist_station"):
+                sp = sc.specialist_station
+                orig_in = sp.input_rect.copy()
+                orig_ap = sp.appliance_rect.copy()
+                try:
+                    if idx == 0:
+                        sp.input_rect = dst_r.copy()
+                        sp.appliance_rect = pygame.Rect(-2000, -2000, 448, 352)
+                    else:
+                        sp.input_rect = pygame.Rect(-2000, -2000, 448, 352)
+                        sp.appliance_rect = dst_r.copy()
+                        sp.rect = dst_r.copy()
+                    sp._rebuild_layout()
+                    res = sp.handle_click(
+                        (px, py),
+                        assembly_tray=getattr(sc, "assembly_tray", None),
+                        auto_serve_cb=getattr(sc, "try_auto_serve", None),
+                        customers=getattr(sc, "customers", []),
+                    )
+                finally:
+                    sp.input_rect = orig_in
+                    sp.appliance_rect = orig_ap
+                    sp.rect = orig_ap
+                    sp._rebuild_layout()
+                if res and hasattr(sc, "_handle_station_feedback"):
+                    fb_pos = orig_in.center if idx == 0 else orig_ap.center
+                    sc._handle_station_feedback(res, fb_pos)
+                return True
+
+            if idx == 2 and hasattr(sc, "assembly_tray"):
+                tr = sc.assembly_tray
+                orig_r = tr.rect.copy()
+                try:
+                    tr.rect = dst_r.copy()
+                    if hasattr(tr, "_rebuild_layout"):
+                        tr._rebuild_layout()
+                    tr.start_hold((px, py))
+                    res = tr.handle_click(
+                        (px, py),
+                        auto_serve_cb=getattr(sc, "try_auto_serve", None),
+                        button=1,
+                    )
+                finally:
+                    tr.rect = orig_r
+                    if hasattr(tr, "_rebuild_layout"):
+                        tr._rebuild_layout()
+                if res and hasattr(sc, "_handle_station_feedback"):
+                    sc._handle_station_feedback(res, orig_r.center)
+                return True
+            return True
+
+        idx = self.portrait_play_idx % 5
+        if idx == 2 and hasattr(sc, "assembly_tray"):
+            tr = sc.assembly_tray
+            orig_r = tr.rect.copy()
+            try:
+                tr.rect = dst_r.copy()
+                if hasattr(tr, "_rebuild_layout"):
+                    tr._rebuild_layout()
+                tr.start_hold((px, py))
+                res = tr.handle_click(
+                    (px, py),
+                    auto_serve_cb=getattr(sc, "try_auto_serve", None),
+                    button=1,
+                )
+            finally:
+                tr.rect = orig_r
+                if hasattr(tr, "_rebuild_layout"):
+                    tr._rebuild_layout()
+            if res and hasattr(sc, "_handle_station_feedback"):
+                sc._handle_station_feedback(res, orig_r.center)
+            return True
+
+        st_map = {
+            0: getattr(sc, "mold_station", None),
+            1: getattr(sc, "dispenser_station", None),
+            3: getattr(sc, "grill_station", None),
+            4: getattr(sc, "batch_pot_station", None),
+        }
+        st_obj = st_map.get(idx)
+        if st_obj is not None:
+            if (
+                hasattr(self.game_mgr, "is_slot_unlocked_in_story")
+                and not self.game_mgr.is_slot_unlocked_in_story(st_obj.slot_type)
+            ):
+                sound_fx.play_burn()
+                if hasattr(sc, "particles") and hasattr(sc, "_get_slot_unlock_hint"):
+                    sc.particles.spawn_floating_text(
+                        sc._get_slot_unlock_hint(st_obj.slot_type),
+                        st_obj.rect.centerx,
+                        st_obj.rect.top + 30,
+                        color=config.TEXT_WARNING,
+                        size=16,
+                    )
+                return True
+
+            orig_r = st_obj.rect.copy()
+            try:
+                st_obj.rect = dst_r.copy()
+                if hasattr(st_obj, "_rebuild_layout"):
+                    st_obj._rebuild_layout()
+                res = st_obj.handle_click(
+                    (px, py),
+                    assembly_tray=getattr(sc, "assembly_tray", None),
+                    auto_serve_cb=getattr(sc, "try_auto_serve", None),
+                )
+            finally:
+                st_obj.rect = orig_r
+                if hasattr(st_obj, "_rebuild_layout"):
+                    st_obj._rebuild_layout()
+            if res and hasattr(sc, "_handle_station_feedback"):
+                sc._handle_station_feedback(res, orig_r.center)
+        return True
+
     def _handle_portrait_native_click(self, px: int, py: int) -> bool:
         """
-        720x1280 세로 화면 전용 네이티브 탭 바 / [◀][▶] 전환 버튼 / 손님 주문 카드 / 하단 스킬 바 클릭을 처리한다.
+        720x1280 세로 화면 전용 네이티브 탭 바 / [◀][▶] 전환 버튼 / 손님 주문 카드 / 대형 조리대 / 하단 스킬 바 클릭을 처리한다.
         네이티브 컨트롤을 소비했으면 True를 반환한다.
         """
         sc = self.current_scene
@@ -876,16 +1005,19 @@ class SceneManager:
                         return True
             return False
 
-        # 3) 인게임(PlayScene / DuelPlayScene) 손님 카운터, 조리대 탭 바, 하단 스킬/전환 바
+        # 3) 인게임(PlayScene / DuelPlayScene) 손님 카운터, 조리대 탭 바, 대형 조리대, 하단 스킬/전환 바
         if self.current_scene_name in ("play", "duel_play") and sc is not None:
             # 3-A) 손님 주문 카운터 (y=110..346) 터치 시: 트레이에 완성 접시가 있으면 자동 서빙 시도
             if pygame.Rect(8, 110, 704, 236).collidepoint(px, py):
                 if hasattr(sc, "assembly_tray"):
-                    for sl_r in getattr(sc.assembly_tray, "slot_rects", []):
-                        res = sc.assembly_tray.handle_click(sl_r.center, auto_serve_cb=sc.try_auto_serve, button=1)
-                        if res and res.get("action") in ("auto_served", "served"):
-                            sc._handle_station_feedback(res, sl_r.center)
-                            return True
+                    tr = sc.assembly_tray
+                    tr._ensure_layout()
+                    for idx, sl_r in enumerate(getattr(tr, "slot_rects", [])):
+                        if idx < len(tr.dishes) and tr.dishes[idx] is not None:
+                            res = tr.handle_click(sl_r.center, auto_serve_cb=sc.try_auto_serve, button=1)
+                            if res and res.get("action") in ("auto_served", "served"):
+                                sc._handle_station_feedback(res, sl_r.center)
+                                return True
                 return True
 
             # 3-B) 조리 스테이션 탭 바 (y=352..420)
@@ -910,7 +1042,11 @@ class SceneManager:
                     self.portrait_play_idx = t_i
                     return True
 
-            # 3-C) 최하단 빠른 전환 & 마스터 스킬 & 스토리 바 (y=1186..1268)
+            # 3-C) 중앙 초대형 단일 조리 스테이션 패널 (16, 426, 688, 752) 1:1 네이티브 클릭 처리
+            if pygame.Rect(16, 426, 688, 752).collidepoint(px, py):
+                return self._handle_portrait_play_station_click(px, py, sc)
+
+            # 3-D) 최하단 빠른 전환 & 마스터 스킬 & 스토리 바 (y=1186..1268)
             if pygame.Rect(8, 1186, 116, 82).collidepoint(px, py):
                 self._step_portrait_panel(-1)
                 return True
@@ -1064,12 +1200,13 @@ class SceneManager:
             if raw_pos is not None:
                 px, py = self._window_to_portrait_point(float(raw_pos[0]), float(raw_pos[1]), win_w, win_h)
                 if mapped_event.type == pygame.MOUSEBUTTONDOWN and getattr(mapped_event, "button", 1) == 1:
-                    # 세로 네이티브 전환 바 / 버튼 우선 처리
-                    if self._handle_portrait_native_click(px, py):
-                        self._portrait_swipe_start = None
-                        return
                     self._portrait_swipe_start = (px, py, now_ticks)
+                    # 세로 네이티브 전환 바 / 버튼 / 대형 조리대 우선 처리
+                    if self._handle_portrait_native_click(px, py):
+                        return
                 elif mapped_event.type == pygame.MOUSEBUTTONUP and getattr(mapped_event, "button", 1) == 1:
+                    if self.current_scene is not None and hasattr(self.current_scene, "assembly_tray"):
+                        self.current_scene.assembly_tray.end_hold()
                     if self._portrait_swipe_start is not None:
                         sx, sy, st = self._portrait_swipe_start
                         self._portrait_swipe_start = None
@@ -1360,6 +1497,8 @@ class SceneManager:
     def _draw_portrait_play_customers(self, portrait_surf: pygame.Surface, area: pygame.Rect, sc: Any) -> None:
         """
         세로 모드 인게임에서 손님 대기열과 주문 말풍선을 가로 압축 없이 1:1 네이티브 고해상도로 렌더링한다.
+        - Customer 객체의 실제 주문 리스트(initial_orders / orders / completed_orders)를 정확히 참조하여
+          국가·모드별 실제 주문 메뉴(타코야키, 생맥주, 라무네, 붕어빵 등)와 필수 토핑·가격을 표시한다.
         """
         from data.recipes import RECIPES, TOPPINGS
 
@@ -1375,7 +1514,7 @@ class SceneManager:
         card_h = area.height - 14
 
         name_f = config.get_font(15 if max_slots <= 3 else 13, bold=True)
-        top_f = config.get_font(13 if max_slots <= 3 else 12, bold=True)
+        top_f = config.get_font(13 if max_slots <= 3 else 11, bold=True)
         badge_f = config.get_font(12, bold=True)
 
         for idx in range(max_slots):
@@ -1397,37 +1536,73 @@ class SceneManager:
             pygame.draw.rect(portrait_surf, (28, 24, 46), crect, border_radius=10)
             pygame.draw.rect(portrait_surf, b_col, crect, width=2, border_radius=10)
 
-            # 1) 상단 주문 말풍선 카드 (음식 아이콘 + 한글 메뉴명 + 토핑 태그)
-            order = getattr(cust, "order", {}) or {}
-            rec_id = str(order.get("recipe_id", "bungeoppang_redbean"))
-            toppings = list(order.get("toppings", []) or [])
-            rec_data = RECIPES.get(rec_id, {})
-            rec_name = str(rec_data.get("short_name") or rec_data.get("name") or rec_id)
+            # 1) 상단 주문 말풍선 카드: cust.initial_orders / cust.orders 실제 데이터 연동
+            init_orders = list(getattr(cust, "initial_orders", []) or getattr(cust, "orders", []) or [])
+            rem_orders = list(getattr(cust, "orders", []) or [])
+            done_pool = list(getattr(cust, "completed_orders", []) or [])
+            if not init_orders and rem_orders:
+                init_orders = list(rem_orders)
 
-            bub_r = pygame.Rect(crect.x + 6, crect.y + 6, crect.width - 12, 122)
+            bub_r = pygame.Rect(crect.x + 6, crect.y + 6, crect.width - 12, 126)
             pygame.draw.rect(portrait_surf, (248, 244, 232), bub_r, border_radius=9)
             pygame.draw.rect(portrait_surf, config.GOLD if is_vip else (72, 62, 96), bub_r, width=2, border_radius=9)
 
-            art_renderer.draw_food_icon(portrait_surf, (bub_r.x + 30, bub_r.y + 34), rec_id, size=46)
-            nm_s = name_f.render(rec_name[:8], True, (24, 18, 34))
-            portrait_surf.blit(nm_s, (bub_r.x + 56, bub_r.y + 12))
+            if len(init_orders) <= 1:
+                rec_id = str(init_orders[0]) if init_orders else "bungeoppang_redbean"
+                rec_data = RECIPES.get(rec_id, {})
+                rec_name = str(rec_data.get("short_name") or rec_data.get("name") or rec_id)
+                toppings = list(rec_data.get("required_toppings", []) or [])
+                price_val = int(rec_data.get("sell_price", rec_data.get("base_price", 1500)))
 
-            price_val = int(order.get("total_price", rec_data.get("base_price", 1000)))
-            pr_s = badge_f.render(f"💰 {price_val:,}원", True, (168, 78, 18))
-            portrait_surf.blit(pr_s, (bub_r.x + 56, bub_r.y + 34))
+                art_renderer.draw_food_icon(portrait_surf, (bub_r.x + 30, bub_r.y + 34), rec_id, size=48)
+                nm_s = name_f.render(rec_name[:12], True, (24, 18, 34))
+                portrait_surf.blit(nm_s, (bub_r.x + 58, bub_r.y + 10))
 
-            if toppings:
-                t_names = [f"+{TOPPINGS.get(t, {}).get('short_name', t)}" for t in toppings[:2]]
-                t_str = " ".join(t_names)
+                pr_s = badge_f.render(f"💰 {price_val:,}원", True, (168, 78, 18))
+                portrait_surf.blit(pr_s, (bub_r.x + 58, bub_r.y + 34))
+
                 tp_pill = pygame.Rect(bub_r.x + 6, bub_r.bottom - 52, bub_r.width - 12, 26)
-                pygame.draw.rect(portrait_surf, (42, 32, 64), tp_pill, border_radius=6)
-                tp_s = top_f.render(t_str[:12], True, config.NEON_YELLOW)
-                portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
+                if toppings:
+                    t_names = [f"+{TOPPINGS.get(t, {}).get('short_name', TOPPINGS.get(t, {}).get('name', t))}" for t in toppings[:2]]
+                    t_str = " ".join(t_names)
+                    pygame.draw.rect(portrait_surf, (42, 32, 64), tp_pill, border_radius=6)
+                    tp_s = top_f.render(t_str[:18], True, config.NEON_YELLOW)
+                    portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
+                else:
+                    pygame.draw.rect(portrait_surf, (226, 220, 206), tp_pill, border_radius=6)
+                    tp_s = badge_f.render("기본맛 (즉시서빙)", True, (76, 68, 92))
+                    portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
             else:
-                tp_pill = pygame.Rect(bub_r.x + 6, bub_r.bottom - 52, bub_r.width - 12, 26)
-                pygame.draw.rect(portrait_surf, (226, 220, 206), tp_pill, border_radius=6)
-                tp_s = badge_f.render("기본맛 (즉시서빙)", True, (76, 68, 92))
-                portrait_surf.blit(tp_s, tp_s.get_rect(center=tp_pill.center))
+                # 2개 이상 주문 손님(직장인/VIP: 메인 안주 + 음료 등)
+                for o_idx, r_id in enumerate(init_orders[:2]):
+                    row_y = bub_r.y + 6 + o_idx * 48
+                    row_r = pygame.Rect(bub_r.x + 5, row_y, bub_r.width - 10, 44)
+                    is_done = False
+                    if r_id in done_pool:
+                        is_done = True
+                        done_pool.remove(r_id)
+
+                    row_bg = (214, 242, 220) if is_done else (238, 232, 218)
+                    pygame.draw.rect(portrait_surf, row_bg, row_r, border_radius=6)
+                    pygame.draw.rect(portrait_surf, (80, 168, 96) if is_done else (196, 186, 168), row_r, width=1, border_radius=6)
+
+                    r_data = RECIPES.get(r_id, {})
+                    r_name = str(r_data.get("short_name") or r_data.get("name") or r_id)
+                    r_tops = list(r_data.get("required_toppings", []) or [])
+                    r_price = int(r_data.get("sell_price", r_data.get("base_price", 1500)))
+
+                    art_renderer.draw_food_icon(portrait_surf, (row_r.x + 20, row_r.centery), r_id, size=34)
+                    rn_s = top_f.render(r_name[:12], True, (24, 18, 34))
+                    portrait_surf.blit(rn_s, (row_r.x + 40, row_r.y + 4))
+
+                    if is_done:
+                        st_s = badge_f.render("✓ 서빙완료", True, (28, 128, 52))
+                    elif r_tops:
+                        t_short = " ".join(f"+{TOPPINGS.get(t, {}).get('short_name', TOPPINGS.get(t, {}).get('name', t))}" for t in r_tops[:2])
+                        st_s = badge_f.render(t_short[:16], True, (148, 52, 16))
+                    else:
+                        st_s = badge_f.render(f"{r_price:,}원", True, (148, 78, 18))
+                    portrait_surf.blit(st_s, (row_r.x + 40, row_r.y + 23))
 
             # 인내심 게이지 바
             p_bar = pygame.Rect(bub_r.x + 8, bub_r.bottom - 18, bub_r.width - 16, 10)
@@ -1437,29 +1612,118 @@ class SceneManager:
             if pw > 0:
                 pygame.draw.rect(portrait_surf, p_col, (p_bar.x, p_bar.y, pw, p_bar.height), border_radius=5)
 
-            # 2) 하단 손님 도트 캐릭터 & VIP 배지
-            av_r = pygame.Rect(crect.centerx - 32, crect.bottom - 86, 64, 78)
-            mood = getattr(cust, "mood", "NORMAL")
+            # 2) 하단 손님 도트 캐릭터 & VIP/손님 유형 배지
+            av_r = pygame.Rect(crect.centerx - 30, crect.bottom - 82, 60, 74)
+            mood = cust.get_mood() if hasattr(cust, "get_mood") else getattr(cust, "mood", "NORMAL")
             c_type = getattr(cust, "customer_type", "student")
             art_renderer.draw_customer(portrait_surf, av_r, customer_type=c_type, mood=mood, time_tick=self._loading_tick)
             if is_vip:
-                vip_b = pygame.Rect(crect.x + 6, crect.bottom - 28, 54, 22)
+                vip_b = pygame.Rect(crect.x + 6, crect.bottom - 26, 54, 20)
                 pygame.draw.rect(portrait_surf, (218, 148, 24), vip_b, border_radius=6)
                 vs = badge_f.render("👑VIP", True, config.WHITE)
                 portrait_surf.blit(vs, vs.get_rect(center=vip_b.center))
 
+    def _draw_portrait_play_active_station(
+        self,
+        portrait_surf: pygame.Surface,
+        dst_r: pygame.Rect,
+        sc: Any,
+        border_col: Tuple[int, int, int],
+    ) -> bool:
+        """
+        세로 모드 인게임(play / duel_play)에서 하단 메인 조리 패널(688x752)을
+        비율 왜곡(3.02x 가로 늘림) 없이 1:1 네이티브 해상도로 직접 렌더링한다.
+        """
+        if dst_r.y < 300 or dst_r.height < 500:
+            return False
+        is_spec = (
+            self.current_scene_name == "play"
+            and getattr(self.game_mgr, "mode", "WORLD_TOUR") == "SPECIALIST"
+        )
+        if is_spec:
+            idx = self.portrait_play_idx % 3
+            sp_st = getattr(sc, "specialist_station", None)
+            tray = getattr(sc, "assembly_tray", None)
+            if idx in (0, 1) and sp_st is not None:
+                orig_r = sp_st.rect.copy()
+                orig_in = sp_st.input_rect.copy()
+                orig_app = sp_st.appliance_rect.copy()
+                try:
+                    if idx == 0:
+                        sp_st.input_rect = dst_r.copy()
+                        sp_st.appliance_rect = pygame.Rect(-2000, 426, 688, 752)
+                    else:
+                        sp_st.input_rect = pygame.Rect(-2000, 426, 688, 752)
+                        sp_st.appliance_rect = dst_r.copy()
+                    sp_st.rect = dst_r.copy()
+                    sp_st._rebuild_layout()
+                    if idx == 0:
+                        sp_st._draw_input_panel(portrait_surf, self._loading_tick)
+                    else:
+                        sp_st._draw_appliance_panel(portrait_surf, self._loading_tick)
+                    pygame.draw.rect(portrait_surf, border_col, dst_r, width=3, border_radius=12)
+                    return True
+                finally:
+                    sp_st.rect = orig_r
+                    sp_st.input_rect = orig_in
+                    sp_st.appliance_rect = orig_app
+                    sp_st._rebuild_layout()
+            elif idx == 2 and tray is not None:
+                orig_r = tray.rect.copy()
+                try:
+                    tray.rect = dst_r.copy()
+                    tray._rebuild_layout()
+                    tray.draw(portrait_surf)
+                    pygame.draw.rect(portrait_surf, border_col, dst_r, width=3, border_radius=12)
+                    return True
+                finally:
+                    tray.rect = orig_r
+                    tray._rebuild_layout()
+            return False
+
+        idx = self.portrait_play_idx % 5
+        station_specs = [
+            (getattr(sc, "mold_station", None), "mold", "몰드 조리대"),
+            (getattr(sc, "dispenser_station", None), "dispenser", "음료 디스펜서"),
+            (getattr(sc, "assembly_tray", None), "tray", "조립·무한 적재 트레이"),
+            (getattr(sc, "grill_station", None), "grill", "철판 그릴"),
+            (getattr(sc, "batch_pot_station", None), "batch_pot", "대량 조리 팬"),
+        ]
+        target_st, slot_key, slot_title = station_specs[idx]
+        if target_st is None:
+            return False
+
+        orig_r = target_st.rect.copy()
+        try:
+            target_st.rect = dst_r.copy()
+            if hasattr(target_st, "_rebuild_layout"):
+                target_st._rebuild_layout()
+            target_st.draw(portrait_surf)
+            if slot_key != "tray" and hasattr(sc, "_is_slot_unlocked") and not sc._is_slot_unlocked(slot_key):
+                if hasattr(sc, "_draw_locked_slot_cover"):
+                    sc._draw_locked_slot_cover(portrait_surf, dst_r, slot_key, slot_title)
+            pygame.draw.rect(portrait_surf, border_col, dst_r, width=3, border_radius=12)
+            return True
+        finally:
+            target_st.rect = orig_r
+            if hasattr(target_st, "_rebuild_layout"):
+                target_st._rebuild_layout()
+
     def _compose_portrait_surface(self, logical_surf: pygame.Surface, portrait_surf: pygame.Surface) -> None:
         """
         1280x720 논리 화면을 720x1280 세로 모바일 전용 **1패널 확대 레이아웃(Single Giant Panel)**으로 합성한다.
-        - 기존의 4분할/다중 분할을 없애고 현재 선택된 1개 대형 패널만 2.0~2.5배로 큼직하게 표시
-        - 상단바·패널 전환 탭·손님 주문 카드·하단 버튼은 1:1 네이티브 세로 UI로 선명하게 직접 렌더링!
+        - 기존의 4분할/다중 분할을 없애고 현재 선택된 1개 대형 패널만 큼직하게 표시
+        - 인게임(play/duel_play)의 상단바·손님 주문 카드·탭바·하단 조리대 패널은 모두 1:1 네이티브 해상도로 직접 렌더링!
         """
         portrait_surf.fill((14, 12, 24))
         mappings = self._get_portrait_region_mappings()
         bg_country = getattr(self.game_mgr, "current_chapter", "KR") or "KR"
 
-        # 먼저 매핑된 서브 영역들을 스무스 스케일링하여 배치
+        # 매핑된 영역 렌더링 (인게임 조리대는 가로 늘어남 방지를 위해 1:1 네이티브로 직접 렌더링)
         for src_r, dst_r, border_col in mappings:
+            if self.current_scene_name in ("play", "duel_play") and self.current_scene is not None:
+                if self._draw_portrait_play_active_station(portrait_surf, dst_r, self.current_scene, border_col):
+                    continue
             clipped_src = src_r.clip(logical_surf.get_rect())
             if clipped_src.width <= 0 or clipped_src.height <= 0:
                 continue
@@ -1680,7 +1944,7 @@ class SceneManager:
             else:
                 def _st_status(st_obj: Any, slot_key: str) -> Tuple[str, Tuple[int, int, int]]:
                     if hasattr(self.game_mgr, "is_slot_unlocked_in_story") and not self.game_mgr.is_slot_unlocked_in_story(slot_key):
-                        return "🔒 잠금", config.TEXT_SECONDARY
+                        return "🔒 미해금", config.TEXT_SECONDARY
                     slots = getattr(st_obj, "slots", []) if st_obj else []
                     if any(getattr(s, "state", "") == STATE_READY for s in slots):
                         return "✨완료!", config.NEON_GREEN

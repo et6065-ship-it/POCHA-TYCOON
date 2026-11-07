@@ -92,16 +92,17 @@ class DispenserStation(BaseStation):
     def _rebuild_layout(self) -> None:
         super()._rebuild_layout()
         r = self.rect
-        pad = 8
-        top_y = r.y + 42
-        usable_h = r.height - 52
+        is_giant = r.height >= 500
+        pad = 12 if is_giant else 8
+        top_y = r.y + (68 if is_giant else 42)
+        usable_h = r.height - (80 if is_giant else 52)
 
         count = max(1, len(self.slots))
         if count <= 2:
             cols = 2
             rows = 1
             cell_w = (r.width - pad * (cols + 1)) // cols
-            cell_h = min(210, usable_h - pad * 2)
+            cell_h = min(560 if is_giant else 210, usable_h - pad * 2)
         else:
             cols = 2
             rows = 2
@@ -246,8 +247,50 @@ class DispenserStation(BaseStation):
             bg_col = (28, 76, 62) if is_ready else (38, 48, 74)
             border_col = config.NEON_GREEN if is_ready else config.NEON_CYAN
 
-            pygame.draw.rect(surface, bg_col, r, border_radius=10)
-            pygame.draw.rect(surface, border_col, r, width=3 if is_ready else 2, border_radius=10)
+            pygame.draw.rect(surface, bg_col, r, border_radius=12 if r.height >= 160 else 10)
+            pygame.draw.rect(surface, border_col, r, width=3 if is_ready else 2, border_radius=12 if r.height >= 160 else 10)
+
+            if r.height >= 160 and r.width >= 180:
+                name_pill = pygame.Rect(r.x + 8, r.y + 8, r.width - 16, 38)
+                pygame.draw.rect(surface, (18, 22, 34), name_pill, border_radius=8)
+                pygame.draw.rect(surface, config.GOLD if is_ready else config.UI_BORDER, name_pill, width=1, border_radius=8)
+                active_name_f = config.get_font(20, bold=True)
+                for f_sz in (20, 18, 17, 16, 15):
+                    active_name_f = config.get_font(f_sz, bold=True)
+                    if active_name_f.size(raw_name)[0] <= name_pill.width - 12:
+                        drink_name = raw_name
+                        break
+                    if active_name_f.size(drink_name)[0] <= name_pill.width - 12:
+                        break
+                name_surf = active_name_f.render(drink_name, True, config.GOLD if is_ready else config.WHITE)
+                surface.blit(name_surf, name_surf.get_rect(center=name_pill.center))
+
+                icon_size = min(104, max(64, min(r.width, r.height) - 96))
+                icon_center = (r.centerx, r.centery - 8)
+                if is_ready:
+                    pygame.draw.circle(surface, config.GOLD, icon_center, icon_size // 2 + 8, width=4)
+                draw_food_icon(surface, icon_center, drink_id, size=icon_size, burnt=False)
+
+                gauge_rect = pygame.Rect(r.x + 10, r.bottom - 26, r.width - 20, 18)
+                pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=8)
+                fill_w = int((gauge_rect.width - 4) * slot.progress)
+                bar_col = config.NEON_GREEN if is_ready else config.NEON_CYAN
+                if fill_w > 0:
+                    pygame.draw.rect(surface, bar_col, (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4), border_radius=6)
+                pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=8)
+
+                status_txt = "✨ 즉시 서빙 가능! (터치)" if is_ready else f"💧 자동 충전 중 ({int(slot.progress * 100)}%)"
+                status_col = config.NEON_GREEN if is_ready else config.NEON_CYAN
+                st_f = config.get_font(17, bold=True)
+                st_surf = st_f.render(status_txt, True, status_col)
+                if st_surf.get_width() > r.width - 16:
+                    st_surf = config.get_font(15, bold=True).render(status_txt, True, status_col)
+                pill_w = min(r.width - 12, st_surf.get_width() + 20)
+                st_pill = pygame.Rect(r.centerx - pill_w // 2, gauge_rect.top - 38, pill_w, 32)
+                pygame.draw.rect(surface, (16, 28, 24) if is_ready else (18, 24, 38), st_pill, border_radius=8)
+                pygame.draw.rect(surface, status_col, st_pill, width=2, border_radius=8)
+                surface.blit(st_surf, st_surf.get_rect(center=st_pill.center))
+                continue
 
             if is_mobile:
                 active_name_f = font_title

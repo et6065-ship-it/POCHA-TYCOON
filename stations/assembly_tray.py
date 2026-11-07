@@ -158,12 +158,13 @@ class AssemblyTray:
     def _rebuild_layout(self) -> None:
         self._last_layout_rect = self.rect.copy()
         r = self.rect
-        pad = 6
+        is_giant = r.height >= 500
+        pad = 12 if is_giant else 6
 
         # 1. 상단 접시 슬롯 영역
         slot_count = max(2, len(self.dishes))
-        plate_area_top = r.y + 36
-        plate_area_h = 132
+        plate_area_top = r.y + (64 if is_giant else 36)
+        plate_area_h = 284 if is_giant else 132
 
         self.slot_rects = []
         cols = slot_count if slot_count <= 3 else ((slot_count + 1) // 2)
@@ -179,9 +180,9 @@ class AssemblyTray:
             self.slot_rects.append(pygame.Rect(sx, sy, cell_w, cell_h))
 
         # 2. 중단 토핑 버튼 영역 (최소 56x44px 이상 대형 터치 버튼 보장)
-        topping_top = plate_area_top + plate_area_h + 4
-        trash_h = 44
-        topping_area_h = max(96, r.bottom - topping_top - trash_h - 10)
+        topping_top = plate_area_top + plate_area_h + (8 if is_giant else 4)
+        trash_h = 84 if is_giant else 44
+        topping_area_h = max(96, r.bottom - topping_top - trash_h - (16 if is_giant else 10))
 
         self.topping_buttons = []
         t_cnt = max(1, len(self.available_topping_ids))
@@ -200,10 +201,10 @@ class AssemblyTray:
         # 3. 하단 휴지통(즉시 폐기) & [🗑️ 버리기 모드] 토글 버튼
         total_w = r.width - pad * 2
         left_w = int(total_w * 0.56)
-        right_w = total_w - left_w - 6
-        by_trash = r.bottom - trash_h - 6
+        right_w = total_w - left_w - (10 if is_giant else 6)
+        by_trash = r.bottom - trash_h - (10 if is_giant else 6)
         self.trash_rect = pygame.Rect(r.x + pad, by_trash, left_w, trash_h)
-        self.trash_mode_rect = pygame.Rect(self.trash_rect.right + 6, by_trash, right_w, trash_h)
+        self.trash_mode_rect = pygame.Rect(self.trash_rect.right + (10 if is_giant else 6), by_trash, right_w, trash_h)
 
     def has_empty_slot(self) -> bool:
         """
@@ -513,7 +514,8 @@ class AssemblyTray:
                 }
 
             # 모바일 원터치 폐기: 접시 우측 상단 [X] 배지(30x30) 터치, 버리기 모드 ON, 또는 우클릭(button == 3) 시 1개 폐기
-            del_badge_rect = pygame.Rect(s_rect.right - 30, s_rect.y + 2, 28, 28)
+            del_w = 40 if self.rect.height >= 500 else 28
+            del_badge_rect = pygame.Rect(s_rect.right - del_w - 4, s_rect.y + 4, del_w, del_w)
             if button == 3 or self.trash_mode or del_badge_rect.inflate(8, 8).collidepoint(pos):
                 self.trash_mode = False
                 return self._trash_one_from_slot(idx)
@@ -578,17 +580,40 @@ class AssemblyTray:
         is_mobile = bool(
             getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
         )
-        pygame.draw.rect(surface, config.UI_PANEL, self.rect, border_radius=12)
-        pygame.draw.rect(surface, config.UI_HIGHLIGHT, self.rect, width=2, border_radius=12)
+        is_giant = self.rect.height >= 500
+        pygame.draw.rect(surface, config.UI_PANEL, self.rect, border_radius=14 if is_giant else 12)
+        pygame.draw.rect(surface, config.UI_HIGHLIGHT, self.rect, width=3 if is_giant else 2, border_radius=14 if is_giant else 12)
 
         total_cnt = self.get_total_dish_count()
         total_cost = self.get_total_stock_cost()
 
         # 상단 헤더 (재고 수량 및 마감 시 예상 원가 손실 실시간 표시)
-        header_rect = pygame.Rect(self.rect.x + 4, self.rect.y + 4, self.rect.width - 8, 30)
-        pygame.draw.rect(surface, (62, 42, 32), header_rect, border_radius=8)
-        pygame.draw.rect(surface, config.GOLD, header_rect, width=1, border_radius=8)
-        if is_mobile:
+        header_rect = pygame.Rect(
+            self.rect.x + (6 if is_giant else 4),
+            self.rect.y + (6 if is_giant else 4),
+            self.rect.width - (12 if is_giant else 8),
+            52 if is_giant else 30,
+        )
+        pygame.draw.rect(surface, (62, 42, 32), header_rect, border_radius=10 if is_giant else 8)
+        pygame.draw.rect(surface, config.GOLD, header_rect, width=2 if is_giant else 1, border_radius=10 if is_giant else 8)
+        if is_giant:
+            lvl = (
+                int(self.game_mgr.get_station_level("tray"))
+                if (self.game_mgr and hasattr(self.game_mgr, "get_station_level"))
+                else 1
+            )
+            if total_cnt > 0:
+                hdr_txt = f"🍱 Lv.{lvl} 조립 트레이 · 적재 재고 {total_cnt}개 (미판매 시 원가 -{total_cost:,}원)"
+                hdr_col = (255, 162, 128) if total_cnt >= 4 else config.GOLD
+            else:
+                hdr_txt = f"🍱 Lv.{lvl} 조립 & 서빙 트레이 (동일 메뉴 무한 적재)"
+                hdr_col = config.GOLD
+            m_font = config.get_font(19, bold=True)
+            if m_font.size(hdr_txt)[0] > header_rect.width - 16:
+                m_font = config.get_font(17, bold=True)
+            m_surf = m_font.render(hdr_txt, True, hdr_col)
+            surface.blit(m_surf, m_surf.get_rect(center=header_rect.center))
+        elif is_mobile:
             lvl = (
                 int(self.game_mgr.get_station_level("tray"))
                 if (self.game_mgr and hasattr(self.game_mgr, "get_station_level"))
@@ -626,19 +651,19 @@ class AssemblyTray:
                 ),
             )
 
-        font_sm = config.get_font(14, bold=True)
-        font_xs = config.get_font(14, bold=True)
+        font_sm = config.get_font(17 if is_giant else 14, bold=True)
+        font_xs = config.get_font(16 if is_giant else 14, bold=True)
 
         # 1. 접시 슬롯 렌더링
         for idx, s_rect in enumerate(self.slot_rects):
             is_sel = idx == self.selected_slot
             draw_station_hardware(surface, s_rect, station_type="tray")
             border_col = config.NEON_YELLOW if is_sel else (112, 92, 74)
-            pygame.draw.rect(surface, border_col, s_rect, width=3 if is_sel else 2, border_radius=9)
+            pygame.draw.rect(surface, border_col, s_rect, width=3 if is_sel else 2, border_radius=12 if is_giant else 9)
 
             dish = self.dishes[idx] if idx < len(self.dishes) else None
             if dish is not None:
-                icon_size = min(56, max(38, min(s_rect.width, s_rect.height) - 20))
+                icon_size = min(96 if is_giant else 56, max(38, min(s_rect.width, s_rect.height) - (38 if is_giant else 20)))
                 # 다중 스택(x2 이상)일 때 접시 겹침 연출
                 if dish.quantity > 1:
                     stack_layers = min(3, dish.quantity - 1)
@@ -646,43 +671,44 @@ class AssemblyTray:
                         pygame.draw.circle(
                             surface,
                             (218, 206, 188),
-                            (s_rect.centerx - s_lv * 3, s_rect.centery - 9 + s_lv * 2),
-                            icon_size // 2 + 2,
+                            (s_rect.centerx - s_lv * 4, s_rect.centery - (12 if is_giant else 9) + s_lv * 3),
+                            icon_size // 2 + 3,
                             width=2,
                         )
-                if is_mobile and dish.has_topping:
-                    pygame.draw.circle(surface, config.GOLD, (s_rect.centerx, s_rect.centery - 9), icon_size // 2 + 4, width=3)
-                dish.draw(surface, (s_rect.centerx, s_rect.centery - 9), size=icon_size)
+                if (is_giant or is_mobile) and dish.has_topping:
+                    pygame.draw.circle(surface, config.GOLD, (s_rect.centerx, s_rect.centery - (12 if is_giant else 9)), icon_size // 2 + 5, width=3)
+                dish.draw(surface, (s_rect.centerx, s_rect.centery - (12 if is_giant else 9)), size=icon_size)
 
                 # 좌측 상단 무한 스택 수량 배지 (x2, x5, x12...)
                 qty = max(1, int(dish.quantity))
                 qty_str = f"x{qty}"
-                qty_f = config.get_font(14 if qty < 10 else 13, bold=True)
-                qty_w = max(32, qty_f.size(qty_str)[0] + 12)
-                qty_badge = pygame.Rect(s_rect.x + 3, s_rect.y + 2, qty_w, 26)
+                qty_f = config.get_font((18 if qty < 10 else 16) if is_giant else (14 if qty < 10 else 13), bold=True)
+                qty_w = max(44 if is_giant else 32, qty_f.size(qty_str)[0] + (16 if is_giant else 12))
+                qty_badge = pygame.Rect(s_rect.x + 5, s_rect.y + 4, qty_w, 34 if is_giant else 26)
                 qty_bg = (228, 72, 32) if qty >= 4 else ((218, 126, 28) if qty >= 2 else (44, 58, 86))
-                pygame.draw.rect(surface, qty_bg, qty_badge, border_radius=7)
+                pygame.draw.rect(surface, qty_bg, qty_badge, border_radius=8 if is_giant else 7)
                 pygame.draw.rect(
                     surface,
                     config.GOLD if qty >= 2 else config.NEON_CYAN,
                     qty_badge,
                     width=2 if qty >= 2 else 1,
-                    border_radius=7,
+                    border_radius=8 if is_giant else 7,
                 )
                 qty_surf = qty_f.render(qty_str, True, config.WHITE)
                 surface.blit(qty_surf, qty_surf.get_rect(center=qty_badge.center))
 
-                # 우측 상단 모바일 원터치 폐기 [✕] 배지 (28x28 대형 고시인성)
-                del_badge = pygame.Rect(s_rect.right - 30, s_rect.y + 2, 28, 28)
-                pygame.draw.rect(surface, (228, 42, 52) if self.trash_mode else (196, 36, 46), del_badge, border_radius=7)
-                pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.WHITE, del_badge, width=2, border_radius=7)
-                x_s = config.get_font(15, bold=True).render("✕", True, config.WHITE)
+                # 우측 상단 모바일 원터치 폐기 [✕] 배지
+                del_w = 38 if is_giant else 28
+                del_badge = pygame.Rect(s_rect.right - del_w - 4, s_rect.y + 4, del_w, del_w)
+                pygame.draw.rect(surface, (228, 42, 52) if self.trash_mode else (196, 36, 46), del_badge, border_radius=8 if is_giant else 7)
+                pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.WHITE, del_badge, width=2, border_radius=8 if is_giant else 7)
+                x_s = config.get_font(19 if is_giant else 15, bold=True).render("✕", True, config.WHITE)
                 surface.blit(x_s, x_s.get_rect(center=del_badge.center))
 
                 # 0.35초 롱프레스 진행 중일 때 게이지 표시
                 if self.hold_slot_idx == idx and self.hold_timer > 0.04:
                     hold_ratio = min(1.0, self.hold_timer / max(0.1, self.LONG_PRESS_DURATION))
-                    hbar = pygame.Rect(s_rect.x + 6, s_rect.y + 6, s_rect.width - 38, 12)
+                    hbar = pygame.Rect(s_rect.x + 6, s_rect.y + 6, s_rect.width - (48 if is_giant else 38), 14 if is_giant else 12)
                     pygame.draw.rect(surface, (24, 18, 28), hbar, border_radius=6)
                     pygame.draw.rect(surface, config.RED, (hbar.x, hbar.y, int(hbar.width * hold_ratio), hbar.height), border_radius=6)
                     pygame.draw.rect(surface, config.WHITE, hbar, width=2, border_radius=6)
@@ -694,13 +720,15 @@ class AssemblyTray:
                     .replace("마라 시즈닝 지파이", "마라 지파이")
                     .replace("크리스피 대왕 지파이", "대왕 지파이")
                 )
-                lbl_bg = pygame.Rect(s_rect.x + 3, s_rect.bottom - 24, s_rect.width - 6, 22)
-                pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=6)
-                pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=6)
+                lbl_h = 34 if is_giant else 22
+                lbl_bg = pygame.Rect(s_rect.x + 4, s_rect.bottom - lbl_h - 4, s_rect.width - 8, lbl_h)
+                pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=8 if is_giant else 6)
+                pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=8 if is_giant else 6)
                 dish_font = font_xs
-                for f_sz in (14, 13, 12, 11, 10):
+                sz_list = (17, 16, 15, 14, 13) if is_giant else (14, 13, 12, 11, 10)
+                for f_sz in sz_list:
                     dish_font = config.get_font(f_sz, bold=True)
-                    if dish_font.size(name_txt)[0] <= lbl_bg.width - 6:
+                    if dish_font.size(name_txt)[0] <= lbl_bg.width - 8:
                         break
                 lbl_surf = dish_font.render(name_txt, True, config.GOLD if dish.has_topping else config.WHITE)
                 surface.blit(
@@ -708,11 +736,13 @@ class AssemblyTray:
                     (lbl_bg.centerx - lbl_surf.get_width() // 2, lbl_bg.centery - lbl_surf.get_height() // 2),
                 )
             else:
-                if is_mobile:
+                if is_mobile and not is_giant:
                     pygame.draw.circle(surface, (46, 38, 58), s_rect.center, 14, width=2)
                 else:
-                    empty_pill = pygame.Rect(s_rect.centerx - 42, s_rect.centery - 13, 84, 26)
-                    pygame.draw.rect(surface, (34, 28, 44), empty_pill, border_radius=7)
+                    pw = 128 if is_giant else 84
+                    ph = 36 if is_giant else 26
+                    empty_pill = pygame.Rect(s_rect.centerx - pw // 2, s_rect.centery - ph // 2, pw, ph)
+                    pygame.draw.rect(surface, (34, 28, 44), empty_pill, border_radius=8 if is_giant else 7)
                     empty_surf = font_xs.render(f"빈 접시 {idx + 1}", True, (210, 198, 226))
                     surface.blit(
                         empty_surf,
@@ -729,23 +759,23 @@ class AssemblyTray:
             first_r = self.topping_buttons[0][0]
             last_r = self.topping_buttons[-1][0]
             lock_area = pygame.Rect(
-                self.rect.x + 6,
+                self.rect.x + 8,
                 first_r.y,
-                self.rect.width - 12,
+                self.rect.width - 16,
                 last_r.bottom - first_r.y,
             )
-            pygame.draw.rect(surface, (28, 26, 46), lock_area, border_radius=10)
-            pygame.draw.rect(surface, (112, 102, 152), lock_area, width=2, border_radius=10)
-            lk_f1 = config.get_font(15, bold=True)
-            lk_f2 = config.get_font(13, bold=True)
+            pygame.draw.rect(surface, (28, 26, 46), lock_area, border_radius=12)
+            pygame.draw.rect(surface, (112, 102, 152), lock_area, width=2, border_radius=12)
+            lk_f1 = config.get_font(20 if is_giant else 15, bold=True)
+            lk_f2 = config.get_font(16 if is_giant else 13, bold=True)
             s1 = lk_f1.render("🔒 Day 3 해금: 특제 소스·토핑 조립", True, config.GOLD)
             s2 = lk_f2.render("현재는 구운 음식을 무한 적재하고 터치해 서빙할 수 있습니다!", True, config.NEON_CYAN)
             if s2.get_width() > lock_area.width - 12:
-                s2 = config.get_font(11, bold=True).render("구운 음식을 무한 적재하고 터치해 즉시 서빙하세요!", True, config.NEON_CYAN)
-            surface.blit(s1, s1.get_rect(center=(lock_area.centerx, lock_area.centery - 12)))
-            surface.blit(s2, s2.get_rect(center=(lock_area.centerx, lock_area.centery + 14)))
+                s2 = config.get_font(13 if is_giant else 11, bold=True).render("구운 음식을 무한 적재하고 터치해 즉시 서빙하세요!", True, config.NEON_CYAN)
+            surface.blit(s1, s1.get_rect(center=(lock_area.centerx, lock_area.centery - (18 if is_giant else 12))))
+            surface.blit(s2, s2.get_rect(center=(lock_area.centerx, lock_area.centery + (18 if is_giant else 14))))
         else:
-            top_font = config.get_font(15, bold=True)
+            top_font = config.get_font(19 if is_giant else 15, bold=True)
             for btn_rect, tid in self.topping_buttons:
                 t_meta = TOPPINGS.get(tid)
                 t_name = str(t_meta["short_name"]) if t_meta else tid
@@ -756,20 +786,20 @@ class AssemblyTray:
                 bg_col = (42, 118, 82) if can_apply else (58, 52, 80)
                 b_col = config.NEON_GREEN if can_apply else (112, 102, 144)
 
-                pygame.draw.rect(surface, bg_col, btn_rect, border_radius=10)
-                pygame.draw.rect(surface, b_col, btn_rect, width=3 if can_apply else 2, border_radius=10)
+                pygame.draw.rect(surface, bg_col, btn_rect, border_radius=12 if is_giant else 10)
+                pygame.draw.rect(surface, b_col, btn_rect, width=3 if can_apply else 2, border_radius=12 if is_giant else 10)
 
-                badge_size = min(28, max(22, btn_rect.height - 14))
+                badge_size = min(44 if is_giant else 28, max(22, btn_rect.height - 14))
                 draw_topping_badge(
                     surface,
-                    (btn_rect.x + badge_size // 2 + 6, btn_rect.centery),
+                    (btn_rect.x + badge_size // 2 + (10 if is_giant else 6), btn_rect.centery),
                     tid,
                     size=badge_size,
                 )
                 lbl_str = f"+{t_name}"
                 active_t_font = top_font
-                max_tw = btn_rect.width - badge_size - 10
-                for f_sz in (15, 14, 13, 12):
+                max_tw = btn_rect.width - badge_size - (16 if is_giant else 10)
+                for f_sz in ((19, 18, 17, 16, 15) if is_giant else (15, 14, 13, 12)):
                     active_t_font = config.get_font(f_sz, bold=True)
                     if active_t_font.size(lbl_str)[0] <= max_tw:
                         break
@@ -777,7 +807,7 @@ class AssemblyTray:
                 surface.blit(
                     t_surf,
                     (
-                        btn_rect.x + badge_size + 8,
+                        btn_rect.x + badge_size + (14 if is_giant else 8),
                         btn_rect.centery - t_surf.get_height() // 2,
                     ),
                 )
@@ -792,22 +822,22 @@ class AssemblyTray:
         sel_unit_cost = sel_dish.get_cost(self.game_mgr) if sel_dish is not None else 0
 
         trash_bg = (168, 44, 52) if has_any_dish else (56, 52, 68)
-        pygame.draw.rect(surface, trash_bg, self.trash_rect, border_radius=10)
-        pygame.draw.rect(surface, config.RED if has_any_dish else config.UI_BORDER, self.trash_rect, width=2, border_radius=10)
+        pygame.draw.rect(surface, trash_bg, self.trash_rect, border_radius=12 if is_giant else 10)
+        pygame.draw.rect(surface, config.RED if has_any_dish else config.UI_BORDER, self.trash_rect, width=2, border_radius=12 if is_giant else 10)
 
         mode_bg = (224, 52, 58) if self.trash_mode else (82, 46, 62)
-        pygame.draw.rect(surface, mode_bg, self.trash_mode_rect, border_radius=10)
-        pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.UI_BORDER, self.trash_mode_rect, width=2, border_radius=10)
+        pygame.draw.rect(surface, mode_bg, self.trash_mode_rect, border_radius=12 if is_giant else 10)
+        pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.UI_BORDER, self.trash_mode_rect, width=2, border_radius=12 if is_giant else 10)
 
         if has_any_dish and sel_unit_cost > 0:
             trash_txt_str = f"🗑️ 1개 폐기 (-{sel_unit_cost:,}원)"
         else:
             trash_txt_str = "🗑️ 선택 접시 폐기"
-        t_font = config.get_font(13, bold=True) if len(trash_txt_str) > 12 else font_sm
+        t_font = config.get_font(18 if is_giant else (13 if len(trash_txt_str) > 12 else 14), bold=True)
         trash_lbl = t_font.render(trash_txt_str, True, config.WHITE if has_any_dish else config.TEXT_SECONDARY)
         surface.blit(trash_lbl, trash_lbl.get_rect(center=self.trash_rect.center))
 
-        mode_lbl = config.get_font(13, bold=True).render(
+        mode_lbl = config.get_font(18 if is_giant else 13, bold=True).render(
             "🗑️ 버리기모드 ON" if self.trash_mode else "🗑️ 버리기 모드",
             True,
             config.WHITE,

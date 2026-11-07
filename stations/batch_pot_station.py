@@ -92,10 +92,11 @@ class BatchPotStation(BaseStation):
     def _rebuild_layout(self) -> None:
         super()._rebuild_layout()
         r = self.rect
-        pad = 10
-        pot_top = r.y + 42
-        btn_h = 62
-        pot_h = max(130, r.height - 52 - btn_h - pad)
+        is_giant = r.height >= 500
+        pad = 12 if is_giant else 10
+        pot_top = r.y + (68 if is_giant else 42)
+        btn_h = 114 if is_giant else 62
+        pot_h = max(130, r.height - (78 if is_giant else 52) - btn_h - pad)
 
         self.pot_rect = pygame.Rect(r.x + pad, pot_top, r.width - pad * 2, pot_h)
         if self.slots:
@@ -104,7 +105,7 @@ class BatchPotStation(BaseStation):
 
         self.action_button_rect = pygame.Rect(
             r.x + pad,
-            r.bottom - btn_h - 8,
+            r.bottom - btn_h - (10 if is_giant else 8),
             r.width - pad * 2,
             btn_h,
         )
@@ -248,8 +249,78 @@ class BatchPotStation(BaseStation):
             border_col = config.NEON_GREEN
             b_w = 3
 
-        pygame.draw.rect(surface, bg_col, r, border_radius=12)
-        pygame.draw.rect(surface, border_col, r, width=b_w, border_radius=12)
+        is_giant = self.rect.height >= 500
+        pygame.draw.rect(surface, bg_col, r, border_radius=14 if is_giant else 12)
+        pygame.draw.rect(surface, border_col, r, width=b_w, border_radius=14 if is_giant else 12)
+
+        if is_giant:
+            rec = RECIPES.get(self.base_recipe_id)
+            base_name = str(rec["name"]) if rec else self.base_recipe_id
+            f_title = config.get_font(22, bold=True)
+            f_md = config.get_font(19, bold=True)
+            f_sm = config.get_font(16, bold=True)
+
+            if slot.state == STATE_IDLE:
+                draw_food_icon(surface, (r.centerx, r.centery - 28), self.base_recipe_id, size=104, burnt=False)
+                pill_r = pygame.Rect(r.x + 24, r.bottom - 68, r.width - 48, 48)
+                pygame.draw.rect(surface, (24, 20, 36), pill_r, border_radius=12)
+                pygame.draw.rect(surface, config.GOLD, pill_r, width=2, border_radius=12)
+                lbl = f_md.render(f"➕ 터치하여 {base_name} {self.max_servings}인분 대량 조리", True, config.GOLD)
+                surface.blit(lbl, lbl.get_rect(center=pill_r.center))
+            elif slot.state == STATE_COOKING:
+                draw_food_icon(surface, (r.centerx, r.centery - 34), self.base_recipe_id, size=108, burnt=False)
+                gauge_rect = pygame.Rect(r.x + 20, r.bottom - 34, r.width - 40, 22)
+                pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=10)
+                fill_w = int((gauge_rect.width - 4) * slot.progress)
+                if fill_w > 0:
+                    pygame.draw.rect(surface, config.GAUGE_COOKING, (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4), border_radius=8)
+                pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=10)
+                pill_r = pygame.Rect(r.x + 24, gauge_rect.top - 44, r.width - 48, 36)
+                pygame.draw.rect(surface, (34, 24, 16), pill_r, border_radius=10)
+                pygame.draw.rect(surface, config.GAUGE_COOKING, pill_r, width=2, border_radius=10)
+                st_surf = f_md.render(f"🔥 대량 조리 진행 중 ({int(slot.progress * 100)}%)", True, config.GAUGE_COOKING)
+                surface.blit(st_surf, st_surf.get_rect(center=pill_r.center))
+            else:
+                rem = self.remaining_servings
+                positions = [
+                    (r.centerx - 90, r.centery - 42),
+                    (r.centerx + 90, r.centery - 42),
+                    (r.centerx, r.centery - 18),
+                    (r.centerx - 70, r.centery + 24),
+                    (r.centerx + 70, r.centery + 24),
+                ]
+                for i in range(min(rem, len(positions))):
+                    draw_food_icon(surface, positions[i], self.base_recipe_id, size=84, burnt=False)
+
+                pill_r = pygame.Rect(r.x + 20, r.bottom - 76, r.width - 40, 62)
+                pygame.draw.rect(surface, (16, 38, 26), pill_r, border_radius=12)
+                pygame.draw.rect(surface, config.NEON_GREEN, pill_r, width=2, border_radius=12)
+                badge_surf = f_md.render(f"✨ 보온 중: {rem}/{self.max_servings}인분 남음", True, config.NEON_GREEN)
+                sub_surf = f_sm.render("타지 않음 · 터치 시 1인분씩 트레이로 덜기 / 즉시 서빙", True, config.WHITE)
+                surface.blit(badge_surf, badge_surf.get_rect(center=(pill_r.centerx, pill_r.y + 18)))
+                surface.blit(sub_surf, sub_surf.get_rect(center=(pill_r.centerx, pill_r.y + 44)))
+
+            if slot.state == STATE_IDLE:
+                btn_col = (235, 118, 32)
+                btn_title = f"🥘 {base_name} {self.max_servings}인분 조리 시작"
+                btn_sub = "터치하여 한 번에 대량 조리"
+            elif slot.state == STATE_COOKING:
+                btn_col = (64, 58, 78)
+                btn_title = "🔥 대량 조리 진행 중..."
+                btn_sub = "잠시만 기다려 주세요"
+            else:
+                btn_col = (42, 152, 82)
+                btn_title = f"✨ 1인분 덜어내기 ({self.remaining_servings}인분 남음)"
+                btn_sub = "조립 트레이로 전달 또는 손님에게 즉시 서빙"
+
+            pygame.draw.rect(surface, btn_col, self.action_button_rect, border_radius=12)
+            pygame.draw.rect(surface, config.GOLD, self.action_button_rect, width=3, border_radius=12)
+            draw_food_icon(surface, (self.action_button_rect.x + 56, self.action_button_rect.centery), self.base_recipe_id, size=68, burnt=False)
+            t_surf = f_title.render(btn_title, True, config.WHITE)
+            s_surf = f_sm.render(btn_sub, True, config.GOLD if slot.state != STATE_COOKING else config.TEXT_SECONDARY)
+            surface.blit(t_surf, (self.action_button_rect.x + 104, self.action_button_rect.y + 22))
+            surface.blit(s_surf, (self.action_button_rect.x + 104, self.action_button_rect.y + 64))
+            return
 
         if is_mobile:
             if slot.state == STATE_IDLE:

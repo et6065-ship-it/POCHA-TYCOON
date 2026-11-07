@@ -273,8 +273,95 @@ class StationSlot:
             border_col = config.GAUGE_BURNT
             b_width = 3
 
-        pygame.draw.rect(surface, bg_col, r, border_radius=10)
-        pygame.draw.rect(surface, border_col, r, width=b_width, border_radius=10)
+        pygame.draw.rect(surface, bg_col, r, border_radius=12 if r.height >= 160 else 10)
+        pygame.draw.rect(surface, border_col, r, width=b_width, border_radius=12 if r.height >= 160 else 10)
+
+        is_giant_slot = r.width >= 180 and r.height >= 160
+        if is_giant_slot:
+            if self.state == STATE_IDLE:
+                plus_rad = min(38, max(24, min(r.width, r.height) // 5))
+                circle_c = (r.centerx, r.centery - 18)
+                pygame.draw.circle(surface, (28, 24, 42), circle_c, plus_rad)
+                pygame.draw.circle(surface, (148, 138, 196), circle_c, plus_rad, width=3)
+                arm = max(10, plus_rad - 12)
+                pygame.draw.line(surface, config.WHITE, (circle_c[0] - arm, circle_c[1]), (circle_c[0] + arm, circle_c[1]), 4)
+                pygame.draw.line(surface, config.WHITE, (circle_c[0], circle_c[1] - arm), (circle_c[0], circle_c[1] + arm), 4)
+
+                clean_lbl = empty_label.replace("클릭", "터치")
+                f_idle = config.get_font(17, bold=True)
+                lbl_s = f_idle.render(clean_lbl, True, (238, 234, 252))
+                if lbl_s.get_width() > r.width - 16:
+                    lbl_s = config.get_font(15, bold=True).render(clean_lbl, True, (238, 234, 252))
+                pill_w = min(r.width - 12, lbl_s.get_width() + 24)
+                pill_r = pygame.Rect(r.centerx - pill_w // 2, circle_c[1] + plus_rad + 14, pill_w, 36)
+                pygame.draw.rect(surface, (26, 22, 38), pill_r, border_radius=10)
+                pygame.draw.rect(surface, (124, 114, 168), pill_r, width=2, border_radius=10)
+                surface.blit(lbl_s, lbl_s.get_rect(center=pill_r.center))
+                return
+
+            if self.recipe_id:
+                rec = RECIPES.get(self.recipe_id)
+                r_nm = str(rec.get("name", self.recipe_id)) if rec else str(self.recipe_id)
+                tag_w = (r.width - 56) if self.state == STATE_COOKING else (r.width - 16)
+                name_tag = pygame.Rect(r.x + 8, r.y + 8, max(60, tag_w), 34)
+                pygame.draw.rect(surface, (18, 15, 28), name_tag, border_radius=8)
+                pygame.draw.rect(surface, config.GOLD if self.state == STATE_READY else config.UI_BORDER, name_tag, width=1, border_radius=8)
+                nf = config.get_font(18, bold=True)
+                for f_sz in (18, 17, 16, 15, 14):
+                    nf = config.get_font(f_sz, bold=True)
+                    if nf.size(r_nm)[0] <= name_tag.width - 10:
+                        break
+                ns = nf.render(r_nm, True, config.GOLD if self.state == STATE_READY else config.WHITE)
+                surface.blit(ns, ns.get_rect(center=name_tag.center))
+
+            icon_size = min(104, max(64, min(r.width, r.height) - 96))
+            icon_center = (r.centerx, r.centery - 8)
+            if self.state == STATE_READY:
+                glow_col = config.GAUGE_WARNING if (self.can_burn and self.burn_progress >= 0.65) else config.GOLD
+                pygame.draw.circle(surface, glow_col, icon_center, icon_size // 2 + 8, width=4)
+            if self.recipe_id:
+                draw_food_icon(surface, icon_center, self.recipe_id, size=icon_size, burnt=(self.state == STATE_BURNT))
+
+            gauge_rect = pygame.Rect(r.x + 10, r.bottom - 26, r.width - 20, 18)
+            pygame.draw.rect(surface, (18, 16, 26), gauge_rect, border_radius=8)
+            if self.state == STATE_COOKING:
+                fill_w = int((gauge_rect.width - 4) * self.progress)
+                if fill_w > 0:
+                    pygame.draw.rect(surface, config.GAUGE_COOKING, (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4), border_radius=6)
+                label_txt = "🔄 지금 터치해 뒤집기!" if self.is_flip_ready else f"🔥 조리 중 ({int(self.progress * 100)}%)"
+                label_col = config.GOLD if self.is_flip_ready else config.GAUGE_COOKING
+                pill_bg = (52, 38, 18) if self.is_flip_ready else (34, 24, 16)
+            elif self.state == STATE_READY:
+                if self.can_burn:
+                    rem_ratio = 1.0 - self.burn_progress
+                    bar_col = config.GAUGE_WARNING if self.burn_progress >= 0.60 else config.NEON_GREEN
+                    fill_w = int((gauge_rect.width - 4) * rem_ratio)
+                else:
+                    bar_col = config.NEON_GREEN
+                    fill_w = gauge_rect.width - 4
+                if fill_w > 0:
+                    pygame.draw.rect(surface, bar_col, (gauge_rect.x + 2, gauge_rect.y + 2, fill_w, gauge_rect.height - 4), border_radius=6)
+                is_warn = self.can_burn and self.burn_progress >= 0.65
+                label_txt = "⚠️ 곧 탐! 즉시 터치!" if is_warn else "✨ 완성! 터치하여 서빙"
+                label_col = config.GAUGE_WARNING if is_warn else config.NEON_GREEN
+                pill_bg = (48, 20, 16) if is_warn else (16, 44, 28)
+            else:
+                pygame.draw.rect(surface, config.GAUGE_BURNT, (gauge_rect.x + 2, gauge_rect.y + 2, gauge_rect.width - 4, gauge_rect.height - 4), border_radius=6)
+                label_txt = "💀 탔음! 터치하여 폐기"
+                label_col = (255, 118, 118)
+                pill_bg = (46, 16, 20)
+
+            pygame.draw.rect(surface, (205, 202, 224), gauge_rect, width=2, border_radius=8)
+            st_f = config.get_font(17, bold=True)
+            st_surf = st_f.render(label_txt, True, label_col)
+            if st_surf.get_width() > r.width - 16:
+                st_surf = config.get_font(15, bold=True).render(label_txt, True, label_col)
+            pill_w = min(r.width - 12, st_surf.get_width() + 20)
+            st_pill = pygame.Rect(r.centerx - pill_w // 2, gauge_rect.top - 38, pill_w, 32)
+            pygame.draw.rect(surface, pill_bg, st_pill, border_radius=8)
+            pygame.draw.rect(surface, label_col, st_pill, width=2, border_radius=8)
+            surface.blit(st_surf, st_surf.get_rect(center=st_pill.center))
+            return
 
         if is_mobile:
             if self.state == STATE_IDLE:
@@ -660,12 +747,14 @@ class BaseStation:
     def draw_panel_frame(self, surface: pygame.Surface, subtitle: str = "") -> None:
         """조리대 패널 배경, 하드웨어 텍스처, 상단 기구 이름 헤더를 렌더링한다."""
         self._ensure_layout()
-        pygame.draw.rect(surface, config.UI_PANEL_DARK, self.rect, border_radius=12)
+        is_giant = self.rect.height >= 500
+        hdr_h = 54 if is_giant else 30
+        pygame.draw.rect(surface, config.UI_PANEL_DARK, self.rect, border_radius=14 if is_giant else 12)
         hw_rect = pygame.Rect(
-            self.rect.x + 6,
-            self.rect.y + 36,
-            self.rect.width - 12,
-            self.rect.height - 42,
+            self.rect.x + (8 if is_giant else 6),
+            self.rect.y + hdr_h + (8 if is_giant else 6),
+            self.rect.width - (16 if is_giant else 12),
+            self.rect.height - hdr_h - (14 if is_giant else 12),
         )
         draw_station_hardware(
             surface,
@@ -673,23 +762,23 @@ class BaseStation:
             station_type=self.slot_type,
             station_id=self.station_id,
         )
-        pygame.draw.rect(surface, config.UI_BORDER, self.rect, width=2, border_radius=12)
+        pygame.draw.rect(surface, config.UI_BORDER, self.rect, width=3 if is_giant else 2, border_radius=14 if is_giant else 12)
 
         # 상단 타이틀 바 (PC 단축키 접두어 없이 정중앙 15px 볼드 고대비, 모바일은 대표 음식 아이콘 + Lv 배지)
-        header_rect = pygame.Rect(self.rect.x + 4, self.rect.y + 4, self.rect.width - 8, 30)
+        header_rect = pygame.Rect(self.rect.x + (6 if is_giant else 4), self.rect.y + (6 if is_giant else 4), self.rect.width - (12 if is_giant else 8), hdr_h)
         header_col = self.meta.get("color", config.UI_PANEL_LIGHT)
         dark_header = (
             max(22, int(header_col[0] * 0.42)),
             max(22, int(header_col[1] * 0.42)),
             max(30, int(header_col[2] * 0.42)),
         )
-        pygame.draw.rect(surface, dark_header, header_rect, border_radius=8)
-        pygame.draw.rect(surface, header_col, header_rect, width=1, border_radius=8)
+        pygame.draw.rect(surface, dark_header, header_rect, border_radius=10 if is_giant else 8)
+        pygame.draw.rect(surface, header_col, header_rect, width=2 if is_giant else 1, border_radius=10 if is_giant else 8)
 
         is_mobile = bool(
             getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
         )
-        if is_mobile:
+        if is_giant or is_mobile:
             rep_rid = (
                 getattr(self, "base_recipe_id", None)
                 or getattr(self, "selected_recipe_id", None)
@@ -707,6 +796,20 @@ class BaseStation:
                 if (self.game_mgr and hasattr(self.game_mgr, "get_station_level"))
                 else 1
             )
+            if is_giant:
+                draw_food_icon(surface, (header_rect.x + 32, header_rect.centery), str(rep_rid), size=44, burnt=False)
+                full_nm = self.name or self.short_name
+                if subtitle:
+                    full_nm = f"{full_nm} ({subtitle})"
+                nm_s = config.get_font(22, bold=True).render(full_nm, True, config.GOLD)
+                surface.blit(nm_s, (header_rect.x + 62, header_rect.centery - nm_s.get_height() // 2))
+                lv_badge = pygame.Rect(header_rect.right - 88, header_rect.y + 8, 78, 38)
+                pygame.draw.rect(surface, (18, 16, 28), lv_badge, border_radius=8)
+                pygame.draw.rect(surface, config.GOLD, lv_badge, width=2, border_radius=8)
+                lv_s = config.get_font(18, bold=True).render(f"Lv.{lvl}", True, config.GOLD)
+                surface.blit(lv_s, lv_s.get_rect(center=lv_badge.center))
+                return
+
             draw_food_icon(surface, (header_rect.x + 18, header_rect.centery), str(rep_rid), size=24, burnt=False)
             short_nm = self.short_name or self.name
             nm_s = config.get_font(13, bold=True).render(short_nm, True, config.GOLD)

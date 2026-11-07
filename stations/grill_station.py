@@ -61,12 +61,14 @@ class GrillStation(BaseStation):
     def _rebuild_layout(self) -> None:
         super()._rebuild_layout()
         r = self.rect
-        slot_area_top = r.y + 42
-        btn_area_h = 74
-        slot_area_h = max(120, r.height - 48 - btn_area_h)
+        is_giant = r.height >= 500
+        slot_area_top = r.y + (68 if is_giant else 42)
+        btn_h = 114 if is_giant else 60
+        btn_area_h = (btn_h + 18) if is_giant else 74
+        slot_area_h = max(120, r.height - (74 if is_giant else 48) - btn_area_h)
 
         count = len(self.slots)
-        pad = 8
+        pad = 12 if is_giant else 8
         cols = 2
         rows = 1 if count <= 2 else 2
         cell_w = (r.width - pad * (cols + 1)) // cols
@@ -79,10 +81,9 @@ class GrillStation(BaseStation):
             sy = slot_area_top + pad + row * (cell_h + pad)
             slot.rect = pygame.Rect(sx, sy, cell_w, cell_h)
 
-        btn_h = 60
         self.cook_button_rect = pygame.Rect(
             r.x + pad,
-            r.bottom - btn_h - 8,
+            r.bottom - btn_h - (10 if is_giant else 8),
             r.width - pad * 2,
             btn_h,
         )
@@ -215,6 +216,7 @@ class GrillStation(BaseStation):
         is_mobile = bool(
             getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
         )
+        is_giant = self.rect.height >= 500
         self.draw_panel_frame(surface, subtitle=f"{len(self.slots)}구")
 
         for slot in self.slots:
@@ -224,12 +226,25 @@ class GrillStation(BaseStation):
         has_idle = any(s.state == STATE_IDLE for s in self.slots)
         btn_col = (235, 118, 32) if has_idle else (62, 58, 78)
         border_col = config.GOLD if has_idle else config.UI_BORDER
-        pygame.draw.rect(surface, btn_col, self.cook_button_rect, border_radius=10)
-        pygame.draw.rect(surface, border_col, self.cook_button_rect, width=3 if has_idle else 2, border_radius=10)
+        pygame.draw.rect(surface, btn_col, self.cook_button_rect, border_radius=12 if is_giant else 10)
+        pygame.draw.rect(surface, border_col, self.cook_button_rect, width=3 if has_idle else 2, border_radius=12 if is_giant else 10)
 
         rec = RECIPES.get(self.base_recipe_id)
         base_name = str(rec["name"]) if rec else self.base_recipe_id
-        font_main = config.get_font(15, bold=True)
+        font_main = config.get_font(22 if is_giant else 15, bold=True)
+
+        if is_giant:
+            draw_food_icon(surface, (self.cook_button_rect.x + 56, self.cook_button_rect.centery), self.base_recipe_id, size=68, burnt=False)
+            main_str = f"🔥 {base_name} 올리기"
+            lbl_main = font_main.render(main_str, True, config.WHITE)
+            lbl_sub = config.get_font(16, bold=True).render(
+                "완성 시 조립 트레이 이동 또는 즉시 서빙",
+                True,
+                config.GOLD if has_idle else config.TEXT_SECONDARY,
+            )
+            surface.blit(lbl_main, (self.cook_button_rect.x + 104, self.cook_button_rect.y + 22))
+            surface.blit(lbl_sub, (self.cook_button_rect.x + 104, self.cook_button_rect.y + 64))
+            return
 
         if is_mobile:
             draw_food_icon(surface, (self.cook_button_rect.x + 32, self.cook_button_rect.centery), self.base_recipe_id, size=44, burnt=False)
