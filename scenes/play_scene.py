@@ -655,12 +655,19 @@ class PlayScene(BaseScene):
                 self.activate_skill()
                 return
 
-            # 조립 트레이 클릭 (좌클릭: 서빙/토핑/휴지통, 우클릭: 접시 폐기)
+            # 조립 트레이 클릭 (좌클릭: 서빙/토핑+자동서빙/휴지통, 우클릭: 접시 폐기)
             if self.assembly_tray.rect.collidepoint(mx, my):
+                src_sts = (
+                    [self.specialist_station]
+                    if self.game_mgr.mode == "SPECIALIST"
+                    else [st for st in self.station_list if self.game_mgr.is_slot_unlocked_in_story(st.slot_type)]
+                )
                 res = self.assembly_tray.handle_click(
                     (mx, my),
                     auto_serve_cb=self.try_auto_serve,
                     button=event.button,
+                    customers=self.customers,
+                    source_stations=src_sts,
                 )
                 self._handle_station_feedback(res, (mx, my))
                 return
@@ -861,14 +868,6 @@ class PlayScene(BaseScene):
         if action == "start_cook":
             sound_fx.play_sizzle(slot_type)
             self.particles.emit_smoke(px, py - 10, count=4)
-            if (
-                self.game_mgr.mode == "SPECIALIST"
-                and self.scene_mgr is not None
-                and getattr(self.scene_mgr, "is_portrait_mode", False)
-                and getattr(self.scene_mgr, "portrait_play_idx", 0) == 0
-                and getattr(self.specialist_station, "is_bungeoppang", False)
-            ):
-                self.scene_mgr.portrait_play_idx = 1
         elif action == "moved_to_tray":
             if slot_type == "batch_pot" or "remaining_servings" in res:
                 sound_fx.play_pot_scoop()
@@ -887,10 +886,19 @@ class PlayScene(BaseScene):
                         color=config.GOLD,
                         size=17,
                     )
-            if self.scene_mgr is not None and getattr(self.scene_mgr, "is_portrait_mode", False):
+            if (
+                self.game_mgr.mode != "SPECIALIST"
+                and self.scene_mgr is not None
+                and getattr(self.scene_mgr, "is_portrait_mode", False)
+            ):
                 self.scene_mgr.portrait_play_idx = 2
         elif action in ("auto_served", "served"):
-            if slot_type == "dispenser":
+            if res.get("topping_id"):
+                sound_fx.play_topping()
+                tid = str(res.get("topping_id", ""))
+                t_name = TOPPINGS.get(tid, {}).get("short_name", tid)
+                self.particles.spawn_floating_text(f"+{t_name} 즉시 서빙!", px, py - 15, color=config.NEON_GREEN, size=18)
+            elif slot_type == "dispenser":
                 sound_fx.play_drink_pour()
             elif slot_type == "batch_pot" or "remaining_servings" in res:
                 sound_fx.play_pot_scoop()
@@ -929,22 +937,10 @@ class PlayScene(BaseScene):
             sound_fx.play_click()
             msg = str(res.get("message", "넣을 속재료 버튼을 터치하세요!"))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
-            if (
-                self.game_mgr.mode == "SPECIALIST"
-                and self.scene_mgr is not None
-                and getattr(self.scene_mgr, "is_portrait_mode", False)
-            ):
-                self.scene_mgr.portrait_play_idx = 0
         elif action == "select_recipe":
             sound_fx.play_click()
-            msg = str(res.get("message", "🥣 속재료 선택 완료! 빈 틀을 터치해 부으세요!"))
+            msg = str(res.get("message", "🥣 속재료 선택 완료!"))
             self.particles.spawn_floating_text(msg, px, py - 16, color=config.NEON_CYAN, size=16)
-            if (
-                self.game_mgr.mode == "SPECIALIST"
-                and self.scene_mgr is not None
-                and getattr(self.scene_mgr, "is_portrait_mode", False)
-            ):
-                self.scene_mgr.portrait_play_idx = 1
         elif action == "flip_mold":
             sound_fx.play_mold_flip()
             self.particles.emit_smoke(px, py - 8, count=5)

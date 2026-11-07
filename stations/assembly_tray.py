@@ -107,11 +107,11 @@ class AssemblyTray:
 
     def _get_desired_slot_count(self) -> int:
         if self.game_mgr and str(getattr(self.game_mgr, "mode", "")).upper() == "SPECIALIST":
-            base_cnt = int(self.game_mgr.get_tray_slot_count()) if hasattr(self.game_mgr, "get_tray_slot_count") else 3
-            return max(3, base_cnt)
+            base_cnt = int(self.game_mgr.get_tray_slot_count()) if hasattr(self.game_mgr, "get_tray_slot_count") else 4
+            return max(4, base_cnt)
         if self.game_mgr and hasattr(self.game_mgr, "get_tray_slot_count"):
-            return max(2, int(self.game_mgr.get_tray_slot_count()))
-        return config.BASE_TRAY_SLOTS
+            return max(4, int(self.game_mgr.get_tray_slot_count()))
+        return max(4, config.BASE_TRAY_SLOTS)
 
     def sync_slots_with_manager(self) -> None:
         """
@@ -123,8 +123,9 @@ class AssemblyTray:
             self.dishes.append(None)
         if len(self.dishes) > desired:
             # 뒤쪽 빈 슬롯부터 축소하되 이미 음식이 있으면 보존
-            trimmed = self.dishes[:desired]
-            self.dishes = trimmed
+            non_empty = [d for d in self.dishes if d is not None]
+            target_len = max(desired, len(non_empty))
+            self.dishes = non_empty + [None] * (target_len - len(non_empty))
 
         if self.selected_slot >= len(self.dishes):
             self.selected_slot = max(0, len(self.dishes) - 1)
@@ -159,18 +160,55 @@ class AssemblyTray:
         self._last_layout_rect = self.rect.copy()
         r = self.rect
         is_giant = r.height >= 500
-        pad = 12 if is_giant else 6
+        is_wide = r.width >= 520
+        pad = 10 if is_giant else 5
 
-        # 1. 상단 접시 슬롯 영역
+        # 1. 상단 접시 슬롯 영역 (4종~12종 이상 다품종 대기 시에도 전종류가 한눈에 보이도록 그리드 최적화)
         slot_count = max(2, len(self.dishes))
-        plate_area_top = r.y + (64 if is_giant else 36)
-        plate_area_h = 284 if is_giant else 132
+        if is_wide:
+            if slot_count <= 4:
+                cols = slot_count
+                rows = 1
+            elif slot_count <= 8:
+                cols = 4
+                rows = 2
+            else:
+                cols = 4
+                rows = (slot_count + 3) // 4
+        else:
+            if slot_count <= 3:
+                cols = slot_count
+                rows = 1
+            elif slot_count == 4:
+                cols = 2
+                rows = 2
+            elif slot_count <= 6:
+                cols = 3
+                rows = 2
+            elif slot_count <= 8:
+                cols = 4
+                rows = 2
+            else:
+                cols = 4
+                rows = (slot_count + 3) // 4
+
+        plate_area_top = r.y + (60 if is_giant else 34)
+        t_cnt = max(1, len(self.available_topping_ids))
+        t_cols = min(4 if is_wide else 3, t_cnt)
+        t_rows = (t_cnt + t_cols - 1) // t_cols
+
+        if is_giant:
+            trash_h = 72 if rows >= 2 else 82
+            min_top_h = 74 if t_rows == 1 else 132
+            plate_area_h = max(220, r.bottom - plate_area_top - min_top_h - trash_h - 24)
+        else:
+            trash_h = 36 if rows >= 2 else 40
+            min_top_h = (48 if t_rows == 1 else 86) if rows >= 2 else (56 if t_rows == 1 else 96)
+            plate_area_h = max(124, r.bottom - plate_area_top - min_top_h - trash_h - 14)
 
         self.slot_rects = []
-        cols = slot_count if slot_count <= 3 else ((slot_count + 1) // 2)
-        rows = 1 if slot_count <= 3 else 2
-        cell_w = (r.width - pad * (cols + 1)) // cols
-        cell_h = (plate_area_h - pad * (rows + 1)) // rows
+        cell_w = max(48, (r.width - pad * (cols + 1)) // cols)
+        cell_h = max(44, (plate_area_h - pad * (rows + 1)) // rows)
 
         for idx in range(slot_count):
             col = idx % cols
@@ -179,17 +217,13 @@ class AssemblyTray:
             sy = plate_area_top + pad + row * (cell_h + pad)
             self.slot_rects.append(pygame.Rect(sx, sy, cell_w, cell_h))
 
-        # 2. 중단 토핑 버튼 영역 (최소 56x44px 이상 대형 터치 버튼 보장)
-        topping_top = plate_area_top + plate_area_h + (8 if is_giant else 4)
-        trash_h = 84 if is_giant else 44
-        topping_area_h = max(96, r.bottom - topping_top - trash_h - (16 if is_giant else 10))
+        # 2. 중단 토핑 버튼 영역
+        topping_top = plate_area_top + plate_area_h + (6 if is_giant else 3)
+        topping_area_h = max(44, r.bottom - topping_top - trash_h - (12 if is_giant else 8))
 
         self.topping_buttons = []
-        t_cnt = max(1, len(self.available_topping_ids))
-        t_cols = min(3, t_cnt)
-        t_rows = (t_cnt + t_cols - 1) // t_cols
         t_w = max(56, (r.width - pad * (t_cols + 1)) // t_cols)
-        t_h = max(44, (topping_area_h - pad * (t_rows + 1)) // max(1, t_rows))
+        t_h = max(38, (topping_area_h - pad * (t_rows + 1)) // max(1, t_rows))
 
         for idx, tid in enumerate(self.available_topping_ids):
             c = idx % t_cols
@@ -202,7 +236,7 @@ class AssemblyTray:
         total_w = r.width - pad * 2
         left_w = int(total_w * 0.56)
         right_w = total_w - left_w - (10 if is_giant else 6)
-        by_trash = r.bottom - trash_h - (10 if is_giant else 6)
+        by_trash = r.bottom - trash_h - (8 if is_giant else 4)
         self.trash_rect = pygame.Rect(r.x + pad, by_trash, left_w, trash_h)
         self.trash_mode_rect = pygame.Rect(self.trash_rect.right + (10 if is_giant else 6), by_trash, right_w, trash_h)
 
@@ -301,13 +335,64 @@ class AssemblyTray:
         self.selected_slot = 0
         self._rebuild_layout()
 
-    def apply_topping(self, topping_id: str) -> Optional[Dict[str, Any]]:
+    def _try_pull_ready_base_for_topping(
+        self,
+        topping_id: str,
+        source_stations: Optional[Iterable[Any]] = None,
+        customers: Optional[Iterable[Any]] = None,
+    ) -> bool:
         """
-        현재 트레이에 놓인 음식 중 해당 토핑을 추가할 수 있는 음식(선택된 슬롯 우선,
-        없으면 첫 번째 가능 슬롯)에 토핑을 추가한다.
-        - 스택 수량이 2개 이상(x2, x5...)인 접시에 토핑을 추가하면 1개만 분리하여 토핑을 얹고,
-          이미 동일한 완성 메뉴 슬롯이 있으면 그 스택에 자동 병합하며 없으면 빈 슬롯(또는 신규 슬롯)에 배치한다.
-        - 스택 수량이 1개인 접시에 토핑을 추가한 뒤 다른 슬롯에 동일 메뉴가 있으면 자동으로 병합한다.
+        트레이에 해당 토핑을 얹을 베이스 음식이 없을 때,
+        화로(SpecialistStation 등)에 완성(STATE_READY)된 호환 베이스 음식이 있으면 1개를 자동으로 트레이로 가져온다.
+        """
+        if not source_stations:
+            return False
+        from stations.base_station import STATE_READY
+
+        wanted_rids = set()
+        if customers:
+            for c in customers:
+                if c is not None and getattr(c, "state", "") == "WAITING":
+                    for r_id in getattr(c, "orders", []):
+                        wanted_rids.add(str(r_id))
+
+        candidate_slots: List[Tuple[int, Any]] = []
+        for st in source_stations:
+            if st is None:
+                continue
+            for slot in getattr(st, "slots", []):
+                if getattr(slot, "state", "") == STATE_READY and getattr(slot, "recipe_id", None):
+                    probe = Dish(str(slot.recipe_id))
+                    if probe.can_add_topping(topping_id):
+                        probe_copy = probe.copy()
+                        probe_copy.add_topping(topping_id)
+                        priority = 0 if probe_copy.recipe_id in wanted_rids else 1
+                        candidate_slots.append((priority, slot))
+
+        if not candidate_slots:
+            return False
+
+        candidate_slots.sort(key=lambda item: item[0])
+        chosen_slot = candidate_slots[0][1]
+        pulled_rid = str(chosen_slot.recipe_id)
+        if getattr(chosen_slot, "servings", 1) > 1:
+            chosen_slot.servings -= 1
+        else:
+            chosen_slot.reset()
+        self.add_dish(Dish(pulled_rid))
+        return True
+
+    def apply_topping(
+        self,
+        topping_id: str,
+        auto_serve_cb: Optional[Callable[..., Any]] = None,
+        customers: Optional[Iterable[Any]] = None,
+        source_stations: Optional[Iterable[Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        현재 트레이에 놓인 음식 중 해당 토핑을 추가할 수 있는 음식(손님 주문 매칭 슬롯 또는 선택된 슬롯 우선)에 토핑을 추가한다.
+        - 만약 트레이에 호환 음식이 없고 조리 화로(source_stations)에 완성된 베이스 음식이 있으면 자동으로 1개를 가져와 토핑을 얹는다.
+        - 토핑 적용 직후 대기 손님이 해당 완성 메뉴를 원하면 원터치로 즉시 자동 서빙한다!
         """
         if not self.dishes:
             return None
@@ -323,10 +408,40 @@ class AssemblyTray:
                 "message": "🔒 Day 3 해금: 직화 그릴 & 특제 토핑 추가",
             }
 
-        # 탐색 순서: selected_slot 우선 -> 나머지 슬롯 순서대로
-        order = [self.selected_slot] + [
+        has_compatible_on_tray = any(
+            d is not None and d.can_add_topping(topping_id) for d in self.dishes
+        )
+        if not has_compatible_on_tray and source_stations:
+            self._try_pull_ready_base_for_topping(topping_id, source_stations=source_stations, customers=customers)
+
+        wanted_rids = set()
+        if customers:
+            for c in customers:
+                if c is not None and getattr(c, "state", "") == "WAITING":
+                    for r_id in getattr(c, "orders", []):
+                        wanted_rids.add(str(r_id))
+
+        base_order = [self.selected_slot] + [
             i for i in range(len(self.dishes)) if i != self.selected_slot
         ]
+        # 손님이 현재 주문한 완성 메뉴가 되는 베이스 접시를 최우선 선택
+        if wanted_rids:
+            def _slot_priority(s_idx: int) -> int:
+                if not (0 <= s_idx < len(self.dishes)):
+                    return 99
+                d_obj = self.dishes[s_idx]
+                if d_obj is None or not d_obj.can_add_topping(topping_id):
+                    return 99
+                pr_copy = d_obj.copy(quantity=1)
+                pr_copy.add_topping(topping_id)
+                if pr_copy.recipe_id in wanted_rids:
+                    return 0 if s_idx == self.selected_slot else 1
+                return 2 if s_idx == self.selected_slot else 3
+
+            order = sorted(base_order, key=_slot_priority)
+        else:
+            order = base_order
+
         for idx in order:
             if not (0 <= idx < len(self.dishes)):
                 continue
@@ -355,15 +470,6 @@ class AssemblyTray:
                         target_idx = len(self.dishes) - 1
                         self._rebuild_layout()
                     target_dish = single_topped
-
-                self.selected_slot = target_idx
-                return {
-                    "action": "add_topping",
-                    "topping_id": topping_id,
-                    "recipe_id": target_dish.recipe_id,
-                    "slot_index": target_idx,
-                    "dish": target_dish,
-                }
             else:
                 # 단일 접시(x1)에 토핑 적용 후 기존 동일 메뉴 스택이 있으면 자동 병합
                 dish.add_topping(topping_id)
@@ -384,14 +490,77 @@ class AssemblyTray:
                         target_dish = other_d
                         break
 
-                self.selected_slot = target_idx
-                return {
-                    "action": "add_topping",
-                    "topping_id": topping_id,
-                    "recipe_id": target_dish.recipe_id,
-                    "slot_index": target_idx,
-                    "dish": target_dish,
-                }
+            self.selected_slot = target_idx
+            # 원터치 편의성 강화: 토핑 적용 즉시 해당 완성 메뉴를 기다리는 손님이 있으면 바로 자동 서빙!
+            if auto_serve_cb is not None and 0 <= target_idx < len(self.dishes) and self.dishes[target_idx] is not None:
+                s_center = (
+                    self.slot_rects[target_idx].center
+                    if target_idx < len(self.slot_rects)
+                    else self.rect.center
+                )
+                served, serve_res = invoke_auto_serve(
+                    auto_serve_cb,
+                    target_dish.recipe_id,
+                    s_center,
+                )
+                if served:
+                    served_unit = target_dish.copy(quantity=1)
+                    if target_dish.quantity > 1:
+                        target_dish.quantity -= 1
+                    else:
+                        self.dishes[target_idx] = None
+                        self._compact_overflow_slots()
+                    return {
+                        "action": "auto_served",
+                        "topping_id": topping_id,
+                        "slot_index": target_idx,
+                        "recipe_id": served_unit.recipe_id,
+                        "dish": served_unit,
+                        "serve_result": serve_res,
+                    }
+
+            return {
+                "action": "add_topping",
+                "topping_id": topping_id,
+                "recipe_id": target_dish.recipe_id,
+                "slot_index": target_idx,
+                "dish": target_dish,
+            }
+
+        # 만약 완성된 베이스 음식이 아직 없을 때 장인 화로(source_stations)에 해당 베이스가 조리 중이지 않다면
+        # 필요한 베이스 레시피를 빈 화로 칸에 자동으로 조리 시작해 준다!
+        from data.recipes import RECIPES
+
+        req_base_rid: Optional[str] = None
+        for r_id, r_data in RECIPES.items():
+            if topping_id in r_data.get("required_toppings", []):
+                req_base_rid = str(r_data.get("base_recipe_id", ""))
+                break
+
+        if req_base_rid and source_stations:
+            base_rec = RECIPES.get(req_base_rid)
+            base_name = str(base_rec["name"]) if base_rec else req_base_rid
+            for st in source_stations:
+                if st is not None and hasattr(st, "start_cooking_recipe") and hasattr(st, "spec_data"):
+                    allowed_bases = list(st.spec_data.get("base_recipes", []))
+                    if req_base_rid in allowed_bases:
+                        already_cooking = any(
+                            getattr(sl, "recipe_id", None) == req_base_rid and getattr(sl, "state", "") != "IDLE"
+                            for sl in getattr(st, "slots", [])
+                        )
+                        if not already_cooking:
+                            started_slot = st.start_cooking_recipe(req_base_rid)
+                            if started_slot is not None:
+                                return {
+                                    "action": "invalid_topping",
+                                    "topping_id": topping_id,
+                                    "message": f"🔥 [{base_name}] #{started_slot.slot_index + 1}번 칸 자동 조리 시작! 완성 후 토핑하세요!",
+                                }
+                        return {
+                            "action": "invalid_topping",
+                            "topping_id": topping_id,
+                            "message": f"⏳ [{base_name}] 조리 중! 완성 후 터치하면 즉시 토핑·서빙됩니다!",
+                        }
 
         return {
             "action": "invalid_topping",
@@ -482,6 +651,8 @@ class AssemblyTray:
         pos: Tuple[int, int],
         auto_serve_cb: Optional[Callable[..., Any]] = None,
         button: int = 1,
+        customers: Optional[Iterable[Any]] = None,
+        source_stations: Optional[Iterable[Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         조립 트레이 클릭 인터랙션을 처리한다.
@@ -489,7 +660,8 @@ class AssemblyTray:
           * 우클릭(button == 3), [X] 배지 클릭, 또는 [🗑️ 버리기 모드] 활성 상태: 해당 접시 음식 1개 즉시 폐기(원가 손실 발생).
           * 좌클릭(button == 1): auto_serve_cb(dish.recipe_id, slot_center)를 호출해
             해당 메뉴를 기다리는 손님에게 스택에서 1개 즉시 자동 서빙!
-        - 토핑 버튼 클릭(inflate(8, 8)): 선택된 슬롯(우선) 또는 첫 번째 가능 슬롯의 음식 1개에 토핑 추가(스택 분리/병합).
+        - 토핑 버튼 클릭(inflate(8, 8)): 선택된 슬롯(우선) 또는 화로 완성 슬롯의 음식 1개에 토핑을 얹고,
+          주문 손님이 있으면 원터치로 즉시 자동 서빙!
         - 휴지통 버튼 클릭: 선택된/첫 번째 접시 음식 1개 폐기 또는 [🗑️ 버리기 모드] 토글.
         """
         self._ensure_layout()
@@ -499,9 +671,9 @@ class AssemblyTray:
         if not self.rect.inflate(8, 8).collidepoint(pos):
             return None
 
-        # 1. 접시 슬롯 클릭 확인 (우측 상단 30x30 [X] 배지 + 버리기 모드 + 슬롯 터치 판정 여유 확보)
+        # 1. 접시 슬롯 클릭 확인 (우측 상단 [X] 배지 + 버리기 모드 + 슬롯 터치 판정 여유 확보)
         for idx, s_rect in enumerate(self.slot_rects):
-            if not s_rect.inflate(8, 8).collidepoint(pos):
+            if not s_rect.inflate(6, 6).collidepoint(pos):
                 continue
 
             dish = self.dishes[idx] if idx < len(self.dishes) else None
@@ -513,10 +685,10 @@ class AssemblyTray:
                     "slot_index": idx,
                 }
 
-            # 모바일 원터치 폐기: 접시 우측 상단 [X] 배지(30x30) 터치, 버리기 모드 ON, 또는 우클릭(button == 3) 시 1개 폐기
-            del_w = 40 if self.rect.height >= 500 else 28
-            del_badge_rect = pygame.Rect(s_rect.right - del_w - 4, s_rect.y + 4, del_w, del_w)
-            if button == 3 or self.trash_mode or del_badge_rect.inflate(8, 8).collidepoint(pos):
+            is_compact = s_rect.height < 88 or s_rect.width < 115
+            del_w = 36 if self.rect.height >= 500 else (22 if is_compact else 28)
+            del_badge_rect = pygame.Rect(s_rect.right - del_w - 3, s_rect.y + 3, del_w, del_w)
+            if button == 3 or self.trash_mode or del_badge_rect.inflate(6, 6).collidepoint(pos):
                 self.trash_mode = False
                 return self._trash_one_from_slot(idx)
 
@@ -551,7 +723,12 @@ class AssemblyTray:
         # 2. 토핑 버튼 터치 확인 (엄지손가락 오터치 방지 inflate(8, 8))
         for btn_rect, tid in self.topping_buttons:
             if btn_rect.inflate(8, 8).collidepoint(pos):
-                return self.apply_topping(tid)
+                return self.apply_topping(
+                    tid,
+                    auto_serve_cb=auto_serve_cb,
+                    customers=customers,
+                    source_stations=source_stations,
+                )
 
         # 3. [🗑️ 버리기 모드] 토글 버튼 터치 확인
         if self.trash_mode_rect.inflate(6, 6).collidepoint(pos):
@@ -586,13 +763,14 @@ class AssemblyTray:
 
         total_cnt = self.get_total_dish_count()
         total_cost = self.get_total_stock_cost()
+        occupied_types = sum(1 for d in self.dishes if d is not None)
 
-        # 상단 헤더 (재고 수량 및 마감 시 예상 원가 손실 실시간 표시)
+        # 상단 헤더 (재고 수량, 종류 수 및 마감 시 예상 원가 손실 실시간 표시)
         header_rect = pygame.Rect(
             self.rect.x + (6 if is_giant else 4),
             self.rect.y + (6 if is_giant else 4),
             self.rect.width - (12 if is_giant else 8),
-            52 if is_giant else 30,
+            50 if is_giant else 28,
         )
         pygame.draw.rect(surface, (62, 42, 32), header_rect, border_radius=10 if is_giant else 8)
         pygame.draw.rect(surface, config.GOLD, header_rect, width=2 if is_giant else 1, border_radius=10 if is_giant else 8)
@@ -603,46 +781,48 @@ class AssemblyTray:
                 else 1
             )
             if total_cnt > 0:
-                hdr_txt = f"🍱 Lv.{lvl} 조립 트레이 · 적재 재고 {total_cnt}개 (미판매 시 원가 -{total_cost:,}원)"
+                hdr_txt = f"🍱 Lv.{lvl} 음식 대기 {occupied_types}종 ({total_cnt}개) · 미판매 원가 -{total_cost:,}원"
                 hdr_col = (255, 162, 128) if total_cnt >= 4 else config.GOLD
             else:
-                hdr_txt = f"🍱 Lv.{lvl} 조립 & 서빙 트레이 (동일 메뉴 무한 적재)"
+                hdr_txt = f"🍱 Lv.{lvl} 조립 & 음식 대기 트레이 (다품종 4~8종+ 무한 적재)"
                 hdr_col = config.GOLD
-            m_font = config.get_font(19, bold=True)
+            m_font = config.get_font(18, bold=True)
             if m_font.size(hdr_txt)[0] > header_rect.width - 16:
-                m_font = config.get_font(17, bold=True)
+                m_font = config.get_font(15, bold=True)
             m_surf = m_font.render(hdr_txt, True, hdr_col)
             surface.blit(m_surf, m_surf.get_rect(center=header_rect.center))
-        elif is_mobile:
+        elif is_mobile or self.rect.width >= 520:
             lvl = (
                 int(self.game_mgr.get_station_level("tray"))
                 if (self.game_mgr and hasattr(self.game_mgr, "get_station_level"))
                 else 1
             )
             if total_cnt > 0:
-                hdr_txt = f"🍱 Lv.{lvl} · 재고 {total_cnt}개 (원가 -{total_cost:,}원)"
+                hdr_txt = f"🍱 음식 대기 {occupied_types}종 · 총 {total_cnt}개 (미판매 시 -{total_cost:,}원) · 터치 즉시서빙"
                 hdr_col = (255, 162, 128) if total_cnt >= 4 else config.GOLD
             else:
-                hdr_txt = f"🍱 Lv.{lvl} · 동일 메뉴 무한 적재"
+                hdr_txt = f"🍱 ③ 원터치 토핑 & 음식 대기 트레이 (Lv.{lvl} · 토핑 터치 시 즉시 조립·서빙!)"
                 hdr_col = config.GOLD
             m_font = config.get_font(13, bold=True)
+            if m_font.size(hdr_txt)[0] > header_rect.width - 12:
+                m_font = config.get_font(12, bold=True)
             m_surf = m_font.render(hdr_txt, True, hdr_col)
             surface.blit(m_surf, m_surf.get_rect(center=header_rect.center))
         else:
-            title_font = config.get_font(14, bold=True)
+            title_font = config.get_font(13, bold=True)
             if total_cnt > 0:
-                raw_title = f"🍱 적재 재고 {total_cnt}개 (마감 미판매 시 원가 -{total_cost:,}원)"
+                raw_title = f"🍱 대기 {occupied_types}종/{total_cnt}개 (미판매 시 -{total_cost:,}원)"
                 hdr_col = (255, 162, 128) if total_cnt >= 4 else config.GOLD
             elif self.game_mgr and str(getattr(self.game_mgr, "mode", "")).upper() == "SPECIALIST":
                 spec_title = str(self.game_mgr.get_selected_specialist_data().get("tray_title", "③ 토핑·소스 & 포장 서빙대"))
-                raw_title = f"{spec_title} (무한 적재)"
+                raw_title = f"{spec_title} (다품종 적재)"
                 hdr_col = config.GOLD
             else:
-                raw_title = "🍱 조립 & 서빙 트레이 (동일 메뉴 무한 적재)"
+                raw_title = "🍱 조립 & 서빙 트레이 (다품종 무한 적재)"
                 hdr_col = config.GOLD
             title_surf = title_font.render(raw_title, True, hdr_col)
             if title_surf.get_width() > header_rect.width - 10:
-                title_surf = config.get_font(12, bold=True).render(raw_title, True, hdr_col)
+                title_surf = config.get_font(11, bold=True).render(raw_title, True, hdr_col)
             surface.blit(
                 title_surf,
                 (
@@ -651,103 +831,122 @@ class AssemblyTray:
                 ),
             )
 
-        font_sm = config.get_font(17 if is_giant else 14, bold=True)
-        font_xs = config.get_font(16 if is_giant else 14, bold=True)
+        font_xs = config.get_font(15 if is_giant else 12, bold=True)
 
-        # 1. 접시 슬롯 렌더링
+        # 1. 접시 슬롯 렌더링 (4종~12종 이상 다품종 대기 시에도 아이콘·수량·메뉴명이 겹치지 않도록 자동 스케일링)
         for idx, s_rect in enumerate(self.slot_rects):
             is_sel = idx == self.selected_slot
+            is_compact = s_rect.height < 88 or s_rect.width < 115
             draw_station_hardware(surface, s_rect, station_type="tray")
             border_col = config.NEON_YELLOW if is_sel else (112, 92, 74)
-            pygame.draw.rect(surface, border_col, s_rect, width=3 if is_sel else 2, border_radius=12 if is_giant else 9)
+            pygame.draw.rect(surface, border_col, s_rect, width=2 if is_sel else 1, border_radius=10 if is_giant else 8)
 
             dish = self.dishes[idx] if idx < len(self.dishes) else None
             if dish is not None:
-                icon_size = min(96 if is_giant else 56, max(38, min(s_rect.width, s_rect.height) - (38 if is_giant else 20)))
+                lbl_h = 28 if is_giant else (17 if is_compact else 21)
+                badge_h = 28 if is_giant else (18 if is_compact else 22)
+                del_w = 32 if is_giant else (20 if is_compact else 24)
+                avail_icon_h = max(22, s_rect.height - lbl_h - 6)
+                icon_size = min(
+                    84 if is_giant else (38 if is_compact else 52),
+                    max(24, min(s_rect.width - 10, avail_icon_h)),
+                )
+                icon_cy = s_rect.y + avail_icon_h // 2 + (2 if is_compact else 0)
+
                 # 다중 스택(x2 이상)일 때 접시 겹침 연출
                 if dish.quantity > 1:
-                    stack_layers = min(3, dish.quantity - 1)
+                    stack_layers = min(2 if is_compact else 3, dish.quantity - 1)
                     for s_lv in range(stack_layers, 0, -1):
                         pygame.draw.circle(
                             surface,
                             (218, 206, 188),
-                            (s_rect.centerx - s_lv * 4, s_rect.centery - (12 if is_giant else 9) + s_lv * 3),
-                            icon_size // 2 + 3,
+                            (s_rect.centerx - s_lv * 3, icon_cy + s_lv * 2),
+                            icon_size // 2 + 2,
                             width=2,
                         )
-                if (is_giant or is_mobile) and dish.has_topping:
-                    pygame.draw.circle(surface, config.GOLD, (s_rect.centerx, s_rect.centery - (12 if is_giant else 9)), icon_size // 2 + 5, width=3)
-                dish.draw(surface, (s_rect.centerx, s_rect.centery - (12 if is_giant else 9)), size=icon_size)
+                if dish.has_topping:
+                    pygame.draw.circle(surface, config.GOLD, (s_rect.centerx, icon_cy), icon_size // 2 + 3, width=2)
+                dish.draw(surface, (s_rect.centerx, icon_cy), size=icon_size)
 
-                # 좌측 상단 무한 스택 수량 배지 (x2, x5, x12...)
+                # 좌측 상단 무한 스택 수량 배지 (x1, x2, x5...)
                 qty = max(1, int(dish.quantity))
                 qty_str = f"x{qty}"
-                qty_f = config.get_font((18 if qty < 10 else 16) if is_giant else (14 if qty < 10 else 13), bold=True)
-                qty_w = max(44 if is_giant else 32, qty_f.size(qty_str)[0] + (16 if is_giant else 12))
-                qty_badge = pygame.Rect(s_rect.x + 5, s_rect.y + 4, qty_w, 34 if is_giant else 26)
+                qty_f = config.get_font(
+                    (16 if qty < 10 else 14) if is_giant else ((11 if is_compact else 13) if qty < 10 else 10),
+                    bold=True,
+                )
+                qty_w = max(28 if is_giant else (22 if is_compact else 28), qty_f.size(qty_str)[0] + (10 if is_giant else 6))
+                qty_badge = pygame.Rect(s_rect.x + 3, s_rect.y + 3, qty_w, badge_h)
                 qty_bg = (228, 72, 32) if qty >= 4 else ((218, 126, 28) if qty >= 2 else (44, 58, 86))
-                pygame.draw.rect(surface, qty_bg, qty_badge, border_radius=8 if is_giant else 7)
+                pygame.draw.rect(surface, qty_bg, qty_badge, border_radius=6)
                 pygame.draw.rect(
                     surface,
                     config.GOLD if qty >= 2 else config.NEON_CYAN,
                     qty_badge,
-                    width=2 if qty >= 2 else 1,
-                    border_radius=8 if is_giant else 7,
+                    width=1,
+                    border_radius=6,
                 )
                 qty_surf = qty_f.render(qty_str, True, config.WHITE)
                 surface.blit(qty_surf, qty_surf.get_rect(center=qty_badge.center))
 
                 # 우측 상단 모바일 원터치 폐기 [✕] 배지
-                del_w = 38 if is_giant else 28
-                del_badge = pygame.Rect(s_rect.right - del_w - 4, s_rect.y + 4, del_w, del_w)
-                pygame.draw.rect(surface, (228, 42, 52) if self.trash_mode else (196, 36, 46), del_badge, border_radius=8 if is_giant else 7)
-                pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.WHITE, del_badge, width=2, border_radius=8 if is_giant else 7)
-                x_s = config.get_font(19 if is_giant else 15, bold=True).render("✕", True, config.WHITE)
+                del_badge = pygame.Rect(s_rect.right - del_w - 3, s_rect.y + 3, del_w, badge_h)
+                pygame.draw.rect(surface, (228, 42, 52) if self.trash_mode else (196, 36, 46), del_badge, border_radius=6)
+                pygame.draw.rect(surface, config.GOLD if self.trash_mode else config.WHITE, del_badge, width=1, border_radius=6)
+                x_s = config.get_font(16 if is_giant else (11 if is_compact else 13), bold=True).render("✕", True, config.WHITE)
                 surface.blit(x_s, x_s.get_rect(center=del_badge.center))
 
                 # 0.35초 롱프레스 진행 중일 때 게이지 표시
                 if self.hold_slot_idx == idx and self.hold_timer > 0.04:
                     hold_ratio = min(1.0, self.hold_timer / max(0.1, self.LONG_PRESS_DURATION))
-                    hbar = pygame.Rect(s_rect.x + 6, s_rect.y + 6, s_rect.width - (48 if is_giant else 38), 14 if is_giant else 12)
-                    pygame.draw.rect(surface, (24, 18, 28), hbar, border_radius=6)
-                    pygame.draw.rect(surface, config.RED, (hbar.x, hbar.y, int(hbar.width * hold_ratio), hbar.height), border_radius=6)
-                    pygame.draw.rect(surface, config.WHITE, hbar, width=2, border_radius=6)
+                    hbar = pygame.Rect(s_rect.x + 4, s_rect.y + 4, max(20, s_rect.width - del_w - 10), 10)
+                    pygame.draw.rect(surface, (24, 18, 28), hbar, border_radius=5)
+                    pygame.draw.rect(surface, config.RED, (hbar.x, hbar.y, int(hbar.width * hold_ratio), hbar.height), border_radius=5)
+                    pygame.draw.rect(surface, config.WHITE, hbar, width=1, border_radius=5)
 
                 name_txt = (
+                    dish.name.replace("갈릭버터 큐브스테이크", "갈릭스테이크")
+                    .replace("오리지널 큐브스테이크", "큐브스테이크")
+                    .replace("스위트 칠리 지파이", "칠리지파이")
+                    .replace("마라 시즈닝 지파이", "마라지파이")
+                    .replace("크리스피 대왕 지파이", "대왕지파이")
+                    .replace(" 붕어빵", "붕어")
+                    .replace(" 어묵", "어묵")
+                ) if is_compact else (
                     dish.name.replace("갈릭버터 큐브스테이크", "갈릭 큐브스테이크")
                     .replace("오리지널 큐브스테이크", "큐브스테이크")
                     .replace("스위트 칠리 지파이", "칠리 지파이")
                     .replace("마라 시즈닝 지파이", "마라 지파이")
                     .replace("크리스피 대왕 지파이", "대왕 지파이")
                 )
-                lbl_h = 34 if is_giant else 22
-                lbl_bg = pygame.Rect(s_rect.x + 4, s_rect.bottom - lbl_h - 4, s_rect.width - 8, lbl_h)
-                pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=8 if is_giant else 6)
-                pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=8 if is_giant else 6)
+                lbl_bg = pygame.Rect(s_rect.x + 3, s_rect.bottom - lbl_h - 2, s_rect.width - 6, lbl_h)
+                pygame.draw.rect(surface, (18, 14, 26), lbl_bg, border_radius=6)
+                pygame.draw.rect(surface, config.GOLD if dish.has_topping else config.UI_BORDER, lbl_bg, width=1, border_radius=6)
                 dish_font = font_xs
-                sz_list = (17, 16, 15, 14, 13) if is_giant else (14, 13, 12, 11, 10)
+                sz_list = (16, 15, 14, 13, 12) if is_giant else ((12, 11, 10) if is_compact else (13, 12, 11, 10))
                 for f_sz in sz_list:
                     dish_font = config.get_font(f_sz, bold=True)
-                    if dish_font.size(name_txt)[0] <= lbl_bg.width - 8:
+                    if dish_font.size(name_txt)[0] <= lbl_bg.width - 6:
                         break
+                if dish_font.size(name_txt)[0] > lbl_bg.width - 4:
+                    while len(name_txt) > 3 and dish_font.size(name_txt)[0] > lbl_bg.width - 6:
+                        name_txt = name_txt[:-1]
                 lbl_surf = dish_font.render(name_txt, True, config.GOLD if dish.has_topping else config.WHITE)
                 surface.blit(
                     lbl_surf,
                     (lbl_bg.centerx - lbl_surf.get_width() // 2, lbl_bg.centery - lbl_surf.get_height() // 2),
                 )
             else:
-                if is_mobile and not is_giant:
-                    pygame.draw.circle(surface, (46, 38, 58), s_rect.center, 14, width=2)
-                else:
-                    pw = 128 if is_giant else 84
-                    ph = 36 if is_giant else 26
-                    empty_pill = pygame.Rect(s_rect.centerx - pw // 2, s_rect.centery - ph // 2, pw, ph)
-                    pygame.draw.rect(surface, (34, 28, 44), empty_pill, border_radius=8 if is_giant else 7)
-                    empty_surf = font_xs.render(f"빈 접시 {idx + 1}", True, (210, 198, 226))
-                    surface.blit(
-                        empty_surf,
-                        (empty_pill.centerx - empty_surf.get_width() // 2, empty_pill.centery - empty_surf.get_height() // 2),
-                    )
+                pw = min(s_rect.width - 10, 110 if is_giant else (64 if is_compact else 80))
+                ph = 30 if is_giant else (20 if is_compact else 24)
+                empty_pill = pygame.Rect(s_rect.centerx - pw // 2, s_rect.centery - ph // 2, pw, ph)
+                pygame.draw.rect(surface, (34, 28, 44), empty_pill, border_radius=6)
+                e_font = config.get_font(14 if is_giant else (11 if is_compact else 12), bold=True)
+                empty_surf = e_font.render(f"대기칸 {idx + 1}", True, (192, 182, 212))
+                surface.blit(
+                    empty_surf,
+                    (empty_pill.centerx - empty_surf.get_width() // 2, empty_pill.centery - empty_surf.get_height() // 2),
+                )
 
         # 2. 토핑 버튼 렌더링 (스토리 모드 Day 1~2에서 토핑 미해금 시 안내 배너 표시)
         toppings_unlocked = not (

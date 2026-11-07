@@ -85,19 +85,20 @@ class SpecialistStation:
         self._rebuild_layout()
 
     def _rebuild_layout(self) -> None:
-        # 1. 좌측 패널: 베이스 속재료/육수/원육 선택 버튼 (2열 그리드)
+        # 1. 좌측(또는 세로 상단 통합) 패널: 베이스 속재료/육수/원육 선택 버튼
         base_rids: List[str] = list(self.spec_data.get("base_recipes", []))
         self.recipe_buttons.clear()
         in_r = self.input_rect
         is_giant_in = in_r.height >= 500
-        pad_x, pad_y = (14, 12) if is_giant_in else (10, 8)
-        top_y = in_r.y + (66 if is_giant_in else 42)
-        avail_h = in_r.height - (78 if is_giant_in else 50)
+        is_compact_bar = in_r.height < 220
+        pad_x, pad_y = (14, 12) if is_giant_in else ((8, 5) if is_compact_bar else (10, 8))
+        top_y = in_r.y + (66 if is_giant_in else (34 if is_compact_bar else 42))
+        avail_h = in_r.height - (78 if is_giant_in else (38 if is_compact_bar else 50))
         cnt = max(1, len(base_rids))
-        cols = 2
+        cols = (3 if cnt > 4 else 2) if (is_compact_bar and in_r.width >= 500) else 2
         rows = max(1, (cnt + cols - 1) // cols)
-        btn_w = (in_r.width - pad_x * (cols + 1)) // cols
-        btn_h = (avail_h - pad_y * (rows + 1)) // rows
+        btn_w = max(60, (in_r.width - pad_x * (cols + 1)) // cols)
+        btn_h = max(36, (avail_h - pad_y * (rows + 1)) // rows)
 
         for idx, rid in enumerate(base_rids):
             c = idx % cols
@@ -106,19 +107,19 @@ class SpecialistStation:
             by = top_y + pad_y + r * (btn_h + pad_y)
             self.recipe_buttons.append((pygame.Rect(bx, by, btn_w, btn_h), rid))
 
-        # 2. 우측 패널: 6구 초대형 장인 전용 화로 (3열 × 2행 그리드)
+        # 2. 우측(또는 세로 중단 통합) 패널: 6구 초대형 장인 전용 화로 (3열 × 2행 그리드)
         # 붕어빵 타이쿤 모드(slot_type == "mold")일 때는 좌측에 빨간 화력 펌프(28px) 공간을 확보한다.
         ap_r = self.appliance_rect
         is_giant_ap = ap_r.height >= 500
         pump_margin = (36 if is_giant_ap else 26) if self.slot_type == "mold" else 0
-        s_pad_x, s_pad_y = (12, 14) if is_giant_ap else (8, 10)
+        s_pad_x, s_pad_y = (12, 14) if is_giant_ap else (8, 8)
         s_left_x = ap_r.x + pump_margin
         s_avail_w = ap_r.width - pump_margin
-        s_top_y = ap_r.y + (66 if is_giant_ap else 42)
-        s_avail_h = ap_r.height - (78 if is_giant_ap else 50)
+        s_top_y = ap_r.y + (66 if is_giant_ap else 38)
+        s_avail_h = ap_r.height - (78 if is_giant_ap else 44)
         s_cols, s_rows = 3, 2
-        slot_w = (s_avail_w - s_pad_x * (s_cols + 1)) // s_cols
-        slot_h = (s_avail_h - s_pad_y * (s_rows + 1)) // s_rows
+        slot_w = max(56, (s_avail_w - s_pad_x * (s_cols + 1)) // s_cols)
+        slot_h = max(56, (s_avail_h - s_pad_y * (s_rows + 1)) // s_rows)
 
         while len(self.slots) < 6:
             self.slots.append(StationSlot(slot_index=len(self.slots), can_burn=True))
@@ -218,44 +219,19 @@ class SpecialistStation:
     ) -> Optional[Dict[str, Any]]:
         """
         좌측 속재료 버튼 또는 우측 6구 화로 슬롯 터치를 처리한다.
-        - slot_type == "mold" (『붕어빵 타이쿤』 모드):
-          ① 좌측 버튼 터치 시: 손에 쥘 속재료(팥/슈크림/피자치즈/고구마/초코/김치)를 변경한다.
-             (만약 우측 빈 칸을 먼저 지정해 둔 상태였다면 해당 칸에 즉시 반죽+속재료를 붓는다.)
-          ② 우측 빈 틀(#1~#6) 터치 시: 현재 선택된 속재료+생반죽을 그 칸에 직접 붓는다!
-          ③ 우측 조리 중 틀 터치 시: 앞면(50%)이 익었으면 틀을 '뒤집기(flip_mold)' 한다!
-          ④ 우측 황금빛 완성 틀 터치 시: 붕어빵을 꺼내 서빙하거나 트레이로 옮긴다!
+        - 원터치 편의성 강화:
+          ① 속재료/육수/원육 버튼 터치 시 해당 맛을 선택함과 동시에 빈 화로 칸(#1~#6)에 즉시 투입하여 조리를 시작한다!
+          ② 6구 화로의 빈 칸(#1~#6)을 직접 터치해도 현재 선택된 속재료로 즉시 조리를 시작한다!
+          ③ 조리 중 틀 터치 시 앞면(50%)이 익었으면 틀을 '뒤집기(flip_mold)' 한다!
+          ④ 완성 틀 터치 시 주문 손님에게 즉시 자동 서빙하거나 트레이로 옮긴다!
         """
         is_mold = (self.slot_type == "mold")
 
-        # 1. 좌측 속재료/육수/원육 선택 버튼 클릭 확인
+        # 1. 좌측(또는 상단) 속재료/육수/원육 선택 버튼 클릭 확인 -> 선택과 동시에 빈 화로 슬롯에 원터치 즉시 투입!
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             if btn_rect.inflate(6, 6).collidepoint(pos):
                 self.selected_recipe_index = idx
-                if is_mold:
-                    # 만약 우측에서 특정 빈 틀을 먼저 찍어둔 상태라면 즉시 그 칸에 붓기
-                    if (
-                        self.selected_slot_index is not None
-                        and 0 <= self.selected_slot_index < len(self.slots)
-                        and self.slots[self.selected_slot_index].state == STATE_IDLE
-                    ):
-                        slot = self.start_cooking_recipe(rid, target_slot_index=self.selected_slot_index)
-                        if slot is not None:
-                            return {
-                                "action": "start_cook",
-                                "slot_type": self.slot_type,
-                                "recipe_id": rid,
-                                "slot_index": slot.slot_index,
-                            }
-                    rec = RECIPES.get(rid)
-                    r_name = str(rec["name"]) if rec else rid
-                    return {
-                        "action": "select_recipe",
-                        "slot_type": self.slot_type,
-                        "recipe_id": rid,
-                        "message": f"🥣 [{r_name}] 속재료 선택 완료! 우측 빈 붕어틀(1~6)을 터치해 반죽을 부으세요!",
-                    }
-
-                slot = self.start_cooking_recipe(rid)
+                slot = self.start_cooking_recipe(rid, target_slot_index=self.selected_slot_index)
                 if slot is not None:
                     return {
                         "action": "start_cook",
@@ -263,10 +239,13 @@ class SpecialistStation:
                         "recipe_id": rid,
                         "slot_index": slot.slot_index,
                     }
+                rec = RECIPES.get(rid)
+                r_name = str(rec["name"]) if rec else rid
                 return {
                     "action": "no_empty_slot",
                     "slot_type": self.slot_type,
-                    "message": "6구 화로가 모두 조리 중입니다! 완성된 음식을 먼저 꺼내세요.",
+                    "recipe_id": rid,
+                    "message": f"🥣 [{r_name}] 선택됨 · 6구 화로가 모두 조리 중입니다!",
                 }
 
         # 2. 우측 6구 전문 화로 슬롯 클릭 확인
@@ -406,27 +385,33 @@ class SpecialistStation:
         accent_col = self.spec_data.get("accent_color", config.GOLD)
         is_mold = (self.slot_type == "mold")
         is_giant = r.height >= 500
+        is_compact_bar = r.height < 220
         is_mobile = bool(
             getattr(config, "is_mobile_ui", lambda: config.WINDOW_HEIGHT > config.WINDOW_WIDTH)()
         ) and not is_giant
 
-        pygame.draw.rect(surface, (28, 24, 42), r, border_radius=14)
-        pygame.draw.rect(surface, theme_col, r, width=3 if is_giant else 2, border_radius=14)
+        pygame.draw.rect(surface, (28, 24, 42), r, border_radius=12 if is_compact_bar else 14)
+        pygame.draw.rect(surface, theme_col, r, width=3 if is_giant else 2, border_radius=12 if is_compact_bar else 14)
 
         # 상단 헤더
-        hdr_rect = pygame.Rect(r.x + 6, r.y + 6, r.width - 12, 52 if is_giant else 30)
-        pygame.draw.rect(surface, (48, 36, 64), hdr_rect, border_radius=10 if is_giant else 8)
-        pygame.draw.rect(surface, accent_col, hdr_rect, width=2 if is_giant else 1, border_radius=10 if is_giant else 8)
-        if is_mobile:
+        hdr_h = 52 if is_giant else (24 if is_compact_bar else 30)
+        hdr_rect = pygame.Rect(r.x + 6, r.y + (4 if is_compact_bar else 6), r.width - 12, hdr_h)
+        pygame.draw.rect(surface, (48, 36, 64), hdr_rect, border_radius=8)
+        pygame.draw.rect(surface, accent_col, hdr_rect, width=2 if is_giant else 1, border_radius=8)
+        if is_compact_bar:
+            raw_t = "① 속재료·원육 원터치 투입 (터치 시 빈 화로에 즉시 조리 시작!)"
+            t_surf = config.get_font(13, bold=True).render(raw_t, True, accent_col)
+            surface.blit(t_surf, t_surf.get_rect(center=hdr_rect.center))
+        elif is_mobile:
             draw_food_icon(surface, (hdr_rect.centerx - 16, hdr_rect.centery), self.selected_recipe_id, size=24, burnt=False)
-            b_s = config.get_font(12, bold=True).render("①", True, accent_col)
-            surface.blit(b_s, b_s.get_rect(center=(hdr_rect.centerx + 14, hdr_rect.centery)))
+            b_s = config.get_font(12, bold=True).render("① 원터치 투입", True, accent_col)
+            surface.blit(b_s, b_s.get_rect(center=(hdr_rect.centerx + 26, hdr_rect.centery)))
         else:
             title_f = config.get_font(20 if is_giant else 15, bold=True)
             raw_t = (
-                "① 속재료 선택 (선택 후 ② 6구 붕어틀 탭에서 구우세요!)"
+                "① 속재료 원터치 투입 (터치 시 빈 붕어틀에 즉시 조리!)"
                 if is_mold
-                else str(self.spec_data.get("input_panel_title", "① 속재료·육수 선택"))
+                else str(self.spec_data.get("input_panel_title", "① 속재료·육수 원터치 투입"))
             )
             t_surf = title_f.render(raw_t, True, accent_col)
             if t_surf.get_width() > hdr_rect.width - 10:
@@ -434,12 +419,14 @@ class SpecialistStation:
             surface.blit(t_surf, t_surf.get_rect(center=hdr_rect.center))
 
         has_empty = any(s.state == STATE_IDLE for s in self.slots)
-        name_f = config.get_font(19 if is_giant else 15, bold=True)
+        name_f = config.get_font(19 if is_giant else (14 if is_compact_bar else 15), bold=True)
         sub_f = config.get_font(15 if is_giant else 12, bold=True)
 
         for idx, (btn_rect, rid) in enumerate(self.recipe_buttons):
             rec = RECIPES.get(rid)
             r_name = str(rec["name"]) if rec else rid
+            if is_compact_bar and btn_rect.width < 240:
+                r_name = r_name.replace(" 붕어빵", "붕어").replace(" 어묵", "어묵")
             price = self.game_mgr.get_recipe_price(rid) if hasattr(self.game_mgr, "get_recipe_price") else 3500
             r_col = rec.get("color", theme_col) if rec else theme_col
             is_selected = idx == self.selected_recipe_index
@@ -447,50 +434,55 @@ class SpecialistStation:
             if is_selected:
                 bg_col = (68, 54, 28)
                 border_col = config.NEON_CYAN
-                bw = 3
+                bw = 3 if not is_compact_bar else 2
             else:
                 bg_col = (44, 38, 68) if has_empty else (28, 25, 40)
                 border_col = accent_col if has_empty else config.UI_BORDER
-                bw = 2
-            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=12 if is_giant else 11)
-            pygame.draw.rect(surface, border_col, btn_rect, width=bw, border_radius=12 if is_giant else 11)
+                bw = 2 if not is_compact_bar else 1
+            pygame.draw.rect(surface, bg_col, btn_rect, border_radius=9 if is_compact_bar else (12 if is_giant else 11))
+            pygame.draw.rect(surface, border_col, btn_rect, width=bw, border_radius=9 if is_compact_bar else (12 if is_giant else 11))
 
-            stripe_r = pygame.Rect(btn_rect.x + 5, btn_rect.y + 8, 8 if is_giant else 6, btn_rect.height - 16)
-            pygame.draw.rect(surface, r_col, stripe_r, border_radius=4)
+            stripe_r = pygame.Rect(
+                btn_rect.x + 4,
+                btn_rect.y + (5 if is_compact_bar else 8),
+                5 if is_compact_bar else (8 if is_giant else 6),
+                btn_rect.height - (10 if is_compact_bar else 16),
+            )
+            pygame.draw.rect(surface, r_col, stripe_r, border_radius=3)
 
-            # 좌측 컬러 스트라이프 & 대형 음식 아이콘
-            icon_pos = (btn_rect.x + (52 if is_giant else 36), btn_rect.centery)
-            draw_food_icon(surface, icon_pos, rid, size=68 if is_giant else (48 if is_mobile else 46), burnt=False)
+            icon_sz = 34 if is_compact_bar else (68 if is_giant else (48 if is_mobile else 46))
+            icon_pos = (btn_rect.x + (26 if is_compact_bar else (52 if is_giant else 36)), btn_rect.centery)
+            draw_food_icon(surface, icon_pos, rid, size=icon_sz, burnt=False)
 
-            text_x = btn_rect.x + (92 if is_giant else 64)
-            max_tx_w = btn_rect.width - (100 if is_giant else 68)
+            text_x = btn_rect.x + (46 if is_compact_bar else (92 if is_giant else 64))
+            max_tx_w = btn_rect.width - (52 if is_compact_bar else (100 if is_giant else 68))
             act_nf = name_f
-            for sz in ((19, 18, 17, 16, 15) if is_giant else (16 if is_mobile else 15, 15, 14, 13, 12)):
+            for sz in ((19, 18, 17, 16, 15) if is_giant else ((14, 13, 12, 11) if is_compact_bar else (16 if is_mobile else 15, 15, 14, 13, 12))):
                 act_nf = config.get_font(sz, bold=True)
                 if act_nf.size(r_name)[0] <= max_tx_w:
                     break
             nm_col = (255, 244, 148) if is_selected else (config.WHITE if has_empty else config.TEXT_MUTED)
             nm_s = act_nf.render(r_name, True, nm_col)
+            if is_compact_bar:
+                surface.blit(nm_s, (text_x, btn_rect.y + 4))
+                sub_lbl = f"💰{price:,} · 즉시투입" if has_empty else "만석"
+                sub_s = config.get_font(11, bold=True).render(
+                    sub_lbl,
+                    True,
+                    (152, 255, 178) if has_empty else config.TEXT_SECONDARY,
+                )
+                surface.blit(sub_s, (text_x, btn_rect.bottom - sub_s.get_height() - 4))
+                continue
             if is_mobile:
                 surface.blit(nm_s, (text_x, btn_rect.centery - nm_s.get_height() // 2))
                 continue
             surface.blit(nm_s, (text_x, btn_rect.centery - (28 if is_giant else 20)))
 
-            # 우측 하단 가격 & 터치 투입 배지
+            # 우측 하단 가격 & 원터치 투입 배지
             pill_r = pygame.Rect(text_x, btn_rect.centery + (6 if is_giant else 4), max_tx_w - 4, 32 if is_giant else 22)
-            if is_mold:
-                if is_selected:
-                    pygame.draw.rect(surface, (18, 128, 152), pill_r, border_radius=8 if is_giant else 6)
-                    lbl_str = "✔ 선택됨 · 화로에서 터치!"
-                    p_s = sub_f.render(lbl_str, True, config.WHITE)
-                else:
-                    pygame.draw.rect(surface, (42, 46, 66), pill_r, border_radius=8 if is_giant else 6)
-                    lbl_str = f"💰{price:,}원 · 속 선택"
-                    p_s = sub_f.render(lbl_str, True, (210, 220, 245))
-            else:
-                pygame.draw.rect(surface, (24, 92, 56) if has_empty else (46, 42, 58), pill_r, border_radius=8 if is_giant else 6)
-                lbl_str = f"💰{price:,}원 · 즉시 투입" if has_empty else "화로 만석"
-                p_s = sub_f.render(lbl_str, True, (152, 255, 178) if has_empty else config.TEXT_SECONDARY)
+            pygame.draw.rect(surface, (24, 92, 56) if has_empty else (46, 42, 58), pill_r, border_radius=8 if is_giant else 6)
+            lbl_str = f"💰{price:,}원 · 즉시 투입" if has_empty else "화로 만석"
+            p_s = sub_f.render(lbl_str, True, (152, 255, 178) if has_empty else config.TEXT_SECONDARY)
             surface.blit(p_s, p_s.get_rect(center=pill_r.center))
 
     def _draw_appliance_panel(self, surface: pygame.Surface, time_tick: float) -> None:
@@ -513,33 +505,21 @@ class SpecialistStation:
             pygame.draw.rect(surface, accent_col, r, width=3 if is_giant else 2, border_radius=14)
 
         # 상단 헤더 (업그레이드 레벨 표시 포함)
-        hdr_rect = pygame.Rect(r.x + 6, r.y + 6, r.width - 12, 52 if is_giant else 30)
+        hdr_rect = pygame.Rect(r.x + 6, r.y + 5, r.width - 12, 52 if is_giant else 28)
         pygame.draw.rect(surface, (44, 34, 30) if is_mold else (56, 38, 34), hdr_rect, border_radius=10 if is_giant else 8)
         pygame.draw.rect(surface, config.GOLD, hdr_rect, width=2 if is_giant else 1, border_radius=10 if is_giant else 8)
         lvl = self.game_mgr.get_station_level(self.slot_type)
-        if is_mobile:
-            sel_rec = RECIPES.get(self.selected_recipe_id)
-            sel_nm_hdr = str(sel_rec["name"]) if sel_rec else "단팥 붕어빵"
-            draw_food_icon(surface, (hdr_rect.x + 22, hdr_rect.centery), self.selected_recipe_id, size=24, burnt=False)
-            nm_hdr_s = config.get_font(14, bold=True).render(sel_nm_hdr, True, config.GOLD)
-            surface.blit(nm_hdr_s, (hdr_rect.x + 38, hdr_rect.centery - nm_hdr_s.get_height() // 2))
-            lv_badge = pygame.Rect(hdr_rect.right - 48, hdr_rect.y + 4, 42, 22)
-            pygame.draw.rect(surface, (18, 16, 28), lv_badge, border_radius=6)
-            pygame.draw.rect(surface, config.GOLD, lv_badge, width=1, border_radius=6)
-            lv_s = config.get_font(12, bold=True).render(f"Lv.{lvl}", True, config.GOLD)
-            surface.blit(lv_s, lv_s.get_rect(center=lv_badge.center))
+        sel_rec = RECIPES.get(self.selected_recipe_id)
+        sel_nm = str(sel_rec["name"]) if sel_rec else "단팥 붕어빵"
+        if is_mold:
+            raw_t = f"② 6구 주물 붕어빵틀 (Lv.{lvl}) · 현재 속: [{sel_nm}] (터치 시 뒤집기/즉시서빙)"
         else:
-            sel_rec = RECIPES.get(self.selected_recipe_id)
-            sel_nm = str(sel_rec["name"]) if sel_rec else "단팥 붕어빵"
-            if is_mold:
-                raw_t = f"② 6구 주물 붕어빵틀 (Lv.{lvl}) · 현재 속: [{sel_nm}]"
-            else:
-                raw_t = f"{self.spec_data.get('appliance_title', '② 6구 장인 전용 화로')} (Lv.{lvl}) · [{sel_nm}]"
-            title_f = config.get_font(19 if is_giant else (14 if is_mold else 15), bold=True)
-            t_surf = title_f.render(raw_t, True, config.GOLD)
-            if t_surf.get_width() > hdr_rect.width - 10:
-                t_surf = config.get_font(15 if is_giant else 12, bold=True).render(raw_t, True, config.GOLD)
-            surface.blit(t_surf, t_surf.get_rect(center=hdr_rect.center))
+            raw_t = f"{self.spec_data.get('appliance_title', '② 6구 장인 전용 화로')} (Lv.{lvl}) · [{sel_nm}]"
+        title_f = config.get_font(19 if is_giant else 13, bold=True)
+        t_surf = title_f.render(raw_t, True, config.GOLD)
+        if t_surf.get_width() > hdr_rect.width - 10:
+            t_surf = config.get_font(15 if is_giant else 12, bold=True).render(raw_t, True, config.GOLD)
+        surface.blit(t_surf, t_surf.get_rect(center=hdr_rect.center))
 
         if is_mold:
             # 좌측 화력 펌프 & 압력 게이지 (원작 붕어빵 타이쿤 오마주!)
