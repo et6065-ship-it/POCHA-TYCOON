@@ -1,7 +1,7 @@
 {
   "name": "GAME LAUNCHER : 장기 · 체스 · 블록 블라스트",
   "short_name": "게임런처",
-  "description": "중세 배틀 장기 · 중세 배틀 체스 · 무광고 블록 블라스트 통합 런처",
+  "description": "중세 배틀 장기 · 중세 배틀 체스 · 블록 블라스트 통합 런처",
   "start_url": "./arcade.html",
   "scope": "./",
   "display": "standalone",

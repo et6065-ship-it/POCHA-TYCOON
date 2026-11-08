@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#131829" />
   <link rel="manifest" href="./manifest.json" />
-  <title>💎 블록 블라스트 : 클래식 마스터 (BLOCK BLAST AD-FREE HD PIXEL)</title>
+  <title>💎 블록 블라스트 : 클래식 마스터 [HD PIXEL]</title>
   <link rel="stylesheet" href="./src/css/style.css" />
   <style>
     body.blockblast-body {
@@ -456,16 +456,15 @@
       <div class="brand-crest" title="Block Blast HD Pixel">💎</div>
       <div class="brand-titles">
         <h1>블록 블라스트 : 클래식 마스터</h1>
-        <p>8×8 도트 보석 퍼즐 × 3턴 유예 하트비트 콤보 · 광고 0% 에디션</p>
+        <p>8×8 HD 도트 보석 퍼즐 × 3턴 유예 하트비트 콤보</p>
       </div>
-      <span class="bb-adfree-pill">🚫 NO ADS · 오프라인 자동저장</span>
     </div>
 
     <div class="header-actions">
       <a href="./arcade.html" class="btn" style="text-decoration:none;" title="통합 게임 런처로 돌아가기">🎮 런처</a>
       <a href="./index.html?game=janggi" class="btn" style="text-decoration:none;" title="중세 배틀 장기 실행">🇰🇷 장기</a>
       <a href="./chess.html" class="btn" style="text-decoration:none;" title="중세 배틀 체스 실행">♟️ 체스</a>
-      <button type="button" class="btn" id="btn-bb-fit" title="네이버 앱·모바일 하단 컨트롤바에 가리지 않도록 화면 크기를 조절합니다">📐 화면맞춤</button>
+      <button type="button" class="btn" id="btn-bb-fit" title="모바일 하단 컨트롤바에 가리지 않도록 화면 크기를 조절합니다">📐 화면맞춤</button>
       <button type="button" class="btn btn-gold" id="btn-bb-sound">🔊 사운드</button>
       <button type="button" class="btn btn-emerald" id="btn-bb-restart">🔄 새 게임</button>
     </div>
@@ -516,7 +515,7 @@
       </div>
     </section>
 
-    <!-- [중앙 메인 스테이지: 스코어 배너 + 8x8 보드 & 3블록 트레이 + 무광고 아이템] -->
+    <!-- [중앙 메인 스테이지: 스코어 배너 + 8x8 보드 & 3블록 트레이 + 전술 아이템] -->
     <section class="bb-center-column">
 
       <!-- 상단 점수 & 하트비트 콤보 배너 -->
@@ -547,10 +546,9 @@
         <div class="bb-canvas-wrap">
           <canvas id="bb-main-canvas" width="520" height="708"></canvas>
 
-          <!-- 게임 오버 오버레이 (광고 없이 즉시 폭탄 구조 또는 0.1초 재시작) -->
+          <!-- 게임 오버 오버레이 -->
           <div class="bb-gameover-overlay" id="bb-gameover-overlay">
             <div class="bb-gameover-box">
-              <div class="bb-adfree-pill" style="align-self:center;">🚫 광고 없음 · 즉시 선택</div>
               <div class="bb-gameover-title">NO MORE MOVES!</div>
               <p style="font-size:12.5px;color:#cbd5e1;line-height:1.45;">
                 남은 블록을 놓을 수 있는 빈 공간이 없습니다.
@@ -566,26 +564,26 @@
                 </div>
               </div>
               <button type="button" class="btn btn-gold" id="btn-go-revive" style="padding:11px;font-size:13.5px;font-weight:800;">
-                💣 광고 없이 무료 부활 (중앙 4×4 폭파 + 새 블록)
+                💣 이어하기 찬스 (중앙 4×4 폭파 + 새 블록)
               </button>
               <button type="button" class="btn btn-emerald" id="btn-go-restart" style="padding:11px;font-size:13.5px;font-weight:800;">
-                🔄 새 게임 즉시 시작
+                🔄 새 게임 시작
               </button>
             </div>
           </div>
         </div>
 
-        <!-- 광고 대체 무료 전술 아이템 3종 (2,000점마다 충전!) -->
+        <!-- 전술 아이템 3종 (2,000점마다 충전!) -->
         <div class="bb-tactical-bar">
-          <button type="button" class="btn bb-item-btn" id="btn-item-undo" title="방금 놓은 블록 1수를 되돌립니다 (실수 방지)">
+          <button type="button" class="btn bb-item-btn" id="btn-item-undo" title="방금 놓은 블록 1수를 되돌립니다">
             <span>↩️ 한 수 무르기</span>
             <span class="bb-item-sub" id="Undo-count-label">남은 횟수: 2</span>
           </button>
-          <button type="button" class="btn btn-gold bb-item-btn" id="btn-item-reroll" title="광고 시청 없이 현재 트레이의 블록 3개를 즉시 새로 뽑습니다">
+          <button type="button" class="btn btn-gold bb-item-btn" id="btn-item-reroll" title="현재 트레이의 블록 3개를 새로 뽑습니다">
             <span>🎲 블록 리롤</span>
             <span class="bb-item-sub" id="reroll-count-label">남은 횟수: 2</span>
           </button>
-          <button type="button" class="btn btn-crimson bb-item-btn" id="btn-item-bomb" title="광고 시청 없이 보드 중앙 4×4 구역의 블록을 즉시 폭파합니다">
+          <button type="button" class="btn btn-crimson bb-item-btn" id="btn-item-bomb" title="보드 중앙 4×4 구역의 블록을 즉시 폭파합니다">
             <span>💣 중앙 4×4 폭탄</span>
             <span class="bb-item-sub" id="bomb-count-label">남은 횟수: 1</span>
           </button>
@@ -618,8 +616,8 @@
             보드 위의 모든 블록을 단 한 칸도 남기지 않고 싹 비우면 <strong>+360점 보너스</strong>가 터집니다.
           </li>
           <li>
-            <strong>5. 광고 0% 보너스 충전</strong><br />
-            원작의 30초 강제 광고 대신, <strong>2,000점 달성 또는 5콤보 달성마다</strong> 무료 리롤·폭탄 아이템이 자동 충전됩니다.
+            <strong>5. 전술 아이템 보너스 충전</strong><br />
+            <strong>2,000점 달성 또는 5콤보 달성마다</strong> 리롤·폭탄·무르기 아이템이 자동 충전됩니다.
           </li>
         </ul>
       </div>
@@ -1938,7 +1936,7 @@
         playSfx('clear', Math.max(3, state.combo), 3);
         var layout = getCanvasLayout();
         spawnFloatingText(
-          isFreeRevive ? '💣 무광고 즉시 부활!' : '💣 중앙 4×4 폭파 완료!',
+          isFreeRevive ? '💣 이어하기 부활!' : '💣 중앙 4×4 폭파 완료!',
           layout.boardX + layout.boardSize * 0.5,
           layout.boardY + layout.boardSize * 0.5,
           '#fde047',
@@ -1963,7 +1961,7 @@
         dealNewTray();
         updateHUD();
         updateGameOverOverlay();
-        addLogEntry('💣 무광고 무료 부활 사용', 'REVIVE');
+        addLogEntry('💣 이어하기 부활 사용', 'REVIVE');
       });
 
       var btnFit = document.getElementById('btn-bb-fit');
