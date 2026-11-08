@@ -1,0 +1,12 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=중세 배틀체스 장기 (16-Bit Pixel Edition)
+Comment=정통 한국 장기 × 4대 중세 도트 정예병 × 해상도/사운드 옵션 지원
+Path=/var/home/janginwoo/Desktop/GAME
+Exec="/var/home/janginwoo/Desktop/GAME/Medieval_Battle_Janggi.x86_64"
+Icon=/var/home/janginwoo/Desktop/GAME/godot_project/icon.svg
+Terminal=false
+Categories=Game;StrategyGame;BoardGame;
+StartupNotify=true

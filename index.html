@@ -3,11 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>중세 배틀 체스 (Medieval Battle Chess) : 16-BIT PIXEL ART EDITION</title>
+  <title>중세 배틀 장기 &amp; 배틀 체스 : 16-BIT PIXEL ART EDITION</title>
   <link rel="stylesheet" href="./src/css/style.css" />
-  <script>
-    window.INITIAL_GAME_TYPE = 'CHESS';
-  </script>
 </head>
 <body>
 
@@ -16,25 +13,26 @@
        ======================================================================== -->
   <header class="app-header">
     <div class="brand-box">
-      <div class="brand-crest" id="brand-crest-icon">♔</div>
+      <div class="brand-crest" id="brand-crest-icon">將</div>
       <div class="brand-titles">
-        <h1 id="app-main-title">중세 배틀 체스</h1>
-        <p id="app-sub-title">정통 FIDE 서양체스 × 4대 중세 도트 정예병 스킨</p>
+        <h1 id="app-main-title">중세 배틀체스 장기</h1>
+        <p id="app-sub-title">정통 한국장기 &amp; 서양체스 × 4대 중세 도트 정예병 스킨</p>
       </div>
-      <span class="turn-pill chu-turn" id="current-turn-pill">백(WHITE) TURN · 1수</span>
+      <span class="turn-pill chu-turn" id="current-turn-pill">초(楚) TURN · 1수</span>
     </div>
 
     <!-- 장기 <-> 체스 실시간 전환 스위처 그룹 -->
     <div class="game-switcher-group" role="tablist" aria-label="게임 종목 전환">
-      <button type="button" class="btn game-switch-btn" id="btn-switch-janggi" data-game-type="JANGGI">
+      <button type="button" class="btn game-switch-btn active" id="btn-switch-janggi" data-game-type="JANGGI">
         🇰🇷 장기 (JANGGI)
       </button>
-      <button type="button" class="btn game-switch-btn active" id="btn-switch-chess" data-game-type="CHESS">
+      <button type="button" class="btn game-switch-btn" id="btn-switch-chess" data-game-type="CHESS">
         ♟️ 체스 (CHESS)
       </button>
     </div>
 
     <div class="header-actions">
+      <a href="./arcade.html" class="btn" id="btn-go-launcher" style="text-decoration:none;" title="통합 게임 런처 홈으로 이동">🎮 런처</a>
       <button type="button" class="btn btn-gold" id="btn-open-codex">📘 가이드·도감</button>
       <button type="button" class="btn btn-crimson" id="btn-open-showcase">🎬 쇼케이스</button>
       <button type="button" class="btn btn-gold" id="btn-open-settings">⚙️ 환경설정</button>
@@ -51,23 +49,23 @@
     <!-- [좌측 컬럼 / 모바일 상·하단 컴팩트 플레이어 바] -->
     <section class="panel-column left-status-column" id="left-status-column">
 
-      <!-- 흑(BLACK / HAN, 후공) 진영 상태 카드 -->
+      <!-- 한(HAN / 흑 BLACK, 후공) 진영 상태 카드 -->
       <div class="faction-card han-card" id="han-faction-card">
         <div class="faction-card-top">
           <canvas id="han-emblem-canvas" class="emblem-canvas" width="64" height="64"></canvas>
           <div class="faction-meta">
-            <span class="faction-side-badge" id="han-side-badge">흑(BLACK) · 상단 진영 · 후공</span>
+            <span class="faction-side-badge" id="han-side-badge">한(漢) · 상단 진영 · 후공</span>
             <div class="faction-name-title" id="han-faction-name">성전 기사단 (The Royal Crusaders)</div>
-            <div class="faction-sub-meta" id="han-faction-sub">진형: 정통 배치 · 후공</div>
+            <div class="faction-sub-meta" id="han-faction-sub">상차림: 외상 · 후공 (덤 +1.5점)</div>
           </div>
           <div class="score-badge">
-            <div class="score-number" id="han-score-val">39.0</div>
+            <div class="score-number" id="han-score-val">73.5</div>
             <div class="score-unit" id="han-score-unit">점수</div>
           </div>
         </div>
-        <div class="status-alert-pill" id="han-check-alert">🚨 체크(CHECK)! 흑 킹(♚)을 호위하세요!</div>
+        <div class="status-alert-pill" id="han-check-alert">🚨 장군(CHECK)! 한궁을 호위하세요!</div>
         <div class="captured-tray-label">
-          <span id="han-captured-label">⚔️ 흑(BLACK)이 포획한 백(WHITE) 기물</span>
+          <span id="han-captured-label">⚔️ 한(漢)이 포획한 초(楚) 기물</span>
         </div>
         <div class="captured-tray" id="han-captured-tray"></div>
       </div>
@@ -76,40 +74,40 @@
       <div class="card-panel power-gauge-card">
         <div class="power-bar-container">
           <div class="power-bar-labels">
-            <span id="power-chu-label" style="color:#6ee7b7;">백(WHITE) 전력</span>
-            <span id="power-diff-label" style="color:#fde047;">전력 백중세 (0.0)</span>
-            <span id="power-han-label" style="color:#fca5a5;">흑(BLACK) 전력</span>
+            <span id="power-chu-label" style="color:#6ee7b7;">초(楚) 전력</span>
+            <span id="power-diff-label" style="color:#fde047;">한 +1.5점 우세</span>
+            <span id="power-han-label" style="color:#fca5a5;">한(漢) 전력</span>
           </div>
           <div class="power-bar-track">
-            <div class="power-bar-chu" id="power-bar-chu-fill" style="width: 50%;"></div>
+            <div class="power-bar-chu" id="power-bar-chu-fill" style="width: 49.5%;"></div>
           </div>
         </div>
       </div>
 
-      <!-- 백(WHITE / CHU, 선공) 진영 상태 카드 -->
+      <!-- 초(CHU / 백 WHITE, 선공) 진영 상태 카드 -->
       <div class="faction-card chu-card active-turn" id="chu-faction-card">
         <div class="faction-card-top">
           <canvas id="chu-emblem-canvas" class="emblem-canvas" width="64" height="64"></canvas>
           <div class="faction-meta">
-            <span class="faction-side-badge" id="chu-side-badge">백(WHITE) · 하단 진영 · 선공</span>
+            <span class="faction-side-badge" id="chu-side-badge">초(楚) · 하단 진영 · 선공</span>
             <div class="faction-name-title" id="chu-faction-name">고려 천군 (Goryeo Celestial Iron Army)</div>
-            <div class="faction-sub-meta" id="chu-faction-sub">진형: 정통 배치 · 선공</div>
+            <div class="faction-sub-meta" id="chu-faction-sub">상차림: 내상 · 선공</div>
           </div>
           <div class="score-badge">
-            <div class="score-number" id="chu-score-val">39.0</div>
+            <div class="score-number" id="chu-score-val">72.0</div>
             <div class="score-unit" id="chu-score-unit">점수</div>
           </div>
         </div>
-        <div class="status-alert-pill" id="chu-check-alert">🚨 체크(CHECK)! 백 킹(♔)을 호위하세요!</div>
+        <div class="status-alert-pill" id="chu-check-alert">🚨 장군(CHECK)! 초궁을 호위하세요!</div>
         <div class="captured-tray-label">
-          <span id="chu-captured-label">⚔️ 백(WHITE)이 포획한 흑(BLACK) 기물</span>
+          <span id="chu-captured-label">⚔️ 초(楚)가 포획한 한(漢) 기물</span>
         </div>
         <div class="captured-tray" id="chu-captured-tray"></div>
       </div>
 
     </section>
 
-    <!-- [중앙 컬럼] 8x8 체스판 / 9x10 장기판 디오라마 캔버스 & 하단 핵심 전술 툴바 -->
+    <!-- [중앙 컬럼] 9x10 장기판 / 8x8 체스판 디오라마 캔버스 & 하단 핵심 전술 툴바 -->
     <section class="board-stage-column">
       <div class="board-frame">
         <canvas id="janggi-board-canvas" width="780" height="860"></canvas>
@@ -120,10 +118,10 @@
           <button type="button" class="btn" id="btn-undo-move" title="이전 착수를 되돌립니다">
             ⏪ 무르기
           </button>
-          <button type="button" class="btn" id="btn-pass-turn" title="장군/체크 상태가 아닐 때 차례를 넘기거나 캐슬링 가이드를 엽니다">
-            🏰 캐슬링 가이드
+          <button type="button" class="btn" id="btn-pass-turn" title="장군 상태가 아닐 때 차례를 한 번 넘깁니다">
+            ⏭️ 한수 쉼
           </button>
-          <button type="button" class="btn btn-gold" id="btn-declare-bikjang" disabled title="장기 모드에서 두 왕이 마주보았을 때 빅장 무승부를 선언합니다">
+          <button type="button" class="btn btn-gold" id="btn-declare-bikjang" disabled title="두 왕이 마주보았을 때 빅장 무승부를 선언합니다">
             👑 빅장 선언
           </button>
           <button type="button" class="btn btn-emerald" id="btn-toggle-3d-view" title="2.5D 입체 틸트 보드와 2D 평면 보드 시점을 전환합니다">
@@ -160,7 +158,7 @@
         </div>
         <div class="commander-briefing" id="commander-briefing-bar" style="max-width:100%;margin-bottom:8px;">
           <span class="briefing-text" id="commander-briefing-text" style="white-space:normal;line-height:1.45;">
-            백(WHITE · 하단) 선공으로 체스 대국이 시작되었습니다. 출전할 정예 기물을 선택하세요.
+            초(楚) 선공으로 대국이 시작되었습니다. 출전할 정예 기물을 선택하세요.
           </span>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -180,7 +178,7 @@
         </div>
         <div class="form-grid">
           <div class="form-field full-width">
-            <label for="chu-skin-select" id="label-chu-skin">🟦 백(WHITE · 하단 선공) 국가 정예병 테마</label>
+            <label for="chu-skin-select" id="label-chu-skin">🟦 초(楚 · 하단 선공) 국가 정예병 테마</label>
             <select id="chu-skin-select" class="select-input">
               <option value="GORYEO" selected>🇰🇷 고려 천군 (개마무사 · 신기전 화차 · 내금위)</option>
               <option value="TEMPLAR">⚔️ 성전 기사단 (그랜드 랜서 · 트레뷰셋 · 팔라딘)</option>
@@ -189,7 +187,7 @@
             </select>
           </div>
           <div class="form-field full-width">
-            <label for="han-skin-select" id="label-han-skin">🟥 흑(BLACK · 상단 후공) 국가 정예병 테마</label>
+            <label for="han-skin-select" id="label-han-skin">🟥 한(漢 · 상단 후공) 국가 정예병 테마</label>
             <select id="han-skin-select" class="select-input">
               <option value="TEMPLAR" selected>⚔️ 성전 기사단 (그랜드 랜서 · 트레뷰셋 · 팔라딘)</option>
               <option value="GORYEO">🇰🇷 고려 천군 (개마무사 · 신기전 화차 · 내금위)</option>
@@ -203,13 +201,13 @@
       <!-- 2. 대전 모드, AI 난이도, 상차림/진형 설정 -->
       <div class="card-panel">
         <div class="panel-title">
-          <span id="panel-mode-title">⚙️ 대국 모드 · AI 난이도 · 오프닝 진형</span>
+          <span id="panel-mode-title">⚙️ 대국 모드 · AI 난이도 · 4대 상차림</span>
         </div>
         <div class="form-grid">
           <div class="form-field">
             <label for="game-mode-select">대전 모드</label>
             <select id="game-mode-select" class="select-input">
-              <option value="1P_AI" selected id="opt-mode-1p">1P(백) vs AI(흑)</option>
+              <option value="1P_AI" selected id="opt-mode-1p">1P(초) vs AI(한)</option>
               <option value="2P_LOCAL">2인 로컬 교대 대전</option>
               <option value="AI_VS_AI">AI vs AI 자동 관전</option>
             </select>
@@ -217,27 +215,27 @@
           <div class="form-field">
             <label for="ai-difficulty-select">AI 지휘관 난이도</label>
             <select id="ai-difficulty-select" class="select-input">
-              <option value="EASY">초급 : 종자 (Squire)</option>
+              <option value="EASY">초급 : 신병 (Squire)</option>
               <option value="NORMAL" selected>중급 : 기사단장 (Knight)</option>
-              <option value="HARD">상급 : 대성기사 (Grandmaster)</option>
+              <option value="HARD">상급 : 대장군 (Warlord)</option>
             </select>
           </div>
           <div class="form-field">
-            <label for="chu-formation-select" id="label-chu-formation">백(WHITE) 진형</label>
+            <label for="chu-formation-select" id="label-chu-formation">초(楚) 상차림</label>
             <select id="chu-formation-select" class="select-input">
-              <option value="INNER" selected>정통 FIDE 표준 (RNBQKBNR)</option>
-              <option value="OUTER">기사단 선봉 (RBNQKNBR)</option>
-              <option value="LEFT">퀸사이드 기동 (RBNQKBNR)</option>
-              <option value="RIGHT">킹사이드 기동 (RNBQKNBR)</option>
+              <option value="INNER" selected>내상 (마·상·상·마)</option>
+              <option value="OUTER">외상 (상·마·마·상)</option>
+              <option value="LEFT">왼상 (상·마·상·마)</option>
+              <option value="RIGHT">오른상 (마·상·마·상)</option>
             </select>
           </div>
           <div class="form-field">
-            <label for="han-formation-select" id="label-han-formation">흑(BLACK) 진형</label>
+            <label for="han-formation-select" id="label-han-formation">한(漢) 상차림</label>
             <select id="han-formation-select" class="select-input">
-              <option value="INNER" selected>정통 FIDE 표준 (RNBQKBNR)</option>
-              <option value="OUTER">기사단 선봉 (RBNQKNBR)</option>
-              <option value="LEFT">퀸사이드 기동 (RBNQKBNR)</option>
-              <option value="RIGHT">킹사이드 기동 (RNBQKNBR)</option>
+              <option value="OUTER" selected>외상 (상·마·마·상)</option>
+              <option value="INNER">내상 (마·상·상·마)</option>
+              <option value="LEFT">왼상 (상·마·상·마)</option>
+              <option value="RIGHT">오른상 (마·상·마·상)</option>
             </select>
           </div>
           <div class="form-field full-width" style="display:flex;flex-direction:row;gap:6px;margin-top:4px;">
@@ -344,10 +342,10 @@
             <div class="unit-inspector">
               <canvas id="selected-unit-canvas" class="inspector-canvas" width="110" height="110"></canvas>
               <div class="inspector-details">
-                <div class="inspector-unit-name" id="inspector-unit-name">천군 여제 무신 [퀸 · ♕]</div>
-                <div class="inspector-unit-role" id="inspector-unit-role">고려 천군 · 기물 가치 9점</div>
+                <div class="inspector-unit-name" id="inspector-unit-name">개마무사 중장전차 [차 · 車]</div>
+                <div class="inspector-unit-role" id="inspector-unit-role">고려 철갑군 · 기물 가치 13점</div>
                 <div class="inspector-unit-desc" id="inspector-unit-desc">
-                  상하좌우 및 대각선 8방향으로 무제한 기동하며 전장을 지배하는 9점 최강 결전병기입니다.
+                  가로·세로 직선 무제한 돌파 및 궁성 대각선 직선 이동이 가능한 13점 결전병기입니다.
                 </div>
               </div>
             </div>
@@ -360,10 +358,10 @@
             </div>
             <div class="guide-rules-list">
               <div class="guide-rule-item">
-                <strong>♟️ 서양 체스 특수 행마:</strong> <strong>캐슬링(O-O / O-O-O)</strong>은 킹과 룩이 첫 이동 전이고 사이가 비어 있을 때 킹을 좌·우 2칸 이동하면 발동합니다. <strong>앙파상</strong>(적 폰 2칸 전진 직후 대각선 포획)과 <strong>프로모션</strong>(폰 끝줄 도달 시 퀸/룩/비숍/나이트 각성)을 완벽 지원합니다.
+                <strong>🇰🇷 한국 장기 핵심 규칙:</strong> 궁(將/楚)·사(士)는 궁성(3×3) 안에서만 이동합니다. <strong>포(包)</strong>는 다른 기물 1개를 다리 삼아 넘어야 하며(포끼리 넘기·잡기 불가), <strong>마(馬)·상(象)</strong>은 직선 첫 칸(멱)이 막히면 이동할 수 없습니다. 두 왕이 마주보면 <code>[👑 빅장 선언]</code>이 활성화됩니다.
               </div>
               <div class="guide-rule-item">
-                <strong>🇰🇷 한국 장기 핵심 규칙:</strong> 궁(將/楚)·사(士)는 궁성(3×3) 안에서만 이동합니다. <strong>포(包)</strong>는 다른 기물 1개를 다리 삼아 넘어야 하며(포끼리 넘기·잡기 불가), <strong>마(馬)·상(象)</strong>은 직선 첫 칸(멱)이 막히면 이동할 수 없습니다. 두 왕이 마주보면 <code>[👑 빅장 선언]</code>이 활성화됩니다.
+                <strong>♟️ 서양 체스 특수 행마:</strong> <strong>캐슬링(O-O / O-O-O)</strong>은 킹과 룩이 첫 이동 전이고 사이가 비어 있을 때 킹을 좌·우 2칸 이동하면 발동합니다. <strong>앙파상</strong>(적 폰 2칸 전진 직후 대각선 포획)과 <strong>프로모션</strong>(폰 끝줄 도달 시 퀸/룩/비숍/나이트 각성)을 완벽 지원합니다.
               </div>
               <div class="guide-rule-item">
                 <strong>📱 모바일 · 갤럭시 폴드 조작 안내:</strong> 기물을 터치하면 이동 가능 칸(초록/노랑)과 포획 가능 칸(빨강)이 표시됩니다. 접은 화면(커버 화면)과 펼친 화면 어디서든 위·아래로 쓸어넘기면 자연스럽게 스크롤됩니다.
@@ -433,21 +431,21 @@
           <div class="form-field">
             <label for="sc-atk-type">공격 기물(병종)</label>
             <select id="sc-atk-type" class="select-input">
-              <optgroup label="♟️ 서양 체스 병종">
-                <option value="QUEEN" selected>퀸(♕) - 여제/발키리</option>
-                <option value="ROOK">룩(♖) - 공성 성루 거병</option>
-                <option value="BISHOP">비숍(♗) - 대주교/마법사</option>
-                <option value="KNIGHT">나이트(♘) - 중장철기병</option>
-                <option value="PAWN">폰(♙) - 전열방패보병</option>
-                <option value="KING">킹/궁(♔) - 총사령관 군주</option>
-              </optgroup>
               <optgroup label="🇰🇷 한국 장기 병종">
                 <option value="CHARIOT">차(車) - 중장돌격병</option>
-                <option value="CANNON">포(包) - 공성화포/화차</option>
+                <option value="CANNON" selected>포(包) - 공성화포/화차</option>
                 <option value="HORSE">마(馬) - 기동타격기병</option>
                 <option value="ELEPHANT">상(象) - 전투코끼리</option>
                 <option value="GUARD">사(士) - 왕실근위대</option>
                 <option value="SOLDIER">졸(卒) - 전열창보병</option>
+                <option value="KING">궁/킹(♔) - 총사령관 군주</option>
+              </optgroup>
+              <optgroup label="♟️ 서양 체스 병종">
+                <option value="QUEEN">퀸(♕) - 여제/발키리</option>
+                <option value="ROOK">룩(♖) - 공성 성루 거병</option>
+                <option value="BISHOP">비숍(♗) - 대주교/마법사</option>
+                <option value="KNIGHT">나이트(♘) - 중장철기병</option>
+                <option value="PAWN">폰(♙) - 전열방패보병</option>
               </optgroup>
             </select>
           </div>
@@ -463,20 +461,20 @@
           <div class="form-field">
             <label for="sc-def-type">피격 기물(병종)</label>
             <select id="sc-def-type" class="select-input">
-              <optgroup label="♟️ 서양 체스 병종">
-                <option value="ROOK" selected>룩(♜) - 공성 성루 거병</option>
-                <option value="QUEEN">퀸(♛) - 여제/발키리</option>
-                <option value="BISHOP">비숍(♝) - 대주교/마법사</option>
-                <option value="KNIGHT">나이트(♞) - 중장철기병</option>
-                <option value="PAWN">폰(♟) - 전열방패보병</option>
-              </optgroup>
               <optgroup label="🇰🇷 한국 장기 병종">
-                <option value="CHARIOT">차(車) - 중장돌격병</option>
+                <option value="CHARIOT" selected>차(車) - 중장돌격병</option>
                 <option value="CANNON">포(包) - 공성화포/화차</option>
                 <option value="HORSE">마(馬) - 기동타격기병</option>
                 <option value="ELEPHANT">상(象) - 전투코끼리</option>
                 <option value="GUARD">사(士) - 왕실근위대</option>
                 <option value="SOLDIER">병(兵) - 전열창보병</option>
+              </optgroup>
+              <optgroup label="♟️ 서양 체스 병종">
+                <option value="QUEEN">퀸(♛) - 여제/발키리</option>
+                <option value="ROOK">룩(♜) - 공성 성루 거병</option>
+                <option value="BISHOP">비숍(♝) - 대주교/마법사</option>
+                <option value="KNIGHT">나이트(♞) - 중장철기병</option>
+                <option value="PAWN">폰(♟) - 전열방패보병</option>
               </optgroup>
             </select>
           </div>
@@ -621,8 +619,8 @@
               <label for="opt-bgm-track">🎼 중세 16-Bit 칩튠 배경음악(BGM) 테마 선택</label>
               <select id="opt-bgm-track" class="select-input">
                 <option value="OFF">🔇 배경음악 끄기 (효과음만 재생)</option>
-                <option value="GORYEO_MARCH">🇰🇷 고려 천군의 행군 (웅장한 국악·칩튠 행진곡)</option>
-                <option value="CRUSADER_HYMN" selected>⚔️ 성전 기사단의 진격 (고딕 오르간·아케이드 배틀)</option>
+                <option value="GORYEO_MARCH" selected>🇰🇷 고려 천군의 행군 (웅장한 국악·칩튠 행진곡)</option>
+                <option value="CRUSADER_HYMN">⚔️ 성전 기사단의 진격 (고딕 오르간·아케이드 배틀)</option>
                 <option value="TACTICAL_TENSION">🔥 왕실 전략 작전실 (긴장감 넘치는 SRPG 전술 테마)</option>
               </select>
             </div>

@@ -1,0 +1,12 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=중세 배틀체스 장기 (Godot 4 도트 엔진)
+Comment=Godot 4 네이티브 48x48 도트 스프라이트 & 쫄 모션 뷰어
+Path=/var/home/janginwoo/Desktop/GAME
+Exec="/var/home/janginwoo/Desktop/GAME/Medieval_Battle_Janggi_Godot4.x86_64"
+Icon=/var/home/janginwoo/Desktop/GAME/godot_project/icon.svg
+Terminal=false
+Categories=Game;StrategyGame;BoardGame;
+StartupNotify=true

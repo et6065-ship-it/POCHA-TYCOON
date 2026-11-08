@@ -1,4 +1,4 @@
-name: Deploy Medieval Battle Janggi & Chess WebApp (GitHub Pages)
+name: Deploy Unified Game Launcher (Janggi & Chess WebApp)
 
 on:
   push:
@@ -22,30 +22,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Bundle Medieval Battle Janggi & Chess WebApp (Pocha Tycoon Hidden)
+      - name: Bundle Unified Game Launcher & Medieval Battle Janggi / Chess
         run: |
           rm -rf build/web
           mkdir -p build/web build/web/janggi build/web/chess build/web/arcade
 
-          if [ -d "web_games/board" ]; then
-            # 1. 메인 루트(/): 중세 배틀 장기 & 체스 통합 에디션 (상단 탭으로 장기 <-> 체스 즉시 전환)
-            cp -r web_games/board/* build/web/
+          # 1. 메인 루트(/): 장기·체스·통합런처 에셋 복사
+          cp -f index.html chess.html arcade.html build/web/
+          cp -r src assets build/web/
 
-            # 2. /janggi/ 서브경로: 중세 배틀 장기
-            cp -r web_games/board/* build/web/janggi/
+          # 2. /janggi/ 서브경로: 중세 배틀 장기
+          cp -f index.html chess.html arcade.html build/web/janggi/
+          cp -r src assets build/web/janggi/
 
-            # 3. /chess/ 서브경로: 중세 배틀 체스 기본 시작
-            cp -r web_games/board/* build/web/chess/
-            if [ -f "build/web/chess/chess.html" ]; then
-              cp build/web/chess/chess.html build/web/chess/index.html
-            fi
+          # 3. /chess/ 서브경로: 중세 배틀 체스
+          cp -f index.html chess.html arcade.html build/web/chess/
+          cp -r src assets build/web/chess/
+          cp -f chess.html build/web/chess/index.html
 
-            # 4. /arcade/ 서브경로: 장기 & 체스 2종 선택 타이틀 화면 (타이쿤 숨김)
-            cp -r web_games/board/* build/web/arcade/
-            if [ -f "build/web/arcade/arcade.html" ]; then
-              cp build/web/arcade/arcade.html build/web/arcade/index.html
-            fi
-          fi
+          # 4. /arcade/ 서브경로: 통합 게임 런처 (타이쿤 기본 숨김 + 토글 관리 지원)
+          cp -f index.html chess.html arcade.html build/web/arcade/
+          cp -r src assets build/web/arcade/
+          cp -f arcade.html build/web/arcade/index.html
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

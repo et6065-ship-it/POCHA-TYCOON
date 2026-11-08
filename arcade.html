@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🎮 GAME LAUNCHER — 중세 배틀 장기 · 중세 배틀 체스 통합 런처</title>
+  <link rel="stylesheet" href="./src/css/style.css" />
+  <style>
+    body.arcade-portal-body {
+      min-height: 100dvh;
+      height: auto !important;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px 14px 32px;
+      background: radial-gradient(circle at 50% 15%, #1e293b 0%, #090c15 80%);
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y pinch-zoom;
+    }
+
+    .arcade-shell {
+      width: min(980px, 96vw);
+      background: #111626;
+      border: 4px solid #000;
+      box-shadow:
+        inset 0 0 0 4px #f5b700,
+        inset 0 0 0 8px #090c15,
+        10px 10px 0 #000;
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      margin: auto;
+    }
+
+    .launcher-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-bottom: 12px;
+      border-bottom: 3px solid rgba(245, 183, 0, 0.35);
+    }
+
+    .launcher-status-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .arcade-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #064e3b;
+      border: 2px solid #10b981;
+      color: #a7f3d0;
+      font-size: 11.5px;
+      font-weight: 700;
+      box-shadow: 2px 2px 0 #000;
+    }
+
+    .arcade-badge.pc-mode {
+      background: #1e3a8a;
+      border-color: #38bdf8;
+      color: #bae6fd;
+    }
+
+    .launcher-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .arcade-header {
+      text-align: center;
+      border-bottom: 3px dashed rgba(245, 183, 0, 0.45);
+      padding-bottom: 14px;
+    }
+
+    .arcade-header h1 {
+      font-size: clamp(18px, 4vw, 28px);
+      color: #fff05a;
+      text-shadow: 2px 2px 0 #8c5a08, 4px 4px 0 #000;
+      letter-spacing: 0.03em;
+    }
+
+    .arcade-header p {
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-top: 6px;
+      line-height: 1.45;
+    }
+
+    .arcade-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(265px, 100%), 1fr));
+      gap: 16px;
+    }
+
+    .arcade-card {
+      background: #0b0f1c;
+      border: 3px solid #f5b700;
+      box-shadow: 6px 6px 0 #000;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 11px;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.08s steps(2), border-color 0.1s;
+    }
+
+    .arcade-card:hover {
+      transform: translate(-2px, -2px);
+      border-color: #00e5a3;
+      box-shadow: 8px 8px 0 #000;
+    }
+
+    .arcade-card.hidden-project {
+      display: none;
+      border-color: #a855f7;
+    }
+
+    .arcade-card.hidden-project.visible {
+      display: flex;
+    }
+
+    .arcade-stage {
+      width: 100%;
+      height: 156px;
+      background: radial-gradient(circle at 50% 60%, #1e293b 0%, #070a12 85%);
+      border: 3px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arcade-stage canvas {
+      width: 220px;
+      height: 140px;
+    }
+
+    .arcade-tag {
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      padding: 2px 8px;
+      font-size: 10.5px;
+      background: #090c15;
+      border: 2px solid #f5b700;
+      color: #fde047;
+    }
+
+    .arcade-tag.hidden-badge {
+      border-color: #c084fc;
+      color: #e9d5ff;
+      background: #3b0764;
+    }
+
+    .arcade-card h2 {
+      font-size: 18px;
+      color: #fff05a;
+      text-shadow: 0 2px 3px #000;
+    }
+
+    .arcade-card p {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.48;
+      flex: 1;
+    }
+
+    .arcade-play-btn {
+      width: 100%;
+      padding: 10px;
+      font-size: 13.5px;
+      font-weight: 700;
+    }
+
+    .launcher-toast {
+      display: none;
+      padding: 10px 14px;
+      background: #064e3b;
+      border: 2px solid #34d399;
+      color: #ecfdf5;
+      font-size: 12.5px;
+      text-align: center;
+      box-shadow: 4px 4px 0 #000;
+    }
+
+    .launcher-toast.visible {
+      display: block;
+    }
+
+    .launcher-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 2px solid rgba(148, 163, 184, 0.2);
+      font-size: 11.5px;
+      color: #94a3b8;
+    }
+
+    @media (max-width: 640px) {
+      body.arcade-portal-body {
+        padding: 8px 6px 24px;
+      }
+      .arcade-shell {
+        width: 96vw;
+        padding: 12px 10px;
+        gap: 12px;
+      }
+      .launcher-topbar {
+        gap: 6px;
+        padding-bottom: 8px;
+      }
+      .launcher-actions .btn {
+        font-size: 11px;
+        padding: 5px 8px;
+      }
+      .arcade-card {
+        padding: 12px 10px;
+      }
+      .arcade-stage {
+        height: 136px;
+      }
+    }
+  </style>
+</head>
+<body class="arcade-portal-body crt-off">
+  <div class="arcade-shell">
+
+    <!-- 상단 런처 상태 & 프로젝트 관리 바 -->
+    <div class="launcher-topbar">
+      <div class="launcher-status-group">
+        <span class="arcade-badge" id="launcher-env-badge">🌐 웹·모바일 통합 런처</span>
+        <span class="arcade-badge" style="background:#1e293b;border-color:#f5b700;color:#fde047;">
+          📁 통합 워크스페이스: /Desktop/GAME
+        </span>
+      </div>
+      <div class="launcher-actions">
+        <button type="button" class="btn" id="btn-toggle-hidden-games" title="숨겨진 포차 타이쿤 프로젝트를 표시하거나 숨깁니다">
+          🛠️ 숨김 프로젝트(타이쿤) 표시
+        </button>
+        <button type="button" class="btn btn-emerald" id="btn-launcher-git-push" style="display:none;" title="현재 GAME 폴더를 GitHub에 즉시 동기화 및 배포합니다">
+          🚀 GitHub 원클릭 배포
+        </button>
+      </div>
+    </div>
+
+    <div class="launcher-toast" id="launcher-toast-msg"></div>
+
+    <!-- 런처 메인 타이틀 -->
+    <div class="arcade-header">
+      <h1>🎮 GAME LAUNCHER : 중세 배틀 장기 &amp; 중세 배틀 체스</h1>
+      <p>고려 무신 · 성전 기사단 · 비잔틴 제국 · 맘루크 술탄국 32-Bit HD 도트 일러스트 전략 보드게임 컬렉션</p>
+    </div>
+
+    <!-- 통합 게임 선택 그리드 -->
+    <div class="arcade-grid">
+
+      <!-- 1. 중세 배틀 장기 (기본 노출) -->
+      <a class="arcade-card" href="./index.html?game=janggi">
+        <div class="arcade-stage">
+          <span class="arcade-tag">🇰🇷 9×10 정통 한국 장기</span>
+          <canvas id="arcade-canvas-janggi" width="220" height="140"></canvas>
+        </div>
+        <h2>🇰🇷 중세 배틀 장기 [HD PIXEL]</h2>
+        <p>정통 한국 장기 규칙(궁성·포 다리·마/상 멱·빅장) × 4대 문명 HD 도트 일러스트 &amp; 2.5D 현장 타격 연출</p>
+        <span class="btn btn-gold arcade-play-btn">⚔️ 중세 배틀 장기 실행</span>
+      </a>
+
+      <!-- 2. 중세 배틀 체스 (기본 노출) -->
+      <a class="arcade-card" href="./chess.html">
+        <div class="arcade-stage">
+          <span class="arcade-tag">♟️ 8×8 FIDE 서양 체스</span>
+          <canvas id="arcade-canvas-chess" width="220" height="140"></canvas>
+        </div>
+        <h2>♛ 중세 배틀 체스 [HD PIXEL]</h2>
+        <p>정통 서양 체스(캐슬링·앙파상·프로모션 각성) × 여제 퀸 검무·나이트 도약·비숍 신벌 HD 도트 시네마틱</p>
+        <span class="btn btn-crimson arcade-play-btn">♛ 중세 배틀 체스 실행</span>
+      </a>
+
+      <!-- 3. 전세계 길거리 음식 포차 타이쿤 (기본 숨김 · 상단 '숨김 프로젝트 표시' 토글 시 노출) -->
+      <div class="arcade-card hidden-project" id="card-pocha-tycoon">
+        <div class="arcade-stage">
+          <span class="arcade-tag hidden-badge">🔒 숨김 보관 프로젝트 (pocha_tycoon/)</span>
+          <canvas id="arcade-canvas-pocha" width="220" height="140"></canvas>
+        </div>
+        <h2>⛺ 포차 타이쿤 [POCHA TYCOON]</h2>
+        <p>9개국 야시장 월드 투어 × 단일 메뉴 장인 시스템 × 1:1 요리 결투 시뮬레이션 (<code>/Desktop/GAME/pocha_tycoon</code> 통합 보관)</p>
+        <button type="button" class="btn btn-emerald arcade-play-btn" id="btn-launch-pocha">
+          🍢 포차 타이쿤 실행 (PC 런처)
+        </button>
+      </div>
+
+    </div>
+
+    <div class="launcher-footer">
+      <span>💡 게임 화면 상단의 <strong>[🎮 런처]</strong> 버튼을 누르면 언제든 이 런처 화면으로 돌아옵니다.</span>
+      <span>PC QHD · 갤럭시 Z 폴드 6 (접힘/펼침) · 모바일 완벽 지원</span>
+    </div>
+
+  </div>
+
+  <script src="./src/js/hd_sprite_atlas.js"></script>
+  <script src="./src/js/art_renderer.js"></script>
+  <script>
+    (function () {
+      var jCvs = document.getElementById('arcade-canvas-janggi');
+      var cCvs = document.getElementById('arcade-canvas-chess');
+      var pCvs = document.getElementById('arcade-canvas-pocha');
+      var btnToggleHidden = document.getElementById('btn-toggle-hidden-games');
+      var cardPocha = document.getElementById('card-pocha-tycoon');
+      var btnLaunchPocha = document.getElementById('btn-launch-pocha');
+      var btnGitPush = document.getElementById('btn-launcher-git-push');
+      var envBadge = document.getElementById('launcher-env-badge');
+      var toastEl = document.getElementById('launcher-toast-msg');
+
+      function showToast(msg, isError) {
+        if (!toastEl) return;
+        toastEl.textContent = msg;
+        toastEl.style.background = isError ? '#7f1d1d' : '#064e3b';
+        toastEl.style.borderColor = isError ? '#f87171' : '#34d399';
+        toastEl.classList.add('visible');
+        setTimeout(function () {
+          toastEl.classList.remove('visible');
+        }, 4200);
+      }
+
+      // 숨김 프로젝트(포차 타이쿤) 토글
+      var hiddenVisible = false;
+      if (btnToggleHidden && cardPocha) {
+        btnToggleHidden.addEventListener('click', function () {
+          hiddenVisible = !hiddenVisible;
+          cardPocha.classList.toggle('visible', hiddenVisible);
+          btnToggleHidden.textContent = hiddenVisible
+            ? '🙈 숨김 프로젝트(타이쿤) 숨기기'
+            : '🛠️ 숨김 프로젝트(타이쿤) 표시';
+          btnToggleHidden.className = hiddenVisible ? 'btn btn-gold' : 'btn';
+        });
+      }
+
+      // 로컬 PC 데스크톱 런처(desktop_launcher.py) 연결 감지
+      var isLocalPCServer = false;
+      if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
+        fetch('/api/status')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data && data.ok) {
+              isLocalPCServer = true;
+              if (envBadge) {
+                envBadge.textContent = '🖥️ 로컬 PC 통합 런처 (Native Mode)';
+                envBadge.classList.add('pc-mode');
+              }
+              if (btnGitPush) {
+                btnGitPush.style.display = 'inline-flex';
+              }
+            }
+          })
+          .catch(function () {});
+      }
+
+      if (btnLaunchPocha) {
+        btnLaunchPocha.addEventListener('click', function () {
+          if (isLocalPCServer) {
+            showToast('🍢 포차 타이쿤(pocha_tycoon/main.py) 네이티브 창을 실행합니다...');
+            fetch('/api/launch-pocha', { method: 'POST' })
+              .then(function (r) { return r.json(); })
+              .then(function (res) {
+                if (res && res.ok) {
+                  showToast('✔ 포차 타이쿤이 별도 게임 창으로 실행되었습니다!');
+                } else {
+                  showToast('⚠️ 실행 실패: ' + (res && res.error ? res.error : '알 수 없는 오류'), true);
+                }
+              })
+              .catch(function () {
+                showToast('⚠️ 로컬 런처 서버 응답이 없습니다.', true);
+              });
+          } else {
+            showToast('💡 웹 배포판에서는 포차 타이쿤이 숨김(비활성) 상태입니다. PC에서 통합_게임_런처로 실행하면 즉시 플레이할 수 있습니다.');
+          }
+        });
+      }
+
+      if (btnGitPush) {
+        btnGitPush.addEventListener('click', function () {
+          btnGitPush.disabled = true;
+          showToast('🚀 GitHub 원격 저장소로 변경사항을 업로드하는 중입니다...');
+          fetch('/api/git-push', { method: 'POST' })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+              btnGitPush.disabled = false;
+              if (res && res.ok) {
+                showToast('✔ GitHub 업로드 및 배포 트리거 완료!');
+              } else {
+                showToast('⚠️ 업로드 알림: ' + (res && res.output ? res.output : '완료'), !res || !res.ok);
+              }
+            })
+            .catch(function () {
+              btnGitPush.disabled = false;
+              showToast('⚠️ GitHub 업로드 요청 중 오류가 발생했습니다.', true);
+            });
+        });
+      }
+
+      // 포차 타이쿤 캔버스 미니 프리뷰 드로잉
+      function drawPochaPreview(ctx, now) {
+        ctx.clearRect(0, 0, 220, 140);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, 220, 140);
+        // 야시장 포장마차 천막 & 등불 일러스트
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(36, 28, 148, 22);
+        ctx.fillStyle = '#fef08a';
+        for (var i = 0; i < 7; i++) {
+          if (i % 2 === 0) ctx.fillRect(36 + i * 21, 28, 21, 22);
+        }
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(44, 50, 8, 66);
+        ctx.fillRect(168, 50, 8, 66);
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(34, 88, 152, 32);
+        var bob = Math.sin(now * 0.005) * 3;
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(110, 68 + bob, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('WORLD POCHA TYCOON', 110, 132);
+      }
+
+      var scale = 2.5;
+      [jCvs, cCvs, pCvs].forEach(function (cvs) {
+        if (cvs) {
+          cvs.width = 220 * scale;
+          cvs.height = 140 * scale;
+        }
+      });
+
+      function loop(now) {
+        var stepped = Math.floor(now / 110) * 110;
+        if (window.ArtRenderer) {
+          if (jCvs) {
+            var jCtx = jCvs.getContext('2d');
+            jCtx.setTransform(scale, 0, 0, scale, 0, 0);
+            jCtx.clearRect(0, 0, 220, 140);
+            window.ArtRenderer.drawUnit(jCtx, {
+              x: 68, y: 112, type: 'CHARIOT', side: 'CHU', faction: 'GORYEO',
+              state: 'IDLE', time: stepped, scale: 1.05, facing: 1, showPedestal: true
+            });
+            window.ArtRenderer.drawUnit(jCtx, {
+              x: 152, y: 112, type: 'CANNON', side: 'HAN', faction: 'TEMPLAR',
+              state: 'IDLE', time: stepped, scale: 1.05, facing: -1, showPedestal: true
+            });
+          }
+          if (cCvs) {
+            var cCtx = cCvs.getContext('2d');
+            cCtx.setTransform(scale, 0, 0, scale, 0, 0);
+            cCtx.clearRect(0, 0, 220, 140);
+            window.ArtRenderer.drawUnit(cCtx, {
+              x: 68, y: 112, type: 'QUEEN', side: 'CHU', faction: 'BYZANTINE',
+              state: 'IDLE', time: stepped, scale: 1.05, facing: 1, showPedestal: true
+            });
+            window.ArtRenderer.drawUnit(cCtx, {
+              x: 152, y: 112, type: 'KNIGHT', side: 'HAN', faction: 'MAMLUK',
+              state: 'IDLE', time: stepped, scale: 1.05, facing: -1, showPedestal: true
+            });
+          }
+        }
+        if (pCvs && hiddenVisible) {
+          var pCtx = pCvs.getContext('2d');
+          pCtx.setTransform(scale, 0, 0, scale, 0, 0);
+          drawPochaPreview(pCtx, now);
+        }
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>

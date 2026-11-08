@@ -1,7 +1,12 @@
 # Python bytecode & cache
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
+
+# Large local engine binaries (>100MB Godot engine binary)
+tools/Godot_*
+godot_project/.godot/
 
 # PyInstaller / Pygbag local build artifacts
 build/
@@ -12,6 +17,8 @@ dist/
 
 # Local runtime logs & user save data
 crash_log.txt
+**/crash_log.txt
 save_data.json
+**/save_data.json
 .DS_Store
 Thumbs.db
