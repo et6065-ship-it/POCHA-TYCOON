@@ -6,8 +6,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="블록블라스트" />
   <meta name="theme-color" content="#131829" />
-  <link rel="manifest" href="./manifest.json" />
+  <link rel="manifest" href="./manifest-blockblast.json" />
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon-blockblast.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-blockblast-192.png" />
   <title>💎 블록 블라스트 : 클래식 마스터 [HD PIXEL]</title>
   <link rel="stylesheet" href="./src/css/style.css" />
   <style>
@@ -578,6 +581,21 @@
         <button type="button" class="btn btn-crimson" id="btn-close-guide" style="padding:4px 10px;font-size:12px;">✖ 닫기</button>
       </div>
       <div class="bb-modal-body">
+        <div style="background:#06281f;border:2px solid #10b981;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:12.5px;color:#ecfdf5;line-height:1.45;">
+            <strong style="color:#fde047;">📲 폰 바탕화면에 [블록 블라스트 전용 페이지] 만들기</strong><br />
+            크롬/삼성인터넷으로 열어서 설치하면 <strong>네이버 하단바·상단 주소창이 아예 없는 100% 전체화면 전용 앱</strong>으로 바탕화면에 생성됩니다.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-emerald" id="btn-bb-pwa-install" style="flex:1;padding:8px 10px;font-size:12px;">
+              📲 바탕화면 전용 앱 설치
+            </button>
+            <button type="button" class="btn btn-gold" id="btn-bb-open-chrome" style="flex:1;padding:8px 10px;font-size:12px;">
+              🚀 크롬 전용창으로 열기
+            </button>
+          </div>
+        </div>
+
         <div>
           <div class="panel-title">
             <span>📊 현재 판 전술 통계</span>
@@ -2086,6 +2104,43 @@
         saveState();
         addLogEntry('💣 중앙 4×4 폭탄 사용', 'BLAST');
       });
+
+      // PWA 전용 앱 설치 & 크롬 전용창 전환
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      }
+      var bbDeferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        bbDeferredPrompt = e;
+      });
+      var btnBbPwa = document.getElementById('btn-bb-pwa-install');
+      var btnBbChrome = document.getElementById('btn-bb-open-chrome');
+      function openBbInChrome() {
+        var absUrl = location.href;
+        if (/Android/i.test(navigator.userAgent || '')) {
+          var noScheme = absUrl.replace(/^https?:\/\//i, '');
+          var scheme = absUrl.indexOf('https://') === 0 ? 'https' : 'http';
+          location.href = 'intent://' + noScheme + '#Intent;scheme=' + scheme + ';package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(absUrl) + ';end';
+        } else {
+          window.open(absUrl, '_blank');
+        }
+      }
+      if (btnBbPwa) {
+        btnBbPwa.addEventListener('click', function () {
+          if (bbDeferredPrompt) {
+            bbDeferredPrompt.prompt();
+            bbDeferredPrompt.userChoice.then(function () { bbDeferredPrompt = null; });
+          } else if (/NAVER|KAKAOTALK|Instagram|FBAN|FBAV|Line/i.test(navigator.userAgent || '') && /Android/i.test(navigator.userAgent || '')) {
+            openBbInChrome();
+          } else {
+            alert('우측 상단 브라우저 메뉴(⋮) 또는 하단 공유(↑)에서 [홈 화면에 추가 / 앱 설치]를 선택하시면 바탕화면에 전용 앱이 생성됩니다!');
+          }
+        });
+      }
+      if (btnBbChrome) {
+        btnBbChrome.addEventListener('click', openBbInChrome);
+      }
 
       // 초기화
       if (!loadState() || state.tray.every(function (p) { return p === null; })) {

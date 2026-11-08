@@ -6,8 +6,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="게임런처" />
   <meta name="theme-color" content="#131829" />
   <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-launcher-192.png" />
   <title>🎮 GAME LAUNCHER — 중세 배틀 장기 · 중세 배틀 체스 · 블록 블라스트 통합 런처</title>
   <link rel="stylesheet" href="./src/css/style.css" />
   <style>
@@ -245,6 +248,125 @@
         height: 136px;
       }
     }
+
+    .pwa-inapp-banner {
+      display: none;
+      background: linear-gradient(90deg, #1e3a8a, #065f46);
+      border: 2px solid #34d399;
+      padding: 10px 12px;
+      color: #ecfdf5;
+      font-size: 12px;
+      line-height: 1.45;
+      box-shadow: 4px 4px 0 #000;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pwa-inapp-banner.visible {
+      display: flex;
+    }
+
+    .pwa-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 16, 0.86);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 14px;
+    }
+
+    .pwa-modal-overlay.active {
+      display: flex;
+    }
+
+    .pwa-modal-box {
+      width: min(500px, 95vw);
+      max-height: 88dvh;
+      overflow-y: auto;
+      background: #111729;
+      border: 4px solid #f5b700;
+      box-shadow: 8px 8px 0 #000;
+      padding: 16px 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      color: #f8fafc;
+    }
+
+    .pwa-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid rgba(245, 183, 0, 0.4);
+      padding-bottom: 8px;
+    }
+
+    .pwa-modal-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: #fff05a;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .pwa-step-card {
+      background: #0b0f1c;
+      border: 2px solid #334155;
+      padding: 11px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pwa-step-card strong {
+      color: #fde047;
+    }
+
+    .pwa-page-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .pwa-page-item {
+      background: #0e1424;
+      border: 2px solid #475569;
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pwa-page-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .pwa-page-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff05a;
+    }
+
+    .pwa-page-desc {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .pwa-page-btns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body class="arcade-portal-body crt-off">
@@ -259,6 +381,9 @@
         </span>
       </div>
       <div class="launcher-actions">
+        <button type="button" class="btn btn-emerald" id="btn-launcher-pwa" title="폰 바탕화면에 상·하단 컨트롤바 없는 전용 앱 아이콘을 만듭니다">
+          📲 바탕화면 전용앱
+        </button>
         <button type="button" class="btn btn-gold" id="btn-launcher-fit" title="모든 게임에 적용되는 화면 크기(최대 / 보통 / 축소)를 설정합니다">
           📐 화면: 최대
         </button>
@@ -272,6 +397,17 @@
           🚀 GitHub 원클릭 배포
         </button>
       </div>
+    </div>
+
+    <!-- 네이버 앱 / 인앱 브라우저 감지 시 전용 전체화면 앱 전환 배너 -->
+    <div class="pwa-inapp-banner" id="pwa-inapp-banner">
+      <div>
+        <strong>💡 네이버·인앱 브라우저 하단바 없이 꽉 찬 전용 앱으로 쓰시려면?</strong><br />
+        크롬(Chrome)이나 삼성 인터넷으로 열어서 홈화면에 추가하면 <strong>상·하단 바가 아예 없는 전용 게임 앱</strong>으로 설치됩니다!
+      </div>
+      <button type="button" class="btn btn-gold" id="btn-open-chrome-banner" style="font-size:12px;padding:7px 11px;">
+        🚀 크롬 전용창으로 열기
+      </button>
     </div>
 
     <div class="launcher-toast" id="launcher-toast-msg"></div>
@@ -340,6 +476,92 @@
 
   </div>
 
+  <!-- 폰 바탕화면 전용 페이지(앱) 만들기 모달 -->
+  <div class="pwa-modal-overlay" id="pwa-install-modal" role="dialog" aria-modal="true">
+    <div class="pwa-modal-box">
+      <div class="pwa-modal-head">
+        <span class="pwa-modal-title">📲 폰 바탕화면 전용 페이지(앱) 만들기</span>
+        <button type="button" class="btn btn-crimson" id="btn-close-pwa-modal" style="padding:4px 10px;">✕ 닫기</button>
+      </div>
+
+      <!-- 1. 원터치 전용 앱 설치 (Chrome / 삼성 인터넷) -->
+      <div class="pwa-step-card" style="border-color:#10b981;background:#06281f;">
+        <div>
+          <strong>✅ 방법 1 : 상·하단 바가 아예 없는 [전용 게임 앱] 바로 설치</strong><br />
+          크롬(Chrome) 또는 삼성 인터넷에서는 아래 버튼 하나로 <strong>폰 바탕화면에 독립된 전용 게임 앱</strong>을 생성합니다.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-emerald" id="btn-pwa-native-install" style="flex:1;padding:9px 12px;font-size:13px;">
+            📲 지금 바탕화면에 전용 앱 설치
+          </button>
+          <button type="button" class="btn btn-gold" id="btn-pwa-open-chrome" style="flex:1;padding:9px 12px;font-size:12.5px;">
+            🚀 크롬 전용창으로 열기 (네이버 하단바 제거)
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. 원하는 게임만 바탕화면 전용 페이지로 개별 추가 -->
+      <div class="pwa-step-card">
+        <strong>🎯 방법 2 : 원하는 게임을 바탕화면 전용 페이지로 바로 열기</strong>
+        <span>아래에서 원하는 페이지의 <strong>[크롬 전용창]</strong>을 누른 뒤 브라우저 메뉴(⋮) → <strong>[홈 화면에 추가 / 앱 설치]</strong>를 누르면 해당 게임 전용 아이콘이 생성됩니다.</span>
+
+        <div class="pwa-page-grid">
+          <div class="pwa-page-item">
+            <div class="pwa-page-info">
+              <span class="pwa-page-name">🎮 통합 게임 런처 (전용 포털)</span>
+              <span class="pwa-page-desc">장기 · 체스 · 블록 블라스트 통합 실행기</span>
+            </div>
+            <div class="pwa-page-btns">
+              <button type="button" class="btn btn-gold" data-open-chrome="./arcade.html" style="font-size:11px;padding:5px 8px;">🚀 크롬 전용창</button>
+              <button type="button" class="btn" data-copy-url="./arcade.html" style="font-size:11px;padding:5px 8px;">📋 주소복사</button>
+            </div>
+          </div>
+
+          <div class="pwa-page-item">
+            <div class="pwa-page-info">
+              <span class="pwa-page-name">💎 블록 블라스트 (전용 페이지)</span>
+              <span class="pwa-page-desc">바탕화면에서 블록 블라스트만 즉시 직행</span>
+            </div>
+            <div class="pwa-page-btns">
+              <button type="button" class="btn btn-emerald" data-open-chrome="./blockblast.html" style="font-size:11px;padding:5px 8px;">🚀 크롬 전용창</button>
+              <button type="button" class="btn" data-copy-url="./blockblast.html" style="font-size:11px;padding:5px 8px;">📋 주소복사</button>
+            </div>
+          </div>
+
+          <div class="pwa-page-item">
+            <div class="pwa-page-info">
+              <span class="pwa-page-name">🇰🇷 중세 배틀 장기 (전용 페이지)</span>
+              <span class="pwa-page-desc">바탕화면에서 중세 배틀 장기만 즉시 직행</span>
+            </div>
+            <div class="pwa-page-btns">
+              <button type="button" class="btn btn-gold" data-open-chrome="./janggi.html" style="font-size:11px;padding:5px 8px;">🚀 크롬 전용창</button>
+              <button type="button" class="btn" data-copy-url="./janggi.html" style="font-size:11px;padding:5px 8px;">📋 주소복사</button>
+            </div>
+          </div>
+
+          <div class="pwa-page-item">
+            <div class="pwa-page-info">
+              <span class="pwa-page-name">♛ 중세 배틀 체스 (전용 페이지)</span>
+              <span class="pwa-page-desc">바탕화면에서 중세 배틀 체스만 즉시 직행</span>
+            </div>
+            <div class="pwa-page-btns">
+              <button type="button" class="btn btn-crimson" data-open-chrome="./chess.html" style="font-size:11px;padding:5px 8px;">🚀 크롬 전용창</button>
+              <button type="button" class="btn" data-copy-url="./chess.html" style="font-size:11px;padding:5px 8px;">📋 주소복사</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 기기별 안내 -->
+      <div class="pwa-step-card">
+        <strong>📱 기기별 10초 설치 팁</strong>
+        <div>• <strong>갤럭시/안드로이드</strong>: 위 <strong>[🚀 크롬 전용창으로 열기]</strong> 터치 → 우측 상단 <strong>[⋮ 메뉴]</strong> → <strong>[앱 설치]</strong> 또는 <strong>[홈 화면에 추가]</strong></div>
+        <div>• <strong>아이폰/아이패드(Safari)</strong>: 사파리 하단 <strong>[공유 ↑]</strong> 버튼 → <strong>[홈 화면에 추가]</strong></div>
+        <div style="color:#a7f3d0;">※ 네이버 앱에서 바로 추가하면 네이버 하단바가 남지만, 크롬/삼성인터넷/사파리로 추가하면 <strong>100% 전체화면 전용 앱</strong>으로 작동합니다!</div>
+      </div>
+    </div>
+  </div>
+
   <script src="./src/js/hd_sprite_atlas.js"></script>
   <script src="./src/js/art_renderer.js"></script>
   <script>
@@ -348,6 +570,13 @@
       var cCvs = document.getElementById('arcade-canvas-chess');
       var bCvs = document.getElementById('arcade-canvas-blockblast');
       var pCvs = document.getElementById('arcade-canvas-pocha');
+      var btnLauncherPwa = document.getElementById('btn-launcher-pwa');
+      var pwaModal = document.getElementById('pwa-install-modal');
+      var btnClosePwaModal = document.getElementById('btn-close-pwa-modal');
+      var btnPwaNativeInstall = document.getElementById('btn-pwa-native-install');
+      var btnPwaOpenChrome = document.getElementById('btn-pwa-open-chrome');
+      var pwaInappBanner = document.getElementById('pwa-inapp-banner');
+      var btnOpenChromeBanner = document.getElementById('btn-open-chrome-banner');
       var btnLauncherFit = document.getElementById('btn-launcher-fit');
       var btnLauncherFs = document.getElementById('btn-launcher-fullscreen');
       var btnToggleHidden = document.getElementById('btn-toggle-hidden-games');
@@ -356,6 +585,107 @@
       var btnGitPush = document.getElementById('btn-launcher-git-push');
       var envBadge = document.getElementById('launcher-env-badge');
       var toastEl = document.getElementById('launcher-toast-msg');
+
+      // Service Worker 등록 (안드로이드/크롬 전용 앱 설치 활성화)
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      }
+
+      // PWA 설치 프롬프트 캡처
+      var deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (btnLauncherPwa) {
+          btnLauncherPwa.textContent = '📲 바탕화면 전용앱 설치';
+        }
+      });
+
+      // 네이버 앱 / 카카오톡 등 인앱 브라우저 감지
+      var ua = navigator.userAgent || '';
+      var isInAppBrowser = /NAVER|KAKAOTALK|Instagram|FBAN|FBAV|Line/i.test(ua);
+      var isAndroid = /Android/i.test(ua);
+      if (isInAppBrowser && pwaInappBanner) {
+        pwaInappBanner.classList.add('visible');
+      }
+
+      function openInChrome(targetRelativeUrl) {
+        var absUrl = new URL(targetRelativeUrl || location.href, location.href).href;
+        if (isAndroid) {
+          var noScheme = absUrl.replace(/^https?:\/\//i, '');
+          var scheme = absUrl.indexOf('https://') === 0 ? 'https' : 'http';
+          location.href = 'intent://' + noScheme + '#Intent;scheme=' + scheme + ';package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(absUrl) + ';end';
+        } else {
+          window.open(absUrl, '_blank');
+          showToast('💡 브라우저 메뉴에서 [홈 화면에 추가]를 선택해 주세요.');
+        }
+      }
+
+      if (btnOpenChromeBanner) {
+        btnOpenChromeBanner.addEventListener('click', function () {
+          openInChrome(location.href);
+        });
+      }
+
+      if (btnLauncherPwa && pwaModal) {
+        btnLauncherPwa.addEventListener('click', function () {
+          pwaModal.classList.add('active');
+        });
+      }
+      if (btnClosePwaModal && pwaModal) {
+        btnClosePwaModal.addEventListener('click', function () {
+          pwaModal.classList.remove('active');
+        });
+        pwaModal.addEventListener('click', function (e) {
+          if (e.target === pwaModal) pwaModal.classList.remove('active');
+        });
+      }
+
+      if (btnPwaNativeInstall) {
+        btnPwaNativeInstall.addEventListener('click', function () {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function (choice) {
+              deferredPrompt = null;
+              if (choice && choice.outcome === 'accepted') {
+                showToast('🎉 폰 바탕화면에 전용 게임 앱이 설치되었습니다!');
+                if (pwaModal) pwaModal.classList.remove('active');
+              }
+            });
+          } else if (isInAppBrowser && isAndroid) {
+            openInChrome(location.href);
+          } else {
+            showToast('💡 현재 브라우저 우측 상단 메뉴(⋮) 또는 하단 공유(↑)에서 [홈 화면에 추가 / 앱 설치]를 눌러주세요!');
+          }
+        });
+      }
+
+      if (btnPwaOpenChrome) {
+        btnPwaOpenChrome.addEventListener('click', function () {
+          openInChrome(location.href);
+        });
+      }
+
+      document.querySelectorAll('[data-open-chrome]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var rel = btn.getAttribute('data-open-chrome');
+          openInChrome(rel);
+        });
+      });
+
+      document.querySelectorAll('[data-copy-url]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var rel = btn.getAttribute('data-copy-url');
+          var absUrl = new URL(rel, location.href).href;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(absUrl).then(function () {
+              showToast('📋 전용 페이지 주소가 복사되었습니다: ' + absUrl);
+            });
+          } else {
+            window.prompt('아래 전용 페이지 주소를 복사하세요:', absUrl);
+          }
+        });
+      });
 
       function showToast(msg, isError) {
         if (!toastEl) return;

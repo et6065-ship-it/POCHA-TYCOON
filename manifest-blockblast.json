@@ -1,0 +1,27 @@
+{
+  "id": "pocha-tycoon-blockblast-standalone",
+  "name": "블록 블라스트 [HD PIXEL]",
+  "short_name": "블록블라스트",
+  "description": "8×8 HD 도트 보석 퍼즐 전용 앱",
+  "start_url": "./blockblast.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#090c15",
+  "theme_color": "#131829",
+  "icons": [
+    {
+      "src": "./assets/icons/icon-blockblast-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon-blockblast-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

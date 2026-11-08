@@ -1,11 +1,68 @@
 {
+  "id": "pocha-tycoon-arcade-launcher",
   "name": "GAME LAUNCHER : 장기 · 체스 · 블록 블라스트",
   "short_name": "게임런처",
-  "description": "중세 배틀 장기 · 중세 배틀 체스 · 블록 블라스트 통합 런처",
+  "description": "중세 배틀 장기 · 중세 배틀 체스 · 블록 블라스트 통합 전용 앱",
   "start_url": "./arcade.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "portrait",
   "background_color": "#090c15",
-  "theme_color": "#131829"
+  "theme_color": "#131829",
+  "icons": [
+    {
+      "src": "./assets/icons/icon-launcher-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon-launcher-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "💎 블록 블라스트 바로 실행",
+      "short_name": "블록블라스트",
+      "description": "8×8 클래식 보석 퍼즐 바로 실행",
+      "url": "./blockblast.html",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-blockblast-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "🇰🇷 중세 배틀 장기 바로 실행",
+      "short_name": "배틀장기",
+      "description": "9×10 정통 한국 장기 바로 실행",
+      "url": "./janggi.html",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-launcher-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "♛ 중세 배틀 체스 바로 실행",
+      "short_name": "배틀체스",
+      "description": "8×8 정통 서양 체스 바로 실행",
+      "url": "./chess.html",
+      "icons": [
+        {
+          "src": "./assets/icons/icon-launcher-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }
