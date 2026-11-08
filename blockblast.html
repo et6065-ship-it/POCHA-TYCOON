@@ -481,12 +481,8 @@
 
     <div class="header-actions">
       <a href="./arcade.html" class="btn" style="text-decoration:none;" title="통합 게임 런처로 돌아가기">🎮 런처</a>
-      <a href="./janggi.html" class="btn" style="text-decoration:none;" title="중세 배틀 장기 실행">🇰🇷 장기</a>
-      <a href="./chess.html" class="btn" style="text-decoration:none;" title="중세 배틀 체스 실행">♟️ 체스</a>
       <button type="button" class="btn btn-gold" id="btn-bb-guide" title="게임 규칙 및 상세 전술 기록 보기">📘 가이드</button>
-      <button type="button" class="btn" id="btn-bb-fit" title="화면 여백 및 보드 크기 맞춤 조절">📐 맞춤</button>
-      <button type="button" class="btn btn-crimson" id="btn-bb-fullscreen" title="전체화면 모드 전환">⛶ 전체화면</button>
-      <button type="button" class="btn" id="btn-bb-sound" title="사운드 켜기/끄기">🔊</button>
+      <button type="button" class="btn" id="btn-bb-sound" title="사운드 켜기/끄기">🔊 사운드</button>
       <button type="button" class="btn btn-emerald" id="btn-bb-restart" title="새 게임 시작">🔄 새게임</button>
     </div>
   </header>
@@ -2049,7 +2045,7 @@
         soundEnabled = !soundEnabled;
         var btn = document.getElementById('btn-bb-sound');
         if (btn) {
-          btn.textContent = soundEnabled ? '🔊' : '🔇';
+          btn.textContent = soundEnabled ? '🔊 사운드' : '🔇 음소거';
         }
       });
 

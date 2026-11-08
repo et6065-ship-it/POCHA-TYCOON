@@ -259,6 +259,12 @@
         </span>
       </div>
       <div class="launcher-actions">
+        <button type="button" class="btn btn-gold" id="btn-launcher-fit" title="모든 게임에 적용되는 화면 크기(최대 / 보통 / 축소)를 설정합니다">
+          📐 화면: 최대
+        </button>
+        <button type="button" class="btn btn-crimson" id="btn-launcher-fullscreen" title="전체화면 모드를 켜거나 끕니다">
+          ⛶ 전체화면
+        </button>
         <button type="button" class="btn" id="btn-toggle-hidden-games" title="숨겨진 포차 타이쿤 프로젝트를 표시하거나 숨깁니다">
           🛠️ 숨김 프로젝트(타이쿤) 표시
         </button>
@@ -342,6 +348,8 @@
       var cCvs = document.getElementById('arcade-canvas-chess');
       var bCvs = document.getElementById('arcade-canvas-blockblast');
       var pCvs = document.getElementById('arcade-canvas-pocha');
+      var btnLauncherFit = document.getElementById('btn-launcher-fit');
+      var btnLauncherFs = document.getElementById('btn-launcher-fullscreen');
       var btnToggleHidden = document.getElementById('btn-toggle-hidden-games');
       var cardPocha = document.getElementById('card-pocha-tycoon');
       var btnLaunchPocha = document.getElementById('btn-launch-pocha');
@@ -358,6 +366,59 @@
         setTimeout(function () {
           toastEl.classList.remove('visible');
         }, 4200);
+      }
+
+      // 런처 통합 화면 크기 설정 (0: 최대, 1: 보통, 2: 축소) -> 모든 게임 공통 적용
+      var FIT_STORAGE_KEY = 'BLOCK_BLAST_FIT_MODE_V1';
+      var fitMode = 0;
+      try {
+        var savedFit = localStorage.getItem(FIT_STORAGE_KEY);
+        if (savedFit !== null) fitMode = parseInt(savedFit, 10) || 0;
+      } catch (e) {}
+
+      function applyLauncherFitUI() {
+        var labels = ['📐 화면: 최대', '📐 화면: 보통', '📐 화면: 축소'];
+        if (btnLauncherFit) {
+          btnLauncherFit.textContent = labels[fitMode % 3];
+        }
+        var shell = document.querySelector('.arcade-shell');
+        if (shell) {
+          var widths = ['min(980px, 96vw)', 'min(900px, 92vw)', 'min(820px, 86vw)'];
+          shell.style.width = widths[fitMode % 3];
+        }
+      }
+      applyLauncherFitUI();
+
+      if (btnLauncherFit) {
+        btnLauncherFit.addEventListener('click', function () {
+          fitMode = (fitMode + 1) % 3;
+          try { localStorage.setItem(FIT_STORAGE_KEY, String(fitMode)); } catch (e) {}
+          applyLauncherFitUI();
+          var modeNames = ['최대 (화면 꽉 차게)', '보통 (네이버·모바일 하단바 여유)', '축소 (하단 여유 최대)'];
+          showToast('📐 화면 크기가 [' + modeNames[fitMode % 3] + '] 모드로 설정되었습니다. 실행하는 모든 게임에 자동 적용됩니다.');
+        });
+      }
+
+      if (btnLauncherFs) {
+        btnLauncherFs.addEventListener('click', function () {
+          var docEl = document.documentElement;
+          var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+          if (!isFs) {
+            if (docEl.requestFullscreen) {
+              docEl.requestFullscreen().catch(function () {});
+            } else if (docEl.webkitRequestFullscreen) {
+              docEl.webkitRequestFullscreen();
+            }
+            showToast('⛶ 전체화면 모드로 전환되었습니다.');
+          } else {
+            if (document.exitFullscreen) {
+              document.exitFullscreen().catch(function () {});
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
+            }
+            showToast('⛶ 전체화면 모드를 해제했습니다.');
+          }
+        });
       }
 
       // 숨김 프로젝트(포차 타이쿤) 토글
