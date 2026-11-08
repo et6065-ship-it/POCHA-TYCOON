@@ -596,8 +596,9 @@
           this._forceRedraw = true;
         });
 
-        // 모바일 & 갤럭시 폴드 터치: 스크롤 제스처와 기물 탭(착수)을 정밀 구분하여 스크롤 먹통 방지
+        // 모바일 & 갤럭시 폴드 터치: 스크롤 제스처와 기물 탭(착수)을 정밀 구분하고 합성 click 중복 실행 차단
         this._touchGesture = null;
+        this._lastTouchActionTime = 0;
 
         this.boardCanvas.addEventListener(
           'touchstart',
@@ -632,8 +633,8 @@
             const dx = Math.abs(t.clientX - this._touchGesture.startX);
             const dy = Math.abs(t.clientY - this._touchGesture.startY);
 
-            // 손가락이 9px 이상 움직이면 화면 스크롤 제스처로 판정 -> 루페 해제 & 브라우저 기본 스크롤 허용
-            if (dx > 9 || dy > 9) {
+            // 손가락이 18px 이상 이동하면 화면 스크롤 제스처로 판정 -> 브라우저 기본 스크롤 허용
+            if (dx > 18 || dy > 18) {
               this._touchGesture.isScroll = true;
               if (this.touchLoupe.active) {
                 this.touchLoupe.active = false;
@@ -662,6 +663,7 @@
           // 스크롤 동작이었으면 기물 클릭을 실행하지 않고 네이티브 스크롤 유지
           if (!gesture || gesture.isScroll) return;
 
+          this._lastTouchActionTime = performance.now();
           if (e.cancelable) e.preventDefault();
           this._handleBoardPointerAction(gesture.px, gesture.py, true);
         });
@@ -1367,8 +1369,13 @@
     }
 
     _onBoardClick(e) {
+      if (this._lastTouchActionTime && performance.now() - this._lastTouchActionTime < 650) {
+        return;
+      }
       const { px, py } = this._getCanvasMousePos(e);
-      this._handleBoardPointerAction(px, py, false);
+      const isCoarse =
+        typeof global.matchMedia === 'function' && global.matchMedia('(pointer: coarse)').matches;
+      this._handleBoardPointerAction(px, py, isCoarse);
     }
 
     async _handleBoardPointerAction(px, py, isTouch = false) {

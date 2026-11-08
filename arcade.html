@@ -2,8 +2,13 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🎮 GAME LAUNCHER — 중세 배틀 장기 · 중세 배틀 체스 통합 런처</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#131829" />
+  <link rel="manifest" href="./manifest.json" />
+  <title>🎮 GAME LAUNCHER — 중세 배틀 장기 · 중세 배틀 체스 · 블록 블라스트 통합 런처</title>
   <link rel="stylesheet" href="./src/css/style.css" />
   <style>
     body.arcade-portal-body {
@@ -13,7 +18,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 20px 14px 32px;
+      padding: 20px 14px calc(96px + env(safe-area-inset-bottom, 0px));
       background: radial-gradient(circle at 50% 15%, #1e293b 0%, #090c15 80%);
       overflow-x: hidden !important;
       overflow-y: auto !important;
@@ -218,7 +223,7 @@
 
     @media (max-width: 640px) {
       body.arcade-portal-body {
-        padding: 8px 6px 24px;
+        padding: 8px 6px calc(105px + env(safe-area-inset-bottom, 0px));
       }
       .arcade-shell {
         width: 96vw;
@@ -275,7 +280,7 @@
     <div class="arcade-grid">
 
       <!-- 1. 중세 배틀 장기 (기본 노출) -->
-      <a class="arcade-card" href="./index.html?game=janggi">
+      <a class="arcade-card" href="./janggi.html">
         <div class="arcade-stage">
           <span class="arcade-tag">🇰🇷 9×10 정통 한국 장기</span>
           <canvas id="arcade-canvas-janggi" width="220" height="140"></canvas>

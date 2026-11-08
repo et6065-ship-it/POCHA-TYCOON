@@ -2,7 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#131829" />
+  <link rel="manifest" href="./manifest.json" />
   <title>💎 블록 블라스트 : 클래식 마스터 (BLOCK BLAST AD-FREE HD PIXEL)</title>
   <link rel="stylesheet" href="./src/css/style.css" />
   <style>
@@ -15,8 +20,10 @@
         radial-gradient(circle at 50% 18%, rgba(30, 58, 138, 0.35) 0%, rgba(9, 12, 21, 0.98) 78%);
       overflow-x: hidden;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       user-select: none;
       -webkit-user-select: none;
+      padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     }
 
     .bb-workspace {
@@ -26,7 +33,7 @@
       max-width: 1280px;
       width: 100%;
       margin: 0 auto;
-      padding: 14px 16px 28px;
+      padding: 14px 16px calc(96px + env(safe-area-inset-bottom, 0px));
       align-items: start;
       justify-content: center;
     }
@@ -70,7 +77,7 @@
 
     .bb-score-val {
       font-family: var(--font-pixel-en);
-      font-size: clamp(22px, 4vw, 30px);
+      font-size: clamp(20px, 4vw, 30px);
       font-weight: 900;
       color: #ffffff;
       text-shadow: 2px 2px 0 #000, 0 0 12px rgba(56, 189, 248, 0.35);
@@ -91,7 +98,7 @@
       padding: 6px 12px;
       background: #0b0f1c;
       border: 2px solid #334155;
-      min-width: 116px;
+      min-width: 112px;
       transition: transform 0.12s, border-color 0.15s, background 0.15s;
     }
 
@@ -146,7 +153,7 @@
     .bb-center-column {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
       width: 100%;
     }
 
@@ -157,11 +164,11 @@
         inset 0 0 0 3px #38bdf8,
         inset 0 0 0 6px #090c15,
         8px 8px 0 #000;
-      padding: 12px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       position: relative;
       transition: box-shadow 0.2s;
     }
@@ -176,10 +183,11 @@
 
     .bb-canvas-wrap {
       width: 100%;
-      aspect-ratio: 1 / 1.36;
+      aspect-ratio: 520 / 708;
       max-width: 500px;
+      margin: 0 auto;
       position: relative;
-      touch-action: none;
+      touch-action: pan-y pinch-zoom;
     }
 
     #bb-main-canvas {
@@ -198,7 +206,7 @@
     .bb-tactical-bar {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      gap: 6px;
       width: 100%;
     }
 
@@ -207,8 +215,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 3px;
-      padding: 8px 6px;
+      gap: 2px;
+      padding: 7px 5px;
       font-size: 12px;
       font-weight: 700;
       position: relative;
@@ -357,13 +365,15 @@
       .bb-workspace {
         grid-template-columns: 1fr;
         max-width: 540px;
-        padding: 10px 10px 24px;
+        padding: 6px 8px calc(110px + env(safe-area-inset-bottom, 0px));
+        gap: 10px;
       }
       .bb-side-left {
         order: 2;
       }
       .bb-center-column {
         order: 1;
+        gap: 6px;
       }
       .bb-side-right {
         order: 3;
@@ -372,30 +382,66 @@
 
     @media (max-width: 640px) {
       .app-header {
-        padding: 8px 10px;
-        gap: 8px;
+        padding: 5px 8px;
+        gap: 5px;
         flex-wrap: wrap;
       }
-      .brand-titles h1 {
-        font-size: 15px;
+      .brand-box {
+        gap: 6px;
       }
-      .brand-titles p {
+      .brand-crest {
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+      }
+      .brand-titles h1 {
+        font-size: 13.5px;
+      }
+      .brand-titles p,
+      .bb-adfree-pill {
         display: none;
       }
       .header-actions {
         width: 100%;
         justify-content: space-between;
+        gap: 4px;
       }
       .header-actions .btn {
-        padding: 5px 8px;
-        font-size: 11.5px;
+        padding: 4px 5px;
+        font-size: 10.5px;
         flex: 1;
       }
       .bb-stage-card {
-        padding: 8px;
+        padding: 6px;
+        gap: 6px;
       }
       .bb-score-banner {
-        padding: 8px 10px;
+        padding: 6px 10px;
+        gap: 6px;
+      }
+      .bb-score-label {
+        font-size: 9.5px;
+      }
+      .bb-score-val {
+        font-size: 18px;
+      }
+      .bb-combo-badge {
+        padding: 4px 8px;
+        min-width: 94px;
+      }
+      .bb-combo-title {
+        font-size: 11px;
+      }
+      .bb-grace-dots {
+        margin-top: 2px;
+        font-size: 9px;
+      }
+      .bb-item-btn {
+        padding: 5px 4px;
+        font-size: 11px;
+      }
+      .bb-item-sub {
+        font-size: 9.5px;
       }
     }
   </style>
@@ -403,9 +449,9 @@
 <body class="blockblast-body crt-off">
 
   <!-- ========================================================================
-       1. 상단 16-BIT 아케이드 통합 헤더 (런처 / 장기 / 체스 즉시 전환)
+       1. 상단 16-BIT 아케이드 통합 헤더 (런처 / 장기 / 체스 / 화면맞춤 즉시 전환)
        ======================================================================== -->
-  <header class="app-header">
+  <header class="app-header" id="bb-app-header">
     <div class="brand-box">
       <div class="brand-crest" title="Block Blast HD Pixel">💎</div>
       <div class="brand-titles">
@@ -419,7 +465,8 @@
       <a href="./arcade.html" class="btn" style="text-decoration:none;" title="통합 게임 런처로 돌아가기">🎮 런처</a>
       <a href="./index.html?game=janggi" class="btn" style="text-decoration:none;" title="중세 배틀 장기 실행">🇰🇷 장기</a>
       <a href="./chess.html" class="btn" style="text-decoration:none;" title="중세 배틀 체스 실행">♟️ 체스</a>
-      <button type="button" class="btn btn-gold" id="btn-bb-sound">🔊 사운드 ON</button>
+      <button type="button" class="btn" id="btn-bb-fit" title="네이버 앱·모바일 하단 컨트롤바에 가리지 않도록 화면 크기를 조절합니다">📐 화면맞춤</button>
+      <button type="button" class="btn btn-gold" id="btn-bb-sound">🔊 사운드</button>
       <button type="button" class="btn btn-emerald" id="btn-bb-restart">🔄 새 게임</button>
     </div>
   </header>
@@ -1244,14 +1291,59 @@
       var LOGICAL_W = 520;
       var LOGICAL_H = 708;
 
+      var FIT_STORAGE_KEY = 'BLOCK_BLAST_FIT_MODE_V1';
+      var fitMode = 0; // 0: 네이버앱/모바일 자동맞춤(기본 78px 여유), 1: 축소(124px 여유), 2: 최대(22px 여유)
+      try {
+        var savedFit = localStorage.getItem(FIT_STORAGE_KEY);
+        if (savedFit !== null) fitMode = parseInt(savedFit, 10) || 0;
+      } catch (e) {}
+
+      function fitBoardToViewport() {
+        var wrap = document.querySelector('.bb-canvas-wrap');
+        if (!wrap) return;
+
+        var vw = window.innerWidth || document.documentElement.clientWidth || 390;
+        if (vw > 1080) {
+          wrap.style.maxWidth = '500px';
+          return;
+        }
+
+        var vh = (window.visualViewport && window.visualViewport.height)
+          ? window.visualViewport.height
+          : (window.innerHeight || document.documentElement.clientHeight || 700);
+
+        var headerEl = document.getElementById('bb-app-header');
+        var bannerEl = document.querySelector('.bb-score-banner');
+        var tacticalEl = document.querySelector('.bb-tactical-bar');
+
+        var headerH = headerEl ? headerEl.offsetHeight : 54;
+        var bannerH = bannerEl ? bannerEl.offsetHeight : 48;
+        var tacticalH = tacticalEl ? tacticalEl.offsetHeight : 44;
+
+        // 네이버 앱 인앱/홈화면 하단 컨트롤바 높이 여유분
+        var reserveTable = [78, 124, 22];
+        var bottomReserve = reserveTable[fitMode % 3];
+
+        var availH = Math.max(250, vh - headerH - bannerH - tacticalH - 28 - bottomReserve);
+        var maxByHeight = Math.floor(availH * (LOGICAL_W / LOGICAL_H));
+        var maxByWidth = Math.min(500, vw - 28);
+        var finalW = Math.max(210, Math.min(maxByWidth, maxByHeight));
+
+        wrap.style.maxWidth = finalW + 'px';
+      }
+
       function setupHiDPICanvas() {
         var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
         cvs.width = LOGICAL_W * dpr;
         cvs.height = LOGICAL_H * dpr;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        fitBoardToViewport();
       }
       setupHiDPICanvas();
       window.addEventListener('resize', setupHiDPICanvas);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', fitBoardToViewport);
+      }
 
       function getCanvasLayout() {
         var boardMargin = 16;
@@ -1874,11 +1966,27 @@
         addLogEntry('💣 무광고 무료 부활 사용', 'REVIVE');
       });
 
+      var btnFit = document.getElementById('btn-bb-fit');
+      function updateFitBtnLabel() {
+        if (!btnFit) return;
+        var names = ['📐 맞춤:기본', '📐 맞춤:축소', '📐 맞춤:확대'];
+        btnFit.textContent = names[fitMode % 3];
+      }
+      updateFitBtnLabel();
+      if (btnFit) {
+        btnFit.addEventListener('click', function () {
+          fitMode = (fitMode + 1) % 3;
+          try { localStorage.setItem(FIT_STORAGE_KEY, String(fitMode)); } catch (e) {}
+          updateFitBtnLabel();
+          fitBoardToViewport();
+        });
+      }
+
       document.getElementById('btn-bb-sound').addEventListener('click', function () {
         soundEnabled = !soundEnabled;
         var btn = document.getElementById('btn-bb-sound');
         if (btn) {
-          btn.textContent = soundEnabled ? '🔊 사운드 ON' : '🔇 사운드 OFF';
+          btn.textContent = soundEnabled ? '🔊 사운드' : '🔇 음소거';
           btn.className = soundEnabled ? 'btn btn-gold' : 'btn';
         }
       });

@@ -1243,13 +1243,13 @@ body.crt-off::after {
     display: none;
   }
 
-  /* 모바일 세로 배치: 상단 적 지휘관 컴팩트 바 -> 중앙 보드 -> 하단 아군 지휘관 컴팩트 바 & 툴바 */
+  /* 모바일 세로 배치: 상단 적 지휘관 컴팩트 바 -> 중앙 보드 -> 하단 아군 지휘관 컴팩트 바 & 툴바 (네이버 앱 하단바 여유 확보) */
   .workspace-grid {
     display: flex !important;
     flex-direction: column;
     align-items: center;
     gap: 5px;
-    padding: 5px 6px 18px;
+    padding: 5px 6px calc(105px + env(safe-area-inset-bottom, 0px));
     zoom: 1 !important;
     touch-action: pan-y pinch-zoom;
   }
@@ -1347,9 +1347,9 @@ body.crt-off::after {
     touch-action: pan-y pinch-zoom;
   }
 
-  /* 핵심 수정: touch-action: pan-y pinch-zoom 허용으로 보드 위에서도 상하 스크롤 100% 작동 */
+  /* 핵심 수정: 네이버 앱/인앱 브라우저 하단 컨트롤바에 가리지 않도록 48dvh 제한 & 상하 스크롤 100% 작동 */
   #janggi-board-canvas {
-    width: min(96vw, 58dvh) !important;
+    width: min(92vw, 48dvh) !important;
     height: auto;
     touch-action: pan-y pinch-zoom !important;
   }
@@ -1405,7 +1405,7 @@ body.crt-off::after {
     background: #0f1424;
     border-top: 4px solid var(--pixel-gold);
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.9);
-    padding: 12px 12px 28px;
+    padding: 12px 12px calc(105px + env(safe-area-inset-bottom, 0px));
     transform: translateY(105%);
     transition: transform 0.22s ease-out;
   }
