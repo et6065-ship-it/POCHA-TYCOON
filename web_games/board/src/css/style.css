@@ -1,0 +1,1347 @@
+/**
+ * @fileoverview 중세 배틀체스 장기 (Medieval Battle Janggi) - 16-BIT RETRO PIXEL ART EDITION
+ * 정통 16-bit / 32-bit 도트 아케이드 & SRPG(파이어 엠블렘/샤이닝 포스/오우거 배틀 감성) UI 스타일시트
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap');
+
+@font-face {
+  font-family: 'DungGeunMo';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+:root {
+  --bg-deep: #0c0e17;
+  --bg-stone: #171b2b;
+  --bg-panel: #1a2035;
+  --bg-panel-dark: #0f1322;
+  --pixel-gold: #f5b700;
+  --pixel-gold-hi: #fff05a;
+  --pixel-gold-lo: #8c5a08;
+  --pixel-border-outer: #000000;
+  --chu-primary: #00e5a3;
+  --chu-dark: #064e3b;
+  --han-primary: #ff3b5c;
+  --han-dark: #6b0f1a;
+  --text-main: #ffffff;
+  --text-sub: #e2e8f0;
+  --text-muted: #cbd5e1;
+  --font-pixel-kr: 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', 'DungGeunMo', sans-serif;
+  --font-pixel-en: 'Silkscreen', 'DungGeunMo', 'Pretendard', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: 0 !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+canvas {
+  image-rendering: auto;
+  image-rendering: high-quality;
+}
+
+img {
+  image-rendering: auto;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #090c15;
+  background-image:
+    radial-gradient(circle at 50% 20%, rgba(30, 41, 59, 0.45) 0%, rgba(9, 12, 21, 0.98) 80%);
+  color: var(--text-main);
+  font-family: var(--font-pixel-kr);
+  overflow-x: hidden;
+  user-select: none;
+}
+
+/* 선택적 CRT 스캔라인 오버레이 (모니터 선명도를 위해 기본 OFF, 설정에서 ON 선택 시만 표시) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9990;
+  display: none;
+}
+
+body.crt-on::after {
+  display: block;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.14) 2px,
+    rgba(0, 0, 0, 0.14) 4px
+  );
+}
+
+/* ============================================================================
+   1. 상단 16-BIT 아케이드 헤더 & 지휘관 도트 대사창
+   ============================================================================ */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 20px;
+  background-color: #131829;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  border-bottom: 4px solid var(--pixel-gold);
+  box-shadow: 0 4px 0 #000000;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-crest {
+  width: 44px;
+  height: 44px;
+  background: var(--pixel-gold);
+  border: 3px solid #000000;
+  box-shadow:
+    inset -4px -4px 0 var(--pixel-gold-lo),
+    inset 4px 4px 0 var(--pixel-gold-hi),
+    4px 4px 0 #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 900;
+  color: #000000;
+  text-shadow: 1px 1px 0 var(--pixel-gold-hi);
+}
+
+.brand-titles h1 {
+  font-family: var(--font-pixel-kr);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--pixel-gold-hi);
+  text-shadow: 2px 2px 0 #8c5a08, 4px 4px 0 #000000;
+  letter-spacing: 0.04em;
+}
+
+.brand-titles p {
+  font-size: 12px;
+  color: #6ee7b7;
+  text-shadow: 2px 2px 0 #000000;
+  margin-top: 2px;
+}
+
+/* RPG 대화창 스타일 브리핑 박스 */
+.commander-briefing {
+  flex: 1;
+  max-width: 650px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: #090c16;
+  border: 3px solid #ffffff;
+  box-shadow:
+    inset 0 0 0 3px #2563eb,
+    4px 4px 0 #000000;
+}
+
+.turn-pill {
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 2px solid #000000;
+  text-shadow: 2px 2px 0 #000000;
+}
+
+.turn-pill.chu-turn {
+  background: #059669;
+  color: #a7f3d0;
+  box-shadow: inset -2px -2px 0 #064e3b, inset 2px 2px 0 #34d399;
+}
+
+.turn-pill.han-turn {
+  background: #dc2626;
+  color: #fecaca;
+  box-shadow: inset -2px -2px 0 #7f1d1d, inset 2px 2px 0 #f87171;
+}
+
+.briefing-text {
+  font-size: 13.5px;
+  color: #fef08a;
+  text-shadow: 2px 2px 0 #000000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================================================
+   2. 도트 픽셀 아케이드 버튼 & 셀렉트 박스
+   ============================================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-family: var(--font-pixel-kr);
+  font-size: 13px;
+  color: #ffffff;
+  text-shadow: 2px 2px 0 #000000;
+  cursor: pointer;
+  background: #334155;
+  border: 3px solid #000000;
+  box-shadow:
+    inset -3px -3px 0 #1e293b,
+    inset 3px 3px 0 #64748b,
+    4px 4px 0 #000000;
+  transition: transform 0.05s steps(2);
+}
+
+.btn:hover:not(:disabled) {
+  background: #475569;
+  color: var(--pixel-gold-hi);
+}
+
+.btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 3px 3px 0 #0f172a,
+    2px 2px 0 #000000;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+}
+
+.btn-gold {
+  background: #d97706;
+  color: #fffbeb;
+  box-shadow:
+    inset -3px -3px 0 #78350f,
+    inset 3px 3px 0 #fde047,
+    4px 4px 0 #000000;
+}
+
+.btn-gold:hover:not(:disabled) {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+.btn-crimson {
+  background: #dc2626;
+  color: #fef2f2;
+  box-shadow:
+    inset -3px -3px 0 #7f1d1d,
+    inset 3px 3px 0 #f87171,
+    4px 4px 0 #000000;
+}
+
+.btn-crimson:hover:not(:disabled) {
+  background: #ef4444;
+}
+
+.btn-emerald {
+  background: #059669;
+  color: #ecfdf5;
+  box-shadow:
+    inset -3px -3px 0 #064e3b,
+    inset 3px 3px 0 #34d399,
+    4px 4px 0 #000000;
+}
+
+.btn-emerald:hover:not(:disabled) {
+  background: #10b981;
+}
+
+/* ============================================================================
+   3. 메인 3단 레트로 SRPG 워크스페이스 그리드
+   ============================================================================ */
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 330px minmax(520px, 1fr) 360px;
+  gap: 16px;
+  max-width: 1640px;
+  margin: 0 auto;
+  padding: 16px 18px 26px;
+  align-items: start;
+}
+
+.panel-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 정통 16-bit RPG 윈도우 박스 프레임 */
+.card-panel {
+  background-color: var(--bg-panel);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0);
+  background-size: 8px 8px;
+  padding: 13px 14px;
+  border: 3px solid #000000;
+  box-shadow:
+    inset 0 0 0 3px var(--pixel-gold),
+    inset 0 0 0 6px #0f1322,
+    6px 6px 0 #000000;
+}
+
+.panel-title {
+  font-size: 14px;
+  color: var(--pixel-gold-hi);
+  text-shadow: 2px 2px 0 #000000;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 3px dashed rgba(245, 183, 0, 0.45);
+  padding-bottom: 6px;
+}
+
+/* ============================================================================
+   4. 좌측 패널: 진영 상태 카드 (한 HAN / 초 CHU) & 아케이드 전력 게이지
+   ============================================================================ */
+
+.faction-card {
+  position: relative;
+  padding: 12px 14px;
+  border: 3px solid #000000;
+}
+
+.faction-card.han-card {
+  background: #2b0f18;
+  box-shadow:
+    inset 0 0 0 3px #ef4444,
+    inset 0 0 0 6px #16070c,
+    6px 6px 0 #000000;
+}
+
+.faction-card.chu-card {
+  background: #0a2924;
+  box-shadow:
+    inset 0 0 0 3px #10b981,
+    inset 0 0 0 6px #051613,
+    6px 6px 0 #000000;
+}
+
+.faction-card.active-turn {
+  box-shadow:
+    inset 0 0 0 4px var(--pixel-gold-hi),
+    0 0 0 2px var(--pixel-gold-hi),
+    6px 6px 0 #000000;
+}
+
+.faction-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emblem-canvas {
+  width: 54px;
+  height: 54px;
+  background: #090c15;
+  border: 3px solid var(--pixel-gold);
+  box-shadow: 3px 3px 0 #000000;
+  flex-shrink: 0;
+}
+
+.faction-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.faction-side-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 6px;
+  margin-bottom: 4px;
+  border: 2px solid #000000;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.han-card .faction-side-badge {
+  background: #991b1b;
+  color: #fecaca;
+}
+
+.chu-card .faction-side-badge {
+  background: #065f46;
+  color: #a7f3d0;
+}
+
+.faction-name-title {
+  font-size: 15px;
+  color: #ffffff;
+  text-shadow: 2px 2px 0 #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.faction-sub-meta {
+  font-size: 12px;
+  color: var(--text-sub);
+  text-shadow: 1px 1px 0 #000000;
+  margin-top: 3px;
+}
+
+.score-badge {
+  text-align: right;
+  background: #090c15;
+  padding: 5px 8px;
+  border: 2px solid var(--pixel-gold);
+  box-shadow: 2px 2px 0 #000000;
+}
+
+.score-number {
+  font-family: var(--font-pixel-en);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--pixel-gold-hi);
+  text-shadow: 2px 2px 0 #000000;
+  line-height: 1.1;
+}
+
+.score-unit {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.captured-tray-label {
+  font-size: 11.5px;
+  color: var(--text-sub);
+  text-shadow: 1px 1px 0 #000000;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.captured-tray {
+  min-height: 34px;
+  padding: 5px 7px;
+  background: #080b12;
+  border: 2px solid #334155;
+  box-shadow: inset 2px 2px 0 #000000;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.captured-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  background: #1e293b;
+  border: 2px solid #000000;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.captured-chip.chu-piece {
+  color: #6ee7b7;
+  box-shadow: inset 0 0 0 1px #10b981;
+}
+
+.captured-chip.han-piece {
+  color: #fca5a5;
+  box-shadow: inset 0 0 0 1px #ef4444;
+}
+
+.status-alert-pill {
+  display: none;
+  margin-top: 8px;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  text-align: center;
+  background: #b91c1c;
+  border: 2px solid #fef08a;
+  color: #fef08a;
+  text-shadow: 2px 2px 0 #000000;
+  animation: pixelBlink 0.5s steps(2) infinite;
+}
+
+.status-alert-pill.visible {
+  display: block;
+}
+
+@keyframes pixelBlink {
+  0% { background: #dc2626; color: #fef08a; }
+  50% { background: #7f1d1d; color: #ffffff; }
+  100% { background: #dc2626; color: #fef08a; }
+}
+
+/* 아케이드 칸칸이 전력 게이지 바 */
+.power-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.power-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  text-shadow: 2px 2px 0 #000000;
+}
+
+.power-bar-track {
+  width: 100%;
+  height: 18px;
+  background: #b91c1c;
+  border: 3px solid #000000;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), 3px 3px 0 #000000;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+/* 도트 눈금 오버레이 */
+.power-bar-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 10px,
+    rgba(0, 0, 0, 0.55) 10px,
+    rgba(0, 0, 0, 0.55) 12px
+  );
+  pointer-events: none;
+}
+
+.power-bar-chu {
+  height: 100%;
+  background: #10b981;
+  border-right: 3px solid #ffffff;
+  transition: width 0.2s steps(8);
+}
+
+/* 선택 기물 도트 인스펙터 */
+.unit-inspector {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.inspector-canvas {
+  width: 88px;
+  height: 88px;
+  background-color: #090d16;
+  background-image:
+    linear-gradient(45deg, #111827 25%, transparent 25%),
+    linear-gradient(-45deg, #111827 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #111827 75%),
+    linear-gradient(-45deg, transparent 75%, #111827 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  border: 3px solid var(--pixel-gold);
+  box-shadow: 4px 4px 0 #000000;
+  flex-shrink: 0;
+}
+
+.inspector-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.inspector-unit-name {
+  font-size: 15px;
+  color: var(--pixel-gold-hi);
+  text-shadow: 2px 2px 0 #000000;
+  margin-bottom: 4px;
+}
+
+.inspector-unit-role {
+  font-size: 12px;
+  color: #38bdf8;
+  text-shadow: 1px 1px 0 #000000;
+  margin-bottom: 5px;
+}
+
+.inspector-unit-desc {
+  font-size: 12px;
+  color: var(--text-sub);
+  text-shadow: 1px 1px 0 #000000;
+  line-height: 1.4;
+}
+
+/* ============================================================================
+   5. 중앙 패널: 9x10 도트 타일맵 장기판 스테이지
+   ============================================================================ */
+
+.board-stage-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.board-frame {
+  position: relative;
+  padding: 10px;
+  background: #23170f;
+  border: 4px solid #000000;
+  box-shadow:
+    inset 0 0 0 4px var(--pixel-gold),
+    inset 0 0 0 8px #5c3a1e,
+    10px 10px 0 rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#janggi-board-canvas {
+  display: block;
+  width: min(680px, 88vw);
+  height: auto;
+  aspect-ratio: 780 / 860;
+  cursor: crosshair;
+  border: 3px solid #000000;
+}
+
+.board-bottom-toolbar {
+  width: 100%;
+  max-width: 708px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-panel);
+  border: 3px solid #000000;
+  box-shadow:
+    inset 0 0 0 3px var(--pixel-gold),
+    6px 6px 0 #000000;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================================
+   6. 우측 패널: 도트 폼 컨트롤 & 기보 로그
+   ============================================================================ */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-field label {
+  font-size: 12px;
+  color: #fef08a;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.select-input {
+  width: 100%;
+  padding: 7px 8px;
+  background: #090c15;
+  border: 3px solid var(--pixel-gold);
+  box-shadow: 3px 3px 0 #000000;
+  color: #ffffff;
+  font-family: var(--font-pixel-kr);
+  font-size: 12.5px;
+  outline: none;
+  cursor: pointer;
+}
+
+.select-input:focus {
+  border-color: #38bdf8;
+}
+
+.mode-radio-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.mode-btn {
+  padding: 7px 6px;
+  font-family: var(--font-pixel-kr);
+  font-size: 12px;
+  text-align: center;
+  background: #0f172a;
+  border: 3px solid #475569;
+  box-shadow: 3px 3px 0 #000000;
+  color: var(--text-sub);
+  text-shadow: 1px 1px 0 #000000;
+  cursor: pointer;
+}
+
+.mode-btn.active {
+  background: #b45309;
+  border-color: var(--pixel-gold-hi);
+  color: var(--pixel-gold-hi);
+  box-shadow:
+    inset -2px -2px 0 #78350f,
+    inset 2px 2px 0 #fde047,
+    3px 3px 0 #000000;
+}
+
+/* 도트 기보 리스트 */
+.move-log-list {
+  height: 185px;
+  overflow-y: auto;
+  background: #080b12;
+  border: 3px solid #334155;
+  box-shadow: inset 3px 3px 0 #000000;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+}
+
+.move-log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 7px;
+  background: #141b2d;
+  border: 2px solid #000000;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+.move-log-item.chu-move {
+  border-left: 5px solid var(--chu-primary);
+}
+
+.move-log-item.han-move {
+  border-left: 5px solid var(--han-primary);
+}
+
+.move-num {
+  color: var(--pixel-gold-hi);
+  font-size: 11.5px;
+  margin-right: 6px;
+}
+
+/* ============================================================================
+   7. 모달 (16-bit 도트 도감, 배틀 쇼케이스, 승리 화면)
+   ============================================================================ */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(5, 7, 13, 0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-backdrop.open {
+  display: flex;
+}
+
+.modal-window {
+  width: min(1060px, 96vw);
+  max-height: 90vh;
+  background: #131829;
+  border: 4px solid #000000;
+  box-shadow:
+    inset 0 0 0 4px var(--pixel-gold),
+    inset 0 0 0 8px #090c15,
+    12px 12px 0 #000000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #090c15;
+  border-bottom: 4px solid var(--pixel-gold);
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  color: var(--pixel-gold-hi);
+  text-shadow: 2px 2px 0 #8c5a08, 4px 4px 0 #000000;
+}
+
+.modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.codex-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.codex-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.codex-unit-card {
+  background: #0d1220;
+  border: 3px solid var(--pixel-gold);
+  box-shadow: 4px 4px 0 #000000;
+  padding: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.codex-unit-card canvas {
+  width: 92px;
+  height: 92px;
+  background-color: #070a12;
+  background-image:
+    linear-gradient(45deg, #111827 25%, transparent 25%),
+    linear-gradient(-45deg, #111827 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #111827 75%),
+    linear-gradient(-45deg, transparent 75%, #111827 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  border: 3px solid #475569;
+  flex-shrink: 0;
+}
+
+.art-gallery-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.art-card {
+  background: #090c15;
+  border: 3px solid var(--pixel-gold);
+  box-shadow: 4px 4px 0 #000000;
+  padding: 10px;
+  text-align: center;
+}
+
+.art-card img {
+  width: 100%;
+  max-height: 250px;
+  object-fit: cover;
+  border: 3px solid #000000;
+}
+
+.art-card p {
+  font-size: 12.5px;
+  color: #fef08a;
+  text-shadow: 1px 1px 0 #000000;
+  margin-top: 8px;
+}
+
+@media (max-width: 1260px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .panel-column {
+    width: min(708px, 96vw);
+  }
+}
+
+/* ============================================================================
+   8. 내 컴퓨터 해상도 · 장기판 디자인 스케일 · 사운드 옵션 전용 스타일
+   ============================================================================ */
+
+:root {
+  --board-display-width: 680px;
+  --workspace-max-width: 1640px;
+  --left-col-width: 330px;
+  --right-col-width: 360px;
+  --ui-zoom-factor: 1;
+}
+
+body.crt-soft::after {
+  display: block;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+}
+
+body.crt-off::after {
+  display: none !important;
+}
+
+.workspace-grid {
+  grid-template-columns: var(--left-col-width) minmax(480px, 1fr) var(--right-col-width);
+  max-width: var(--workspace-max-width);
+}
+
+#janggi-board-canvas {
+  width: min(var(--board-display-width), 88vw);
+  transition: width 0.15s steps(4);
+}
+
+.board-bottom-toolbar {
+  max-width: calc(var(--board-display-width) + 28px);
+}
+
+.settings-section-card {
+  background: #0d1220;
+  border: 3px solid var(--pixel-gold);
+  box-shadow:
+    inset 0 0 0 3px #1e293b,
+    5px 5px 0 #000000;
+  padding: 14px 16px;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14.5px;
+  color: var(--pixel-gold-hi);
+  text-shadow: 2px 2px 0 #000000;
+  border-bottom: 3px dashed rgba(245, 183, 0, 0.45);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.hardware-detect-pill {
+  font-size: 11.5px;
+  padding: 3px 8px;
+  background: #064e3b;
+  border: 2px solid #10b981;
+  color: #a7f3d0;
+  box-shadow: 2px 2px 0 #000000;
+}
+
+.resolution-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.resolution-preset-grid .mode-btn {
+  padding: 9px 8px;
+  line-height: 1.35;
+}
+
+.resolution-preset-grid .mode-btn small {
+  font-size: 10.5px;
+  color: #cbd5e1;
+  opacity: 0.9;
+}
+
+.resolution-preset-grid .mode-btn.active small {
+  color: #ffffff;
+}
+
+/* 16-Bit 아케이드 도트 슬라이더 */
+.pixel-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 16px;
+  background: #090c15;
+  border: 3px solid var(--pixel-gold);
+  box-shadow: inset 2px 2px 0 #000000, 2px 2px 0 #000000;
+  outline: none;
+  cursor: pointer;
+}
+
+.pixel-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 22px;
+  background: var(--pixel-gold-hi);
+  border: 3px solid #000000;
+  box-shadow: inset -2px -2px 0 #b45309, 2px 2px 0 #000000;
+  cursor: pointer;
+}
+
+.pixel-slider::-moz-range-thumb {
+  width: 16px;
+  height: 22px;
+  background: var(--pixel-gold-hi);
+  border: 3px solid #000000;
+  box-shadow: inset -2px -2px 0 #b45309, 2px 2px 0 #000000;
+  cursor: pointer;
+}
+
+@media (max-width: 1260px) {
+  .workspace-grid {
+    grid-template-columns: 1fr !important;
+    justify-items: center;
+  }
+  .resolution-preset-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ============================================================================
+   9. 장기 <-> 체스 전환 스위처 & 체스 프로모션(승진) 모달 스타일
+   ============================================================================ */
+
+.game-switcher-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  background: #090c15;
+  border: 3px solid var(--pixel-gold);
+  box-shadow: 4px 4px 0 #000000;
+}
+
+.game-switch-btn {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 2px solid #000000;
+  box-shadow: inset -2px -2px 0 #0f172a, inset 2px 2px 0 #475569;
+}
+
+.game-switch-btn.active {
+  background: #d97706;
+  color: #fffbeb;
+  border-color: #fef08a;
+  box-shadow:
+    inset -2px -2px 0 #78350f,
+    inset 2px 2px 0 #fde047,
+    0 0 8px rgba(245, 183, 0, 0.55);
+}
+
+.promotion-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.promotion-choice-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  background: #0d1220;
+  border: 3px solid var(--pixel-gold);
+  box-shadow:
+    inset 0 0 0 2px #1e293b,
+    4px 4px 0 #000000;
+  color: #ffffff;
+  font-family: var(--font-pixel-kr);
+  cursor: pointer;
+  transition: transform 0.08s steps(2);
+}
+
+.promotion-choice-card:hover {
+  background: #1e293b;
+  border-color: var(--pixel-gold-hi);
+  transform: translateY(-3px);
+}
+
+.promotion-choice-card canvas {
+  width: 88px;
+  height: 88px;
+  background-color: #070a12;
+  border: 2px solid #475569;
+}
+
+.promo-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pixel-gold-hi);
+  text-shadow: 2px 2px 0 #000000;
+}
+
+.promo-card-score {
+  font-size: 11px;
+  color: #6ee7b7;
+  text-shadow: 1px 1px 0 #000000;
+}
+
+/* 데스크톱에서는 모바일 바텀시트 전용 UI 숨김 */
+.mobile-only-drawer-btn,
+.mobile-drawer-header,
+.mobile-drawer-backdrop {
+  display: none;
+}
+
+/* ============================================================================
+   10. 모바일 9:16 세로 원스크린 레이아웃 & GPU 합성 경량화
+   ============================================================================ */
+
+@media (max-width: 960px), (pointer: coarse) {
+  html, body {
+    background-attachment: scroll !important;
+    background-image: linear-gradient(180deg, #0b0e18 0%, #14192b 100%) !important;
+    min-height: 100dvh;
+    overscroll-behavior-y: contain;
+  }
+
+  /* 모바일 GPU 합성 부하 방지를 위해 전체화면 고정 스캔라인 경량화 */
+  body::after {
+    display: none !important;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+  }
+
+  .brand-crest {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .brand-titles h1 {
+    font-size: 14px;
+  }
+
+  .brand-titles p {
+    display: none;
+  }
+
+  .game-switcher-group {
+    order: 2;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .game-switch-btn {
+    flex: 1;
+    padding: 5px 6px;
+    font-size: 11.5px;
+  }
+
+  .commander-briefing {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
+  .turn-pill {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .briefing-text {
+    font-size: 11.5px;
+  }
+
+  .header-actions {
+    order: 1;
+    margin-left: auto;
+    gap: 4px;
+  }
+
+  .header-actions .btn {
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+
+  #btn-open-settings {
+    display: none;
+  }
+
+  /* 9:16 세로 원스크린 배치: 상단 적 지휘관 바 -> 중앙 보드 -> 하단 아군 지휘관 바 & 툴바 */
+  .workspace-grid {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 6px 12px;
+    zoom: 1 !important;
+  }
+
+  .left-status-column {
+    display: contents;
+  }
+
+  #han-faction-card {
+    order: 1;
+    width: min(96vw, 560px);
+    padding: 6px 10px;
+    box-shadow: inset 0 0 0 2px #ef4444, 3px 3px 0 #000000;
+  }
+
+  .board-stage-column {
+    order: 2;
+    width: 100%;
+    gap: 6px;
+  }
+
+  #chu-faction-card {
+    order: 3;
+    width: min(96vw, 560px);
+    padding: 6px 10px;
+    box-shadow: inset 0 0 0 2px #10b981, 3px 3px 0 #000000;
+  }
+
+  .power-gauge-card,
+  #selected-unit-card {
+    display: none;
+  }
+
+  .emblem-canvas {
+    width: 40px;
+    height: 40px;
+  }
+
+  .faction-name-title {
+    font-size: 13px;
+  }
+
+  .faction-sub-meta {
+    font-size: 10.5px;
+  }
+
+  .captured-tray-label {
+    display: none;
+  }
+
+  .captured-tray {
+    min-height: 22px;
+    margin-top: 4px;
+    padding: 2px 5px;
+  }
+
+  .board-frame {
+    padding: 4px;
+    box-shadow: inset 0 0 0 3px var(--pixel-gold), 4px 4px 0 rgba(0, 0, 0, 0.85);
+  }
+
+  #janggi-board-canvas {
+    width: min(96vw, 62dvh) !important;
+    height: auto;
+    touch-action: none;
+  }
+
+  .board-bottom-toolbar {
+    width: min(96vw, 560px);
+    padding: 6px 8px;
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .board-bottom-toolbar .btn {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .mobile-only-drawer-btn {
+    display: inline-flex;
+  }
+
+  /* 우측 설정 컬럼 -> 모바일 슬라이드업 바텀 시트 드로어 */
+  .mobile-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 8400;
+    background: rgba(4, 6, 12, 0.78);
+    display: none;
+  }
+
+  .mobile-drawer-backdrop.open {
+    display: block;
+  }
+
+  .right-settings-column {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 8500;
+    width: 100% !important;
+    max-height: 82dvh;
+    overflow-y: auto;
+    background: #0f1424;
+    border-top: 4px solid var(--pixel-gold);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.9);
+    padding: 12px 12px 24px;
+    transform: translateY(105%);
+    transition: transform 0.22s ease-out;
+  }
+
+  .right-settings-column.open {
+    transform: translateY(0);
+  }
+
+  .mobile-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    margin-bottom: 6px;
+    border-bottom: 3px solid var(--pixel-gold);
+    font-size: 14px;
+    color: var(--pixel-gold-hi);
+  }
+
+  .promotion-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+
