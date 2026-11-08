@@ -13,51 +13,51 @@
   <style>
     body.blockblast-body {
       min-height: 100dvh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       background-color: #090c15;
       background-image:
         radial-gradient(circle at 50% 18%, rgba(30, 58, 138, 0.35) 0%, rgba(9, 12, 21, 0.98) 78%);
-      overflow-x: hidden;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
-      padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     }
 
     .bb-workspace {
-      display: grid;
-      grid-template-columns: 300px minmax(360px, 560px) 320px;
-      gap: 16px;
-      max-width: 1280px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
       width: 100%;
+      max-width: 720px;
       margin: 0 auto;
-      padding: 14px 16px calc(96px + env(safe-area-inset-bottom, 0px));
-      align-items: start;
-      justify-content: center;
+      padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+      min-height: 0;
     }
 
     /* 상단 모바일/컴팩트 스코어 바 */
     .bb-score-banner {
+      width: 100%;
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       background: #12172a;
       border: 3px solid #000;
       box-shadow:
-        inset 0 0 0 3px #f5b700,
-        inset 0 0 0 6px #090c15,
-        6px 6px 0 #000;
-      padding: 10px 14px;
+        inset 0 0 0 2px #f5b700,
+        4px 4px 0 #000;
+      padding: 6px 12px;
       position: relative;
+      flex-shrink: 0;
     }
 
     .bb-score-box {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
     }
 
     .bb-score-box.right {
@@ -66,10 +66,10 @@
     }
 
     .bb-score-label {
-      font-size: 11px;
+      font-size: 10px;
       color: #94a3b8;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -77,11 +77,11 @@
 
     .bb-score-val {
       font-family: var(--font-pixel-en);
-      font-size: clamp(20px, 4vw, 30px);
+      font-size: clamp(19px, 4.2vw, 28px);
       font-weight: 900;
       color: #ffffff;
       text-shadow: 2px 2px 0 #000, 0 0 12px rgba(56, 189, 248, 0.35);
-      line-height: 1.1;
+      line-height: 1.05;
     }
 
     .bb-score-val.best-val {
@@ -95,10 +95,10 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 6px 12px;
+      padding: 4px 10px;
       background: #0b0f1c;
       border: 2px solid #334155;
-      min-width: 112px;
+      min-width: 102px;
       transition: transform 0.12s, border-color 0.15s, background 0.15s;
     }
 
@@ -116,7 +116,7 @@
 
     .bb-combo-title {
       font-family: var(--font-pixel-en);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 900;
       color: #f8fafc;
       text-shadow: 2px 2px 0 #000;
@@ -129,15 +129,15 @@
     .bb-grace-dots {
       display: flex;
       align-items: center;
-      gap: 5px;
-      margin-top: 4px;
-      font-size: 10px;
+      gap: 4px;
+      margin-top: 2px;
+      font-size: 9px;
       color: #cbd5e1;
     }
 
     .grace-pip {
-      width: 9px;
-      height: 9px;
+      width: 8px;
+      height: 8px;
       background: #1e293b;
       border: 1px solid #475569;
       display: inline-block;
@@ -153,41 +153,43 @@
     .bb-center-column {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      align-items: center;
+      gap: 6px;
       width: 100%;
+      flex: 1;
+      min-height: 0;
     }
 
     .bb-stage-card {
       background: #111626;
-      border: 4px solid #000;
+      border: 3px solid #000;
       box-shadow:
-        inset 0 0 0 3px #38bdf8,
-        inset 0 0 0 6px #090c15,
-        8px 8px 0 #000;
-      padding: 10px;
+        inset 0 0 0 2px #38bdf8,
+        6px 6px 0 #000;
+      padding: 6px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      width: 100%;
       position: relative;
       transition: box-shadow 0.2s;
     }
 
     .bb-stage-card.combo-fever {
       box-shadow:
-        inset 0 0 0 3px #f5b700,
-        inset 0 0 0 6px #7c2d12,
-        0 0 24px rgba(245, 183, 0, 0.35),
-        8px 8px 0 #000;
+        inset 0 0 0 2px #f5b700,
+        0 0 20px rgba(245, 183, 0, 0.35),
+        6px 6px 0 #000;
     }
 
     .bb-canvas-wrap {
       width: 100%;
-      aspect-ratio: 520 / 708;
-      max-width: 500px;
+      aspect-ratio: 500 / 648;
+      max-width: 640px;
       margin: 0 auto;
       position: relative;
-      touch-action: pan-y pinch-zoom;
+      touch-action: none;
     }
 
     #bb-main-canvas {
@@ -202,12 +204,13 @@
       cursor: grabbing;
     }
 
-    /* 무광고 전술 아이템 바 */
+    /* 전술 아이템 바 */
     .bb-tactical-bar {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 6px;
       width: 100%;
+      flex-shrink: 0;
     }
 
     .bb-item-btn {
@@ -215,8 +218,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 2px;
-      padding: 7px 5px;
+      gap: 1px;
+      padding: 6px 4px;
       font-size: 12px;
       font-weight: 700;
       position: relative;
@@ -228,7 +231,58 @@
       font-weight: 600;
     }
 
-    /* 좌/우 사이드 정보 리스트 */
+    /* 가이드 모달 내부 통계 & 규칙 스타일 */
+    .bb-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 9, 18, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      z-index: 9000;
+    }
+
+    .bb-modal-backdrop.open {
+      display: flex;
+    }
+
+    .bb-modal-window {
+      width: min(560px, 96vw);
+      max-height: 86dvh;
+      background: #131829;
+      border: 4px solid #000;
+      box-shadow:
+        inset 0 0 0 3px #f5b700,
+        8px 8px 0 #000;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .bb-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: #0b0f1c;
+      border-bottom: 3px solid #f5b700;
+    }
+
+    .bb-modal-header h2 {
+      font-size: 15px;
+      color: #fff05a;
+    }
+
+    .bb-modal-body {
+      padding: 14px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
     .bb-stat-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -280,7 +334,7 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 190px;
+      max-height: 160px;
       overflow-y: auto;
       font-size: 12px;
     }
@@ -301,7 +355,7 @@
       font-weight: 700;
     }
 
-    /* 게임 오버 오버레이 모달 (광고 0% 즉시 부활/재시작) */
+    /* 게임 오버 오버레이 모달 */
     .bb-gameover-overlay {
       position: absolute;
       inset: 0;
@@ -348,100 +402,65 @@
       justify-content: space-around;
     }
 
-    .bb-adfree-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 4px 10px;
-      background: #064e3b;
-      border: 2px solid #10b981;
-      color: #a7f3d0;
-      font-size: 11.5px;
-      font-weight: 700;
-    }
-
-    @media (max-width: 1080px) {
-      .bb-workspace {
-        grid-template-columns: 1fr;
-        max-width: 540px;
-        padding: 6px 8px calc(110px + env(safe-area-inset-bottom, 0px));
-        gap: 10px;
-      }
-      .bb-side-left {
-        order: 2;
-      }
-      .bb-center-column {
-        order: 1;
-        gap: 6px;
-      }
-      .bb-side-right {
-        order: 3;
-      }
-    }
-
-    @media (max-width: 640px) {
+    @media (max-width: 768px) {
       .app-header {
-        padding: 5px 8px;
-        gap: 5px;
-        flex-wrap: wrap;
+        padding: 4px 6px;
+        gap: 4px;
       }
+      /* 모바일에서는 상단 타이틀 박스를 숨기고 액션 버튼을 1줄로 배치하여 보드 크기를 극대화 */
       .brand-box {
-        gap: 6px;
-      }
-      .brand-crest {
-        width: 26px;
-        height: 26px;
-        font-size: 14px;
-      }
-      .brand-titles h1 {
-        font-size: 13.5px;
-      }
-      .brand-titles p,
-      .bb-adfree-pill {
         display: none;
       }
       .header-actions {
         width: 100%;
         justify-content: space-between;
-        gap: 4px;
+        gap: 3px;
+        flex-wrap: nowrap;
       }
       .header-actions .btn {
-        padding: 4px 5px;
+        padding: 5px 4px;
         font-size: 10.5px;
-        flex: 1;
+        flex: 1 1 0;
+        min-width: 0;
+        white-space: nowrap;
+      }
+      .bb-workspace {
+        padding: 4px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+      }
+      .bb-center-column {
+        gap: 4px;
       }
       .bb-stage-card {
-        padding: 6px;
-        gap: 6px;
+        padding: 4px;
+        gap: 4px;
       }
       .bb-score-banner {
-        padding: 6px 10px;
-        gap: 6px;
+        padding: 5px 8px;
+        gap: 4px;
       }
       .bb-score-label {
-        font-size: 9.5px;
+        font-size: 9px;
       }
       .bb-score-val {
         font-size: 18px;
       }
       .bb-combo-badge {
-        padding: 4px 8px;
-        min-width: 94px;
+        padding: 3px 7px;
+        min-width: 88px;
       }
       .bb-combo-title {
         font-size: 11px;
       }
       .bb-grace-dots {
-        margin-top: 2px;
-        font-size: 9px;
+        margin-top: 1px;
+        font-size: 8.5px;
       }
       .bb-item-btn {
-        padding: 5px 4px;
+        padding: 5px 3px;
         font-size: 11px;
       }
       .bb-item-sub {
-        font-size: 9.5px;
+        font-size: 9px;
       }
     }
   </style>
@@ -449,7 +468,7 @@
 <body class="blockblast-body crt-off">
 
   <!-- ========================================================================
-       1. 상단 16-BIT 아케이드 통합 헤더 (런처 / 장기 / 체스 / 화면맞춤 즉시 전환)
+       1. 상단 16-BIT 아케이드 슬림 통합 헤더 (모바일 1줄 구성으로 보드 면적 극대화)
        ======================================================================== -->
   <header class="app-header" id="bb-app-header">
     <div class="brand-box">
@@ -462,66 +481,26 @@
 
     <div class="header-actions">
       <a href="./arcade.html" class="btn" style="text-decoration:none;" title="통합 게임 런처로 돌아가기">🎮 런처</a>
-      <a href="./index.html?game=janggi" class="btn" style="text-decoration:none;" title="중세 배틀 장기 실행">🇰🇷 장기</a>
+      <a href="./janggi.html" class="btn" style="text-decoration:none;" title="중세 배틀 장기 실행">🇰🇷 장기</a>
       <a href="./chess.html" class="btn" style="text-decoration:none;" title="중세 배틀 체스 실행">♟️ 체스</a>
-      <button type="button" class="btn" id="btn-bb-fit" title="모바일 하단 컨트롤바에 가리지 않도록 화면 크기를 조절합니다">📐 화면맞춤</button>
-      <button type="button" class="btn btn-gold" id="btn-bb-sound">🔊 사운드</button>
-      <button type="button" class="btn btn-emerald" id="btn-bb-restart">🔄 새 게임</button>
+      <button type="button" class="btn btn-gold" id="btn-bb-guide" title="게임 규칙 및 상세 전술 기록 보기">📘 가이드</button>
+      <button type="button" class="btn" id="btn-bb-fit" title="화면 여백 및 보드 크기 맞춤 조절">📐 맞춤</button>
+      <button type="button" class="btn btn-crimson" id="btn-bb-fullscreen" title="전체화면 모드 전환">⛶ 전체화면</button>
+      <button type="button" class="btn" id="btn-bb-sound" title="사운드 켜기/끄기">🔊</button>
+      <button type="button" class="btn btn-emerald" id="btn-bb-restart" title="새 게임 시작">🔄 새게임</button>
     </div>
   </header>
 
   <!-- ========================================================================
-       2. 메인 3단 워크스페이스 (모바일에서는 보드가 최상단 1순위로 배치)
+       2. 메인 풀스크린 게임 스테이지 (오직 점수판 + 대형 8x8 보드 & 트레이 + 아이템만 배치)
        ======================================================================== -->
   <main class="bb-workspace">
-
-    <!-- [좌측 패널: 실시간 통계 & 보드 위험도 모니터] -->
-    <section class="panel-column bb-side-left">
-      <div class="card-panel">
-        <div class="panel-title">
-          <span>📊 클래식 런 전술 기록</span>
-          <span style="font-size:11px;color:#34d399;">자동 저장됨</span>
-        </div>
-        <div class="bb-stat-grid">
-          <div class="bb-stat-cell">
-            <span class="lbl">최대 콤보 (MAX STREAK)</span>
-            <span class="val" id="stat-max-combo">0 Combo</span>
-          </div>
-          <div class="bb-stat-cell">
-            <span class="lbl">제거한 총 줄 (LINES)</span>
-            <span class="val" id="stat-lines-cleared">0 Lines</span>
-          </div>
-          <div class="bb-stat-cell">
-            <span class="lbl">올클리어 (ALL CLEAR)</span>
-            <span class="val" id="stat-all-clears" style="color:#fde047;">0 회</span>
-          </div>
-          <div class="bb-stat-cell">
-            <span class="lbl">보드 밀도 (DENSITY)</span>
-            <span class="val" id="stat-board-density">0%</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card-panel">
-        <div class="panel-title">
-          <span>⚡ 최근 콤보 &amp; 하이라이트 로그</span>
-        </div>
-        <div class="bb-log-feed" id="bb-log-feed">
-          <div class="bb-log-item">
-            <span>블록 3개를 드래그해 줄을 완성하세요!</span>
-            <span class="pts">READY</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- [중앙 메인 스테이지: 스코어 배너 + 8x8 보드 & 3블록 트레이 + 전술 아이템] -->
     <section class="bb-center-column">
 
       <!-- 상단 점수 & 하트비트 콤보 배너 -->
       <div class="bb-score-banner">
         <div class="bb-score-box">
-          <span class="bb-score-label">🎯 CURRENT SCORE</span>
+          <span class="bb-score-label">🎯 SCORE</span>
           <span class="bb-score-val" id="bb-current-score">0</span>
         </div>
 
@@ -536,7 +515,7 @@
         </div>
 
         <div class="bb-score-box right">
-          <span class="bb-score-label">👑 BEST SCORE</span>
+          <span class="bb-score-label">👑 BEST</span>
           <span class="bb-score-val best-val" id="bb-best-score">0</span>
         </div>
       </div>
@@ -544,7 +523,7 @@
       <!-- 8x8 보드 & 하단 3조각 드래그 트레이 통합 캔버스 -->
       <div class="bb-stage-card" id="bb-stage-card">
         <div class="bb-canvas-wrap">
-          <canvas id="bb-main-canvas" width="520" height="708"></canvas>
+          <canvas id="bb-main-canvas" width="500" height="648"></canvas>
 
           <!-- 게임 오버 오버레이 -->
           <div class="bb-gameover-overlay" id="bb-gameover-overlay">
@@ -591,39 +570,85 @@
       </div>
 
     </section>
-
-    <!-- [우측 패널: 블록 블라스트 핵심 고득점 공식 & 컨트롤 안내] -->
-    <section class="panel-column bb-side-right">
-      <div class="card-panel">
-        <div class="panel-title">
-          <span>📘 BLOCK BLAST 고득점 핵심 규칙</span>
-        </div>
-        <ul class="bb-rule-list">
-          <li>
-            <strong>1. 8×8 드래그 &amp; 회전 불가</strong><br />
-            하단 3개의 블록을 모두 보드에 배치해야 다음 3개 세트가 리필됩니다. 가로/세로 8칸을 채우면 즉시 폭발합니다.
-          </li>
-          <li>
-            <strong>2. 3턴 유예 하트비트 콤보 (핵심!)</strong><br />
-            줄을 지운 뒤 <strong>다음 3번의 블록 배치 안에 최소 1줄</strong>만 지우면 콤보 배율(×2, ×3, ×10...)이 끊기지 않고 누적됩니다!
-          </li>
-          <li>
-            <strong>3. 줄 완성 프리뷰 하이라이트</strong><br />
-            블록을 보드 위에 올리면 <strong>완성될 가로/세로 줄 전체가 보석 빛으로 미리 반짝</strong>이므로 동시 2~4줄 교차 클리어를 쉽게 노릴 수 있습니다.
-          </li>
-          <li>
-            <strong>4. 올클리어(ALL CLEAR) +360점</strong><br />
-            보드 위의 모든 블록을 단 한 칸도 남기지 않고 싹 비우면 <strong>+360점 보너스</strong>가 터집니다.
-          </li>
-          <li>
-            <strong>5. 전술 아이템 보너스 충전</strong><br />
-            <strong>2,000점 달성 또는 5콤보 달성마다</strong> 리롤·폭탄·무르기 아이템이 자동 충전됩니다.
-          </li>
-        </ul>
-      </div>
-    </section>
-
   </main>
+
+  <!-- ========================================================================
+       3. 가이드 & 전술 기록 모달 (📘 가이드 버튼 클릭 시 오픈)
+       ======================================================================== -->
+  <div class="bb-modal-backdrop" id="bb-guide-modal" role="dialog" aria-modal="true">
+    <div class="bb-modal-window">
+      <div class="bb-modal-header">
+        <h2>📘 블록 블라스트 가이드 &amp; 전술 기록</h2>
+        <button type="button" class="btn btn-crimson" id="btn-close-guide" style="padding:4px 10px;font-size:12px;">✖ 닫기</button>
+      </div>
+      <div class="bb-modal-body">
+        <div>
+          <div class="panel-title">
+            <span>📊 현재 판 전술 통계</span>
+            <span style="font-size:11px;color:#34d399;">실시간 자동 저장</span>
+          </div>
+          <div class="bb-stat-grid">
+            <div class="bb-stat-cell">
+              <span class="lbl">최대 콤보 (MAX STREAK)</span>
+              <span class="val" id="stat-max-combo">0 Combo</span>
+            </div>
+            <div class="bb-stat-cell">
+              <span class="lbl">제거한 총 줄 (LINES)</span>
+              <span class="val" id="stat-lines-cleared">0 Lines</span>
+            </div>
+            <div class="bb-stat-cell">
+              <span class="lbl">올클리어 (ALL CLEAR)</span>
+              <span class="val" id="stat-all-clears" style="color:#fde047;">0 회</span>
+            </div>
+            <div class="bb-stat-cell">
+              <span class="lbl">보드 밀도 (DENSITY)</span>
+              <span class="val" id="stat-board-density">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel-title">
+            <span>📘 핵심 규칙 &amp; 고득점 공략</span>
+          </div>
+          <ul class="bb-rule-list">
+            <li>
+              <strong>1. 8×8 드래그 &amp; 회전 불가</strong><br />
+              하단 3개의 블록을 모두 보드에 배치해야 다음 3개 세트가 리필됩니다. 가로/세로 8칸을 채우면 즉시 폭발합니다.
+            </li>
+            <li>
+              <strong>2. 3턴 유예 하트비트 콤보 (핵심!)</strong><br />
+              줄을 지운 뒤 <strong>다음 3번의 블록 배치 안에 최소 1줄</strong>만 지우면 콤보 배율(×2, ×3, ×10...)이 끊기지 않고 누적됩니다!
+            </li>
+            <li>
+              <strong>3. 줄 완성 프리뷰 하이라이트</strong><br />
+              블록을 보드 위에 올리면 <strong>완성될 가로/세로 줄 전체가 보석 빛으로 미리 반짝</strong>이므로 동시 2~4줄 교차 클리어를 쉽게 노릴 수 있습니다.
+            </li>
+            <li>
+              <strong>4. 올클리어(ALL CLEAR) +360점</strong><br />
+              보드 위의 모든 블록을 단 한 칸도 남기지 않고 싹 비우면 <strong>+360점 보너스</strong>가 터집니다.
+            </li>
+            <li>
+              <strong>5. 전술 아이템 보너스 충전</strong><br />
+              <strong>2,000점 달성 또는 5콤보 달성마다</strong> 리롤·폭탄·무르기 아이템이 자동 충전됩니다.
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="panel-title">
+            <span>⚡ 최근 콤보 &amp; 하이라이트 로그</span>
+          </div>
+          <div class="bb-log-feed" id="bb-log-feed">
+            <div class="bb-log-item">
+              <span>블록 3개를 드래그해 줄을 완성하세요!</span>
+              <span class="pts">READY</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -1286,11 +1311,11 @@
       // =========================================================================
       var cvs = document.getElementById('bb-main-canvas');
       var ctx = cvs.getContext('2d');
-      var LOGICAL_W = 520;
-      var LOGICAL_H = 708;
+      var LOGICAL_W = 500;
+      var LOGICAL_H = 648;
 
       var FIT_STORAGE_KEY = 'BLOCK_BLAST_FIT_MODE_V1';
-      var fitMode = 0; // 0: 네이버앱/모바일 자동맞춤(기본 78px 여유), 1: 축소(124px 여유), 2: 최대(22px 여유)
+      var fitMode = 0; // 0: 최대화면(기본 14px 여유), 1: 하단바 여유(64px 여유), 2: 축소(108px 여유)
       try {
         var savedFit = localStorage.getItem(FIT_STORAGE_KEY);
         if (savedFit !== null) fitMode = parseInt(savedFit, 10) || 0;
@@ -1301,11 +1326,6 @@
         if (!wrap) return;
 
         var vw = window.innerWidth || document.documentElement.clientWidth || 390;
-        if (vw > 1080) {
-          wrap.style.maxWidth = '500px';
-          return;
-        }
-
         var vh = (window.visualViewport && window.visualViewport.height)
           ? window.visualViewport.height
           : (window.innerHeight || document.documentElement.clientHeight || 700);
@@ -1314,18 +1334,18 @@
         var bannerEl = document.querySelector('.bb-score-banner');
         var tacticalEl = document.querySelector('.bb-tactical-bar');
 
-        var headerH = headerEl ? headerEl.offsetHeight : 54;
-        var bannerH = bannerEl ? bannerEl.offsetHeight : 48;
-        var tacticalH = tacticalEl ? tacticalEl.offsetHeight : 44;
+        var headerH = headerEl ? headerEl.offsetHeight : 40;
+        var bannerH = bannerEl ? bannerEl.offsetHeight : 44;
+        var tacticalH = tacticalEl ? tacticalEl.offsetHeight : 42;
 
-        // 네이버 앱 인앱/홈화면 하단 컨트롤바 높이 여유분
-        var reserveTable = [78, 124, 22];
-        var bottomReserve = reserveTable[fitMode % 3];
+        var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        var reserveTable = [16, 64, 108];
+        var bottomReserve = isFs ? 10 : reserveTable[fitMode % 3];
 
-        var availH = Math.max(250, vh - headerH - bannerH - tacticalH - 28 - bottomReserve);
+        var availH = Math.max(260, vh - headerH - bannerH - tacticalH - 22 - bottomReserve);
         var maxByHeight = Math.floor(availH * (LOGICAL_W / LOGICAL_H));
-        var maxByWidth = Math.min(500, vw - 28);
-        var finalW = Math.max(210, Math.min(maxByWidth, maxByHeight));
+        var maxByWidth = Math.min(680, vw - 16);
+        var finalW = Math.max(220, Math.min(maxByWidth, maxByHeight));
 
         wrap.style.maxWidth = finalW + 'px';
       }
@@ -1339,18 +1359,20 @@
       }
       setupHiDPICanvas();
       window.addEventListener('resize', setupHiDPICanvas);
+      document.addEventListener('fullscreenchange', fitBoardToViewport);
+      document.addEventListener('webkitfullscreenchange', fitBoardToViewport);
       if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', fitBoardToViewport);
       }
 
       function getCanvasLayout() {
-        var boardMargin = 16;
+        var boardMargin = 6;
         var boardSize = LOGICAL_W - boardMargin * 2; // 488
         var cellSize = boardSize / GRID_SIZE; // 61
         var boardX = boardMargin;
-        var boardY = 14;
-        var trayY = boardY + boardSize + 18;
-        var trayH = LOGICAL_H - trayY - 12;
+        var boardY = 6;
+        var trayY = boardY + boardSize + 10;
+        var trayH = LOGICAL_H - trayY - 6;
         return {
           boardX: boardX,
           boardY: boardY,
@@ -1967,7 +1989,7 @@
       var btnFit = document.getElementById('btn-bb-fit');
       function updateFitBtnLabel() {
         if (!btnFit) return;
-        var names = ['📐 맞춤:기본', '📐 맞춤:축소', '📐 맞춤:확대'];
+        var names = ['📐 최대', '📐 보통', '📐 축소'];
         btnFit.textContent = names[fitMode % 3];
       }
       updateFitBtnLabel();
@@ -1980,12 +2002,54 @@
         });
       }
 
+      // 가이드 모달 열기/닫기
+      var guideModal = document.getElementById('bb-guide-modal');
+      var btnGuide = document.getElementById('btn-bb-guide');
+      var btnCloseGuide = document.getElementById('btn-close-guide');
+      if (btnGuide && guideModal) {
+        btnGuide.addEventListener('click', function () {
+          guideModal.classList.add('open');
+        });
+      }
+      if (btnCloseGuide && guideModal) {
+        btnCloseGuide.addEventListener('click', function () {
+          guideModal.classList.remove('open');
+        });
+      }
+      if (guideModal) {
+        guideModal.addEventListener('click', function (e) {
+          if (e.target === guideModal) guideModal.classList.remove('open');
+        });
+      }
+
+      // 전체화면 토글
+      var btnFs = document.getElementById('btn-bb-fullscreen');
+      if (btnFs) {
+        btnFs.addEventListener('click', function () {
+          var docEl = document.documentElement;
+          var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+          if (!isFs) {
+            if (docEl.requestFullscreen) {
+              docEl.requestFullscreen().catch(function () {});
+            } else if (docEl.webkitRequestFullscreen) {
+              docEl.webkitRequestFullscreen();
+            }
+          } else {
+            if (document.exitFullscreen) {
+              document.exitFullscreen().catch(function () {});
+            } else if (document.webkitExitFullscreen) {
+              document.webkitExitFullscreen();
+            }
+          }
+          setTimeout(fitBoardToViewport, 120);
+        });
+      }
+
       document.getElementById('btn-bb-sound').addEventListener('click', function () {
         soundEnabled = !soundEnabled;
         var btn = document.getElementById('btn-bb-sound');
         if (btn) {
-          btn.textContent = soundEnabled ? '🔊 사운드' : '🔇 음소거';
-          btn.className = soundEnabled ? 'btn btn-gold' : 'btn';
+          btn.textContent = soundEnabled ? '🔊' : '🔇';
         }
       });
 
