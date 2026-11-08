@@ -22,28 +22,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Bundle Unified Game Launcher & Medieval Battle Janggi / Chess
+      - name: Bundle Unified Game Launcher & Medieval Battle Janggi / Chess / Block Blast
         run: |
           rm -rf build/web
-          mkdir -p build/web build/web/janggi build/web/chess build/web/arcade
+          mkdir -p build/web build/web/janggi build/web/chess build/web/arcade build/web/blockblast
 
-          # 1. 메인 루트(/): 장기·체스·통합런처 에셋 복사
-          cp -f index.html chess.html arcade.html build/web/
+          # 1. 메인 루트(/): 장기·체스·블록블라스트·통합런처 에셋 복사
+          cp -f index.html chess.html arcade.html blockblast.html build/web/
           cp -r src assets build/web/
 
           # 2. /janggi/ 서브경로: 중세 배틀 장기
-          cp -f index.html chess.html arcade.html build/web/janggi/
+          cp -f index.html chess.html arcade.html blockblast.html build/web/janggi/
           cp -r src assets build/web/janggi/
 
           # 3. /chess/ 서브경로: 중세 배틀 체스
-          cp -f index.html chess.html arcade.html build/web/chess/
+          cp -f index.html chess.html arcade.html blockblast.html build/web/chess/
           cp -r src assets build/web/chess/
           cp -f chess.html build/web/chess/index.html
 
           # 4. /arcade/ 서브경로: 통합 게임 런처 (타이쿤 기본 숨김 + 토글 관리 지원)
-          cp -f index.html chess.html arcade.html build/web/arcade/
+          cp -f index.html chess.html arcade.html blockblast.html build/web/arcade/
           cp -r src assets build/web/arcade/
           cp -f arcade.html build/web/arcade/index.html
+
+          # 5. /blockblast/ 서브경로: 블록 블라스트 클래식 마스터 (무광고 에디션)
+          cp -f index.html chess.html arcade.html blockblast.html build/web/blockblast/
+          cp -r src assets build/web/blockblast/
+          cp -f blockblast.html build/web/blockblast/index.html
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

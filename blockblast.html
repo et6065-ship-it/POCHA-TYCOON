@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>💎 블록 블라스트 : 클래식 마스터 (BLOCK BLAST AD-FREE HD PIXEL)</title>
+  <link rel="stylesheet" href="./src/css/style.css" />
+  <style>
+    body.blockblast-body {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background-color: #090c15;
+      background-image:
+        radial-gradient(circle at 50% 18%, rgba(30, 58, 138, 0.35) 0%, rgba(9, 12, 21, 0.98) 78%);
+      overflow-x: hidden;
+      overflow-y: auto;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .bb-workspace {
+      display: grid;
+      grid-template-columns: 300px minmax(360px, 560px) 320px;
+      gap: 16px;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 14px 16px 28px;
+      align-items: start;
+      justify-content: center;
+    }
+
+    /* 상단 모바일/컴팩트 스코어 바 */
+    .bb-score-banner {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      background: #12172a;
+      border: 3px solid #000;
+      box-shadow:
+        inset 0 0 0 3px #f5b700,
+        inset 0 0 0 6px #090c15,
+        6px 6px 0 #000;
+      padding: 10px 14px;
+      position: relative;
+    }
+
+    .bb-score-box {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .bb-score-box.right {
+      align-items: flex-end;
+      text-align: right;
+    }
+
+    .bb-score-label {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bb-score-val {
+      font-family: var(--font-pixel-en);
+      font-size: clamp(22px, 4vw, 30px);
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 2px 2px 0 #000, 0 0 12px rgba(56, 189, 248, 0.35);
+      line-height: 1.1;
+    }
+
+    .bb-score-val.best-val {
+      color: #fff05a;
+      text-shadow: 2px 2px 0 #8c5a08, 4px 4px 0 #000;
+    }
+
+    /* 중앙 하트비트 콤보 배지 */
+    .bb-combo-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 12px;
+      background: #0b0f1c;
+      border: 2px solid #334155;
+      min-width: 116px;
+      transition: transform 0.12s, border-color 0.15s, background 0.15s;
+    }
+
+    .bb-combo-badge.active-combo {
+      background: #3b0764;
+      border-color: #e879f9;
+      box-shadow: 0 0 14px rgba(232, 121, 249, 0.45), inset 0 0 0 2px #701a75;
+      animation: comboHeartbeat 0.85s infinite ease-in-out;
+    }
+
+    @keyframes comboHeartbeat {
+      0%, 100% { transform: scale(1); }
+      35% { transform: scale(1.06); }
+    }
+
+    .bb-combo-title {
+      font-family: var(--font-pixel-en);
+      font-size: 13px;
+      font-weight: 900;
+      color: #f8fafc;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .bb-combo-badge.active-combo .bb-combo-title {
+      color: #fde047;
+    }
+
+    .bb-grace-dots {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 4px;
+      font-size: 10px;
+      color: #cbd5e1;
+    }
+
+    .grace-pip {
+      width: 9px;
+      height: 9px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      display: inline-block;
+    }
+
+    .grace-pip.on {
+      background: #f43f5e;
+      border-color: #fda4af;
+      box-shadow: 0 0 6px #f43f5e;
+    }
+
+    /* 메인 보드 스테이지 */
+    .bb-center-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .bb-stage-card {
+      background: #111626;
+      border: 4px solid #000;
+      box-shadow:
+        inset 0 0 0 3px #38bdf8,
+        inset 0 0 0 6px #090c15,
+        8px 8px 0 #000;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      transition: box-shadow 0.2s;
+    }
+
+    .bb-stage-card.combo-fever {
+      box-shadow:
+        inset 0 0 0 3px #f5b700,
+        inset 0 0 0 6px #7c2d12,
+        0 0 24px rgba(245, 183, 0, 0.35),
+        8px 8px 0 #000;
+    }
+
+    .bb-canvas-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1.36;
+      max-width: 500px;
+      position: relative;
+      touch-action: none;
+    }
+
+    #bb-main-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #bb-main-canvas:active {
+      cursor: grabbing;
+    }
+
+    /* 무광고 전술 아이템 바 */
+    .bb-tactical-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 100%;
+    }
+
+    .bb-item-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 8px 6px;
+      font-size: 12px;
+      font-weight: 700;
+      position: relative;
+    }
+
+    .bb-item-sub {
+      font-size: 10px;
+      color: #fde047;
+      font-weight: 600;
+    }
+
+    /* 좌/우 사이드 정보 리스트 */
+    .bb-stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .bb-stat-cell {
+      background: #0b0f1c;
+      border: 2px solid #334155;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .bb-stat-cell .lbl {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .bb-stat-cell .val {
+      font-family: var(--font-pixel-en);
+      font-size: 16px;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .bb-rule-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .bb-rule-list li {
+      padding: 7px 9px;
+      background: #0b0f1c;
+      border-left: 3px solid #f5b700;
+    }
+
+    .bb-rule-list strong {
+      color: #fff05a;
+    }
+
+    .bb-log-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 190px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+
+    .bb-log-item {
+      padding: 6px 8px;
+      background: #0b0f1c;
+      border: 1px solid #1e293b;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .bb-log-item .pts {
+      color: #34d399;
+      font-family: var(--font-pixel-en);
+      font-weight: 700;
+    }
+
+    /* 게임 오버 오버레이 모달 (광고 0% 즉시 부활/재시작) */
+    .bb-gameover-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 12, 21, 0.92);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      z-index: 30;
+      border: 3px solid #ef4444;
+    }
+
+    .bb-gameover-overlay.visible {
+      display: flex;
+    }
+
+    .bb-gameover-box {
+      background: #131829;
+      border: 4px solid #000;
+      box-shadow:
+        inset 0 0 0 3px #f5b700,
+        8px 8px 0 #000;
+      padding: 20px 18px;
+      width: min(380px, 94%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .bb-gameover-title {
+      font-size: 24px;
+      color: #ff3b5c;
+      text-shadow: 2px 2px 0 #000;
+      font-weight: 900;
+    }
+
+    .bb-gameover-scores {
+      background: #090c15;
+      border: 2px solid #334155;
+      padding: 12px;
+      display: flex;
+      justify-content: space-around;
+    }
+
+    .bb-adfree-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: #064e3b;
+      border: 2px solid #10b981;
+      color: #a7f3d0;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 1080px) {
+      .bb-workspace {
+        grid-template-columns: 1fr;
+        max-width: 540px;
+        padding: 10px 10px 24px;
+      }
+      .bb-side-left {
+        order: 2;
+      }
+      .bb-center-column {
+        order: 1;
+      }
+      .bb-side-right {
+        order: 3;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app-header {
+        padding: 8px 10px;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .brand-titles h1 {
+        font-size: 15px;
+      }
+      .brand-titles p {
+        display: none;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .header-actions .btn {
+        padding: 5px 8px;
+        font-size: 11.5px;
+        flex: 1;
+      }
+      .bb-stage-card {
+        padding: 8px;
+      }
+      .bb-score-banner {
+        padding: 8px 10px;
+      }
+    }
+  </style>
+</head>
+<body class="blockblast-body crt-off">
+
+  <!-- ========================================================================
+       1. 상단 16-BIT 아케이드 통합 헤더 (런처 / 장기 / 체스 즉시 전환)
+       ======================================================================== -->
+  <header class="app-header">
+    <div class="brand-box">
+      <div class="brand-crest" title="Block Blast HD Pixel">💎</div>
+      <div class="brand-titles">
+        <h1>블록 블라스트 : 클래식 마스터</h1>
+        <p>8×8 도트 보석 퍼즐 × 3턴 유예 하트비트 콤보 · 광고 0% 에디션</p>
+      </div>
+      <span class="bb-adfree-pill">🚫 NO ADS · 오프라인 자동저장</span>
+    </div>
+
+    <div class="header-actions">
+      <a href="./arcade.html" class="btn" style="text-decoration:none;" title="통합 게임 런처로 돌아가기">🎮 런처</a>
+      <a href="./index.html?game=janggi" class="btn" style="text-decoration:none;" title="중세 배틀 장기 실행">🇰🇷 장기</a>
+      <a href="./chess.html" class="btn" style="text-decoration:none;" title="중세 배틀 체스 실행">♟️ 체스</a>
+      <button type="button" class="btn btn-gold" id="btn-bb-sound">🔊 사운드 ON</button>
+      <button type="button" class="btn btn-emerald" id="btn-bb-restart">🔄 새 게임</button>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       2. 메인 3단 워크스페이스 (모바일에서는 보드가 최상단 1순위로 배치)
+       ======================================================================== -->
+  <main class="bb-workspace">
+
+    <!-- [좌측 패널: 실시간 통계 & 보드 위험도 모니터] -->
+    <section class="panel-column bb-side-left">
+      <div class="card-panel">
+        <div class="panel-title">
+          <span>📊 클래식 런 전술 기록</span>
+          <span style="font-size:11px;color:#34d399;">자동 저장됨</span>
+        </div>
+        <div class="bb-stat-grid">
+          <div class="bb-stat-cell">
+            <span class="lbl">최대 콤보 (MAX STREAK)</span>
+            <span class="val" id="stat-max-combo">0 Combo</span>
+          </div>
+          <div class="bb-stat-cell">
+            <span class="lbl">제거한 총 줄 (LINES)</span>
+            <span class="val" id="stat-lines-cleared">0 Lines</span>
+          </div>
+          <div class="bb-stat-cell">
+            <span class="lbl">올클리어 (ALL CLEAR)</span>
+            <span class="val" id="stat-all-clears" style="color:#fde047;">0 회</span>
+          </div>
+          <div class="bb-stat-cell">
+            <span class="lbl">보드 밀도 (DENSITY)</span>
+            <span class="val" id="stat-board-density">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <div class="panel-title">
+          <span>⚡ 최근 콤보 &amp; 하이라이트 로그</span>
+        </div>
+        <div class="bb-log-feed" id="bb-log-feed">
+          <div class="bb-log-item">
+            <span>블록 3개를 드래그해 줄을 완성하세요!</span>
+            <span class="pts">READY</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- [중앙 메인 스테이지: 스코어 배너 + 8x8 보드 & 3블록 트레이 + 무광고 아이템] -->
+    <section class="bb-center-column">
+
+      <!-- 상단 점수 & 하트비트 콤보 배너 -->
+      <div class="bb-score-banner">
+        <div class="bb-score-box">
+          <span class="bb-score-label">🎯 CURRENT SCORE</span>
+          <span class="bb-score-val" id="bb-current-score">0</span>
+        </div>
+
+        <div class="bb-combo-badge" id="bb-combo-badge" title="3번의 블록 배치 안에 최소 1줄만 지우면 콤보가 계속 유지됩니다!">
+          <span class="bb-combo-title" id="bb-combo-text">COMBO ×0</span>
+          <div class="bb-grace-dots" title="콤보 유지 유예 턴 (3턴 안에 줄 제거 시 유지)">
+            <span>유예</span>
+            <span class="grace-pip" id="grace-pip-1"></span>
+            <span class="grace-pip" id="grace-pip-2"></span>
+            <span class="grace-pip" id="grace-pip-3"></span>
+          </div>
+        </div>
+
+        <div class="bb-score-box right">
+          <span class="bb-score-label">👑 BEST SCORE</span>
+          <span class="bb-score-val best-val" id="bb-best-score">0</span>
+        </div>
+      </div>
+
+      <!-- 8x8 보드 & 하단 3조각 드래그 트레이 통합 캔버스 -->
+      <div class="bb-stage-card" id="bb-stage-card">
+        <div class="bb-canvas-wrap">
+          <canvas id="bb-main-canvas" width="520" height="708"></canvas>
+
+          <!-- 게임 오버 오버레이 (광고 없이 즉시 폭탄 구조 또는 0.1초 재시작) -->
+          <div class="bb-gameover-overlay" id="bb-gameover-overlay">
+            <div class="bb-gameover-box">
+              <div class="bb-adfree-pill" style="align-self:center;">🚫 광고 없음 · 즉시 선택</div>
+              <div class="bb-gameover-title">NO MORE MOVES!</div>
+              <p style="font-size:12.5px;color:#cbd5e1;line-height:1.45;">
+                남은 블록을 놓을 수 있는 빈 공간이 없습니다.
+              </p>
+              <div class="bb-gameover-scores">
+                <div>
+                  <div style="font-size:11px;color:#94a3b8;">이번 판 점수</div>
+                  <div style="font-size:22px;font-weight:900;color:#fff;" id="go-final-score">0</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;color:#fde047;">👑 최고 기록</div>
+                  <div style="font-size:22px;font-weight:900;color:#fff05a;" id="go-best-score">0</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-gold" id="btn-go-revive" style="padding:11px;font-size:13.5px;font-weight:800;">
+                💣 광고 없이 무료 부활 (중앙 4×4 폭파 + 새 블록)
+              </button>
+              <button type="button" class="btn btn-emerald" id="btn-go-restart" style="padding:11px;font-size:13.5px;font-weight:800;">
+                🔄 새 게임 즉시 시작
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 광고 대체 무료 전술 아이템 3종 (2,000점마다 충전!) -->
+        <div class="bb-tactical-bar">
+          <button type="button" class="btn bb-item-btn" id="btn-item-undo" title="방금 놓은 블록 1수를 되돌립니다 (실수 방지)">
+            <span>↩️ 한 수 무르기</span>
+            <span class="bb-item-sub" id="Undo-count-label">남은 횟수: 2</span>
+          </button>
+          <button type="button" class="btn btn-gold bb-item-btn" id="btn-item-reroll" title="광고 시청 없이 현재 트레이의 블록 3개를 즉시 새로 뽑습니다">
+            <span>🎲 블록 리롤</span>
+            <span class="bb-item-sub" id="reroll-count-label">남은 횟수: 2</span>
+          </button>
+          <button type="button" class="btn btn-crimson bb-item-btn" id="btn-item-bomb" title="광고 시청 없이 보드 중앙 4×4 구역의 블록을 즉시 폭파합니다">
+            <span>💣 중앙 4×4 폭탄</span>
+            <span class="bb-item-sub" id="bomb-count-label">남은 횟수: 1</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- [우측 패널: 블록 블라스트 핵심 고득점 공식 & 컨트롤 안내] -->
+    <section class="panel-column bb-side-right">
+      <div class="card-panel">
+        <div class="panel-title">
+          <span>📘 BLOCK BLAST 고득점 핵심 규칙</span>
+        </div>
+        <ul class="bb-rule-list">
+          <li>
+            <strong>1. 8×8 드래그 &amp; 회전 불가</strong><br />
+            하단 3개의 블록을 모두 보드에 배치해야 다음 3개 세트가 리필됩니다. 가로/세로 8칸을 채우면 즉시 폭발합니다.
+          </li>
+          <li>
+            <strong>2. 3턴 유예 하트비트 콤보 (핵심!)</strong><br />
+            줄을 지운 뒤 <strong>다음 3번의 블록 배치 안에 최소 1줄</strong>만 지우면 콤보 배율(×2, ×3, ×10...)이 끊기지 않고 누적됩니다!
+          </li>
+          <li>
+            <strong>3. 줄 완성 프리뷰 하이라이트</strong><br />
+            블록을 보드 위에 올리면 <strong>완성될 가로/세로 줄 전체가 보석 빛으로 미리 반짝</strong>이므로 동시 2~4줄 교차 클리어를 쉽게 노릴 수 있습니다.
+          </li>
+          <li>
+            <strong>4. 올클리어(ALL CLEAR) +360점</strong><br />
+            보드 위의 모든 블록을 단 한 칸도 남기지 않고 싹 비우면 <strong>+360점 보너스</strong>가 터집니다.
+          </li>
+          <li>
+            <strong>5. 광고 0% 보너스 충전</strong><br />
+            원작의 30초 강제 광고 대신, <strong>2,000점 달성 또는 5콤보 달성마다</strong> 무료 리롤·폭탄 아이템이 자동 충전됩니다.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. 32-BIT HD 픽셀 보석 팔레트 (7종 클래식 아케이드 보석 테마)
+      // =========================================================================
+      var PALETTES = [
+        null, // 0: empty
+        { name: 'RUBY',     base: '#e11d48', hi: '#fda4af', mid: '#fb7185', lo: '#881337', glow: '#f43f5e' },
+        { name: 'EMERALD',  base: '#059669', hi: '#6ee7b7', mid: '#34d399', lo: '#064e3b', glow: '#10b981' },
+        { name: 'SAPPHIRE', base: '#2563eb', hi: '#93c5fd', mid: '#60a5fa', lo: '#1e3a8a', glow: '#3b82f6' },
+        { name: 'GOLD',     base: '#d97706', hi: '#fef08a', mid: '#fbbf24', lo: '#78350f', glow: '#f59e0b' },
+        { name: 'AMETHYST', base: '#7c3aed', hi: '#d8b4fe', mid: '#a78bfa', lo: '#4c1d95', glow: '#8b5cf6' },
+        { name: 'CYAN',     base: '#0891b2', hi: '#a5f3fc', mid: '#22d3ee', lo: '#164e63', glow: '#06b6d4' },
+        { name: 'CORAL',    base: '#ea580c', hi: '#fed7aa', mid: '#fb923c', lo: '#7c2d12', glow: '#f97316' }
+      ];
+
+      // =========================================================================
+      // 2. 정통 BLOCK BLAST 폴리미노 조각 라이브러리 (회전 없는 32종 + 크기 등급)
+      // =========================================================================
+      var SHAPES = [
+        // [소형/구제용 조각: tier 1]
+        { id: 'dot1', tier: 1, color: 4, matrix: [[1]] },
+        { id: 'h2',   tier: 1, color: 6, matrix: [[1, 1]] },
+        { id: 'v2',   tier: 1, color: 6, matrix: [[1], [1]] },
+        { id: 'h3',   tier: 1, color: 3, matrix: [[1, 1, 1]] },
+        { id: 'v3',   tier: 1, color: 3, matrix: [[1], [1], [1]] },
+        { id: 'smL1', tier: 1, color: 2, matrix: [[1, 0], [1, 1]] },
+        { id: 'smL2', tier: 1, color: 2, matrix: [[0, 1], [1, 1]] },
+        { id: 'smL3', tier: 1, color: 2, matrix: [[1, 1], [1, 0]] },
+        { id: 'smL4', tier: 1, color: 2, matrix: [[1, 1], [0, 1]] },
+        { id: 'diag2a', tier: 1, color: 5, matrix: [[1, 0], [0, 1]] },
+        { id: 'diag2b', tier: 1, color: 5, matrix: [[0, 1], [1, 0]] },
+
+        // [중형 테트로미노 조각: tier 2]
+        { id: 'sq2',  tier: 2, color: 4, matrix: [[1, 1], [1, 1]] },
+        { id: 'h4',   tier: 2, color: 6, matrix: [[1, 1, 1, 1]] },
+        { id: 'v4',   tier: 2, color: 6, matrix: [[1], [1], [1], [1]] },
+        { id: 'T_up', tier: 2, color: 5, matrix: [[0, 1, 0], [1, 1, 1]] },
+        { id: 'T_dn', tier: 2, color: 5, matrix: [[1, 1, 1], [0, 1, 0]] },
+        { id: 'T_lt', tier: 2, color: 5, matrix: [[0, 1], [1, 1], [0, 1]] },
+        { id: 'T_rt', tier: 2, color: 5, matrix: [[1, 0], [1, 1], [1, 0]] },
+        { id: 'L1',   tier: 2, color: 7, matrix: [[1, 0], [1, 0], [1, 1]] },
+        { id: 'L2',   tier: 2, color: 7, matrix: [[1, 1, 1], [1, 0, 0]] },
+        { id: 'L3',   tier: 2, color: 7, matrix: [[1, 1], [0, 1], [0, 1]] },
+        { id: 'L4',   tier: 2, color: 7, matrix: [[0, 0, 1], [1, 1, 1]] },
+        { id: 'J1',   tier: 2, color: 3, matrix: [[0, 1], [0, 1], [1, 1]] },
+        { id: 'J2',   tier: 2, color: 3, matrix: [[1, 0, 0], [1, 1, 1]] },
+        { id: 'J3',   tier: 2, color: 3, matrix: [[1, 1], [1, 0], [1, 0]] },
+        { id: 'J4',   tier: 2, color: 3, matrix: [[1, 1, 1], [0, 0, 1]] },
+        { id: 'S_h',  tier: 2, color: 2, matrix: [[0, 1, 1], [1, 1, 0]] },
+        { id: 'S_v',  tier: 2, color: 2, matrix: [[1, 0], [1, 1], [0, 1]] },
+        { id: 'Z_h',  tier: 2, color: 1, matrix: [[1, 1, 0], [0, 1, 1]] },
+        { id: 'Z_v',  tier: 2, color: 1, matrix: [[0, 1], [1, 1], [1, 0]] },
+
+        // [대형 킬러 조각 (3x3 정사각형, 3x3 대왕 기역/니은, 5칸 장대, 2x3 직사각형): tier 3]
+        { id: 'sq3',   tier: 3, color: 1, matrix: [[1, 1, 1], [1, 1, 1], [1, 1, 1]] },
+        { id: 'h5',    tier: 3, color: 1, matrix: [[1, 1, 1, 1, 1]] },
+        { id: 'v5',    tier: 3, color: 1, matrix: [[1], [1], [1], [1], [1]] },
+        { id: 'bigL1', tier: 3, color: 4, matrix: [[1, 0, 0], [1, 0, 0], [1, 1, 1]] },
+        { id: 'bigL2', tier: 3, color: 4, matrix: [[1, 1, 1], [1, 0, 0], [1, 0, 0]] },
+        { id: 'bigL3', tier: 3, color: 4, matrix: [[1, 1, 1], [0, 0, 1], [0, 0, 1]] },
+        { id: 'bigL4', tier: 3, color: 4, matrix: [[0, 0, 1], [0, 0, 1], [1, 1, 1]] },
+        { id: 'rect23', tier: 3, color: 5, matrix: [[1, 1, 1], [1, 1, 1]] },
+        { id: 'rect32', tier: 3, color: 5, matrix: [[1, 1], [1, 1], [1, 1]] },
+        { id: 'diag3a', tier: 3, color: 6, matrix: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] },
+        { id: 'diag3b', tier: 3, color: 6, matrix: [[0, 0, 1], [0, 1, 0], [1, 0, 0]] }
+      ];
+
+      // =========================================================================
+      // 3. Web Audio 신디사이저 & 보이스 추임새 (원작 감성 타격음)
+      // =========================================================================
+      var soundEnabled = true;
+      var audioCtx = null;
+
+      function ensureAudio() {
+        if (!soundEnabled) return null;
+        if (!audioCtx) {
+          var AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(function () {});
+        }
+        return audioCtx;
+      }
+
+      function playTone(freq, type, duration, gainVal, slideFreq) {
+        var ctx = ensureAudio();
+        if (!ctx) return;
+        try {
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = type || 'triangle';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime);
+          if (slideFreq) {
+            osc.frequency.exponentialRampToValueAtTime(slideFreq, ctx.currentTime + duration);
+          }
+          gain.gain.setValueAtTime(gainVal || 0.12, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + duration);
+        } catch (e) {}
+      }
+
+      function playSfx(kind, comboLevel, linesCount) {
+        if (!soundEnabled) return;
+        if (kind === 'pickup') {
+          playTone(320, 'sine', 0.07, 0.09, 480);
+        } else if (kind === 'place') {
+          playTone(190, 'triangle', 0.09, 0.14, 120);
+          setTimeout(function () { playTone(380, 'square', 0.05, 0.06, 420); }, 25);
+        } else if (kind === 'invalid') {
+          playTone(140, 'sawtooth', 0.11, 0.08, 95);
+        } else if (kind === 'clear') {
+          var basePitch = 330 * Math.pow(1.07, Math.min(12, comboLevel || 1));
+          var notes = [1, 1.25, 1.5, 2.0];
+          var count = Math.min(4, (linesCount || 1) + 2);
+          for (var i = 0; i < count; i++) {
+            (function (idx) {
+              setTimeout(function () {
+                playTone(basePitch * notes[idx % notes.length], 'triangle', 0.22, 0.15, basePitch * notes[idx % notes.length] * 1.04);
+                playTone(basePitch * notes[idx % notes.length] * 0.5, 'square', 0.18, 0.06);
+              }, idx * 55);
+            })(i);
+          }
+        } else if (kind === 'allclear') {
+          var fanfare = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+          fanfare.forEach(function (f, idx) {
+            setTimeout(function () {
+              playTone(f, 'triangle', 0.28, 0.18, f * 1.02);
+              playTone(f * 0.5, 'square', 0.25, 0.08);
+            }, idx * 75);
+          });
+        } else if (kind === 'gameover') {
+          [300, 250, 210, 150].forEach(function (f, idx) {
+            setTimeout(function () { playTone(f, 'sawtooth', 0.22, 0.10, f * 0.88); }, idx * 110);
+          });
+        }
+      }
+
+      function speakCallout(word) {
+        if (!soundEnabled || !('speechSynthesis' in window)) return;
+        try {
+          window.speechSynthesis.cancel();
+          var utter = new SpeechSynthesisUtterance(word);
+          utter.lang = 'en-US';
+          utter.rate = 1.15;
+          utter.pitch = 1.18;
+          utter.volume = 0.65;
+          window.speechSynthesis.speak(utter);
+        } catch (e) {}
+      }
+
+      // =========================================================================
+      // 4. 게임 상태 & 로컬 스토리지 영구 보존
+      // =========================================================================
+      var STORAGE_KEY = 'BLOCK_BLAST_CLASSIC_STATE_V1';
+      var GRID_SIZE = 8;
+
+      var state = {
+        board: createEmptyBoard(),
+        tray: [null, null, null],
+        score: 0,
+        displayScore: 0,
+        bestScore: 0,
+        combo: 0,
+        graceMoves: 0,
+        maxCombo: 0,
+        linesCleared: 0,
+        allClears: 0,
+        nextRewardScore: 2000,
+        items: { undo: 2, reroll: 2, bomb: 1 },
+        undoSnapshot: null,
+        reviveUsedThisGame: false,
+        gameOver: false
+      };
+
+      // 파티클 & 플로팅 텍스트 연출 배열
+      var particles = [];
+      var floatingTexts = [];
+      var flashCells = []; // [{r, c, color, alpha}]
+      var screenShake = 0;
+
+      // 드래그 상태
+      var drag = {
+        active: false,
+        trayIndex: -1,
+        piece: null,
+        pointerX: 0,
+        pointerY: 0,
+        isTouch: false,
+        snapRow: -1,
+        snapCol: -1,
+        validSnap: false,
+        previewRows: [],
+        previewCols: []
+      };
+
+      function createEmptyBoard() {
+        var b = [];
+        for (var r = 0; r < GRID_SIZE; r++) {
+          var row = [];
+          for (var c = 0; c < GRID_SIZE; c++) row.push(0);
+          b.push(row);
+        }
+        return b;
+      }
+
+      function cloneBoard(b) {
+        return b.map(function (row) { return row.slice(); });
+      }
+
+      // =========================================================================
+      // 5. 보드 판정 & 스마트 자비(Mercy) 조각 생성 알고리즘
+      // =========================================================================
+      function canPlacePieceOnBoard(board, matrix, baseR, baseC) {
+        var rows = matrix.length;
+        var cols = matrix[0].length;
+        if (baseR < 0 || baseC < 0 || baseR + rows > GRID_SIZE || baseC + cols > GRID_SIZE) {
+          return false;
+        }
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            if (matrix[r][c] && board[baseR + r][baseC + c] !== 0) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+
+      function canPieceFitAnywhere(board, matrix) {
+        for (var r = 0; r < GRID_SIZE; r++) {
+          for (var c = 0; c < GRID_SIZE; c++) {
+            if (canPlacePieceOnBoard(board, matrix, r, c)) return true;
+          }
+        }
+        return false;
+      }
+
+      function doesPieceCreateLineClear(board, matrix) {
+        var rows = matrix.length;
+        var cols = matrix[0].length;
+        for (var br = 0; br <= GRID_SIZE - rows; br++) {
+          for (var bc = 0; bc <= GRID_SIZE - cols; bc++) {
+            if (!canPlacePieceOnBoard(board, matrix, br, bc)) continue;
+            // 시뮬레이션
+            for (var r = 0; r < rows; r++) {
+              for (var c = 0; c < cols; c++) {
+                if (matrix[r][c]) board[br + r][bc + c] = 1;
+              }
+            }
+            var clears = false;
+            for (var rr = 0; rr < GRID_SIZE; rr++) {
+              var fullR = true;
+              for (var cc = 0; cc < GRID_SIZE; cc++) {
+                if (board[rr][cc] === 0) { fullR = false; break; }
+              }
+              if (fullR) { clears = true; break; }
+            }
+            if (!clears) {
+              for (var cc2 = 0; cc2 < GRID_SIZE; cc2++) {
+                var fullC = true;
+                for (var rr2 = 0; rr2 < GRID_SIZE; rr2++) {
+                  if (board[rr2][cc2] === 0) { fullC = false; break; }
+                }
+                if (fullC) { clears = true; break; }
+              }
+            }
+            // 복구
+            for (var r2 = 0; r2 < rows; r2++) {
+              for (var c2 = 0; c2 < cols; c2++) {
+                if (matrix[r2][c2]) board[br + r2][bc + c2] = 0;
+              }
+            }
+            if (clears) return true;
+          }
+        }
+        return false;
+      }
+
+      function getBoardOccupancyRatio(board) {
+        var filled = 0;
+        for (var r = 0; r < GRID_SIZE; r++) {
+          for (var c = 0; c < GRID_SIZE; c++) {
+            if (board[r][c] !== 0) filled++;
+          }
+        }
+        return filled / (GRID_SIZE * GRID_SIZE);
+      }
+
+      function pickWeightedPiece(board, allowTier3, requireFit, preferLineClear) {
+        var ratio = getBoardOccupancyRatio(board);
+        var testBoard = cloneBoard(board);
+        var candidates = [];
+
+        for (var i = 0; i < SHAPES.length; i++) {
+          var s = SHAPES[i];
+          if (!allowTier3 && s.tier === 3) continue;
+          var fits = canPieceFitAnywhere(testBoard, s.matrix);
+          if (requireFit && !fits) continue;
+
+          var weight = 10;
+          if (s.tier === 1) {
+            weight = ratio > 0.52 ? 28 : 12;
+          } else if (s.tier === 2) {
+            weight = 18;
+          } else if (s.tier === 3) {
+            weight = ratio > 0.62 ? 2 : (ratio > 0.45 ? 6 : 11);
+          }
+
+          if (fits && preferLineClear && doesPieceCreateLineClear(testBoard, s.matrix)) {
+            weight *= 2.8;
+          }
+          candidates.push({ shape: s, weight: weight });
+        }
+
+        if (candidates.length === 0) {
+          // 만약 맞는 조각이 없으면 1x1 점 또는 가장 작은 조각 반환
+          var fallback = SHAPES[0];
+          return {
+            id: fallback.id,
+            tier: fallback.tier,
+            color: fallback.color,
+            matrix: fallback.matrix
+          };
+        }
+
+        var totalW = 0;
+        for (var j = 0; j < candidates.length; j++) totalW += candidates[j].weight;
+        var roll = Math.random() * totalW;
+        var chosen = candidates[0].shape;
+        for (var k = 0; k < candidates.length; k++) {
+          roll -= candidates[k].weight;
+          if (roll <= 0) {
+            chosen = candidates[k].shape;
+            break;
+          }
+        }
+
+        // 약간의 색상 변주를 허용하되 기본 고유 보석 컬러 우선
+        var colorIdx = chosen.color;
+        if (Math.random() < 0.25) {
+          colorIdx = 1 + Math.floor(Math.random() * (PALETTES.length - 1));
+        }
+
+        return {
+          id: chosen.id,
+          tier: chosen.tier,
+          color: colorIdx,
+          matrix: chosen.matrix
+        };
+      }
+
+      function dealNewTray() {
+        var hasTier3 = false;
+        var newTray = [null, null, null];
+        for (var i = 0; i < 3; i++) {
+          // 첫 번째 조각은 무조건 현재 보드에 들어갈 수 있고 줄 제거 확률이 높은 자비 조각 제공
+          var requireFit = (i === 0);
+          var preferClear = (i === 0 || state.combo > 0);
+          var p = pickWeightedPiece(state.board, !hasTier3, requireFit, preferClear);
+          if (p.tier === 3) hasTier3 = true;
+          newTray[i] = p;
+        }
+        state.tray = newTray;
+        checkGameOverCondition();
+        saveState();
+      }
+
+      function checkGameOverCondition() {
+        var remaining = 0;
+        var anyCanFit = false;
+        for (var i = 0; i < 3; i++) {
+          var p = state.tray[i];
+          if (p) {
+            remaining++;
+            if (canPieceFitAnywhere(state.board, p.matrix)) {
+              anyCanFit = true;
+            }
+          }
+        }
+        if (remaining > 0 && !anyCanFit) {
+          state.gameOver = true;
+          playSfx('gameover');
+          updateGameOverOverlay();
+        } else {
+          state.gameOver = false;
+          updateGameOverOverlay();
+        }
+      }
+
+      // =========================================================================
+      // 6. 블록 배치 & 줄 제거 & 콤보 계산
+      // =========================================================================
+      function countPieceCells(matrix) {
+        var cnt = 0;
+        for (var r = 0; r < matrix.length; r++) {
+          for (var c = 0; c < matrix[0].length; c++) {
+            if (matrix[r][c]) cnt++;
+          }
+        }
+        return cnt;
+      }
+
+      function findCompletedLines(board, candidateMatrix, baseR, baseC) {
+        var fullRows = [];
+        var fullCols = [];
+
+        for (var r = 0; r < GRID_SIZE; r++) {
+          var rowComplete = true;
+          for (var c = 0; c < GRID_SIZE; c++) {
+            var occupied = board[r][c] !== 0;
+            if (!occupied && candidateMatrix) {
+              var mr = r - baseR;
+              var mc = c - baseC;
+              if (mr >= 0 && mr < candidateMatrix.length && mc >= 0 && mc < candidateMatrix[0].length) {
+                if (candidateMatrix[mr][mc]) occupied = true;
+              }
+            }
+            if (!occupied) { rowComplete = false; break; }
+          }
+          if (rowComplete) fullRows.push(r);
+        }
+
+        for (var c2 = 0; c2 < GRID_SIZE; c2++) {
+          var colComplete = true;
+          for (var r2 = 0; r2 < GRID_SIZE; r2++) {
+            var occupied2 = board[r2][c2] !== 0;
+            if (!occupied2 && candidateMatrix) {
+              var mr2 = r2 - baseR;
+              var mc2 = c2 - baseC;
+              if (mr2 >= 0 && mr2 < candidateMatrix.length && mc2 >= 0 && mc2 < candidateMatrix[0].length) {
+                if (candidateMatrix[mr2][mc2]) occupied2 = true;
+              }
+            }
+            if (!occupied2) { colComplete = false; break; }
+          }
+          if (colComplete) fullCols.push(c2);
+        }
+
+        return { rows: fullRows, cols: fullCols };
+      }
+
+      function placePieceFromTray(trayIdx, targetR, targetC) {
+        var piece = state.tray[trayIdx];
+        if (!piece) return false;
+        if (!canPlacePieceOnBoard(state.board, piece.matrix, targetR, targetC)) return false;
+
+        // Undo 스냅샷 저장
+        state.undoSnapshot = {
+          board: cloneBoard(state.board),
+          tray: state.tray.map(function (p) { return p ? JSON.parse(JSON.stringify(p)) : null; }),
+          score: state.score,
+          combo: state.combo,
+          graceMoves: state.graceMoves,
+          linesCleared: state.linesCleared,
+          allClears: state.allClears
+        };
+
+        // 1) 보드에 블록 기록
+        var rows = piece.matrix.length;
+        var cols = piece.matrix[0].length;
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            if (piece.matrix[r][c]) {
+              state.board[targetR + r][targetC + c] = piece.color;
+            }
+          }
+        }
+        state.tray[trayIdx] = null;
+
+        var cellPts = countPieceCells(piece.matrix);
+        var completed = findCompletedLines(state.board, null, 0, 0);
+        var totalLines = completed.rows.length + completed.cols.length;
+
+        var moveScore = cellPts;
+        var layout = getCanvasLayout();
+        var centerPxX = layout.boardX + (targetC + cols * 0.5) * layout.cellSize;
+        var centerPxY = layout.boardY + (targetR + rows * 0.5) * layout.cellSize;
+
+        if (totalLines > 0) {
+          // 콤보 증가 & 3턴 유예 리필
+          state.combo += 1;
+          state.graceMoves = 3;
+          if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+          state.linesCleared += totalLines;
+
+          // 원작 기반 다중 줄 보너스 + 콤보 배율 계산
+          var lineBaseTable = [0, 10, 30, 60, 120, 200, 300];
+          var lineBase = lineBaseTable[Math.min(lineBaseTable.length - 1, totalLines)] || (totalLines * 45);
+          var clearPts = lineBase * state.combo;
+          moveScore += clearPts;
+
+          // 지워질 셀 좌표 수집 및 폭발 파티클 생성
+          var clearedMap = {};
+          completed.rows.forEach(function (rr) {
+            for (var cc = 0; cc < GRID_SIZE; cc++) {
+              clearedMap[rr + ',' + cc] = { r: rr, c: cc, color: state.board[rr][cc] || piece.color };
+            }
+          });
+          completed.cols.forEach(function (cc) {
+            for (var rr = 0; rr < GRID_SIZE; rr++) {
+              clearedMap[rr + ',' + cc] = { r: rr, c: cc, color: state.board[rr][cc] || piece.color };
+            }
+          });
+
+          Object.keys(clearedMap).forEach(function (k) {
+            var item = clearedMap[k];
+            state.board[item.r][item.c] = 0;
+            spawnCellExplosion(item.r, item.c, item.color);
+          });
+
+          // 올클리어 판정
+          var isBoardEmpty = getBoardOccupancyRatio(state.board) === 0;
+          if (isBoardEmpty) {
+            moveScore += 360;
+            state.allClears += 1;
+            playSfx('allclear');
+            spawnFloatingText('🌟 ALL CLEAR! +360', layout.boardX + layout.boardSize * 0.5, layout.boardY + layout.boardSize * 0.36, '#fff05a', 24);
+          } else {
+            playSfx('clear', state.combo, totalLines);
+          }
+
+          // 원작 감성 추임새 ("GOOD!", "GREAT!", "EXCELLENT!", "AMAZING!", "UNBELIEVABLE!")
+          var callout = '';
+          if (isBoardEmpty || totalLines >= 4 || state.combo >= 8) {
+            callout = 'UNBELIEVABLE!';
+          } else if (totalLines === 3 || state.combo >= 5) {
+            callout = 'AMAZING!';
+          } else if (totalLines === 2 || state.combo >= 3) {
+            callout = 'EXCELLENT!';
+          } else if (state.combo === 2) {
+            callout = 'GREAT!';
+          } else if (totalLines === 1) {
+            callout = 'GOOD!';
+          }
+
+          if (callout) {
+            spawnFloatingText(callout, layout.boardX + layout.boardSize * 0.5, layout.boardY + layout.boardSize * 0.48, '#fde047', 22);
+            if (totalLines >= 2 || state.combo >= 3 || isBoardEmpty) {
+              speakCallout(callout);
+            }
+          }
+
+          if (state.combo >= 2) {
+            spawnFloatingText('🔥 COMBO ×' + state.combo + ' (+' + moveScore + ')', centerPxX, Math.max(layout.boardY + 28, centerPxY - 18), '#34d399', 17);
+          } else {
+            spawnFloatingText('+' + moveScore, centerPxX, centerPxY, '#ffffff', 16);
+          }
+
+          screenShake = Math.min(12, 3 + totalLines * 2.5 + Math.min(5, state.combo));
+          addLogEntry(
+            (isBoardEmpty ? '🌟 올클리어! ' : '') + totalLines + '줄 제거 · 콤보 ×' + state.combo,
+            '+' + moveScore + ' PTS'
+          );
+
+          // 5콤보 달성마다 무료 리롤 아이템 보너스
+          if (state.combo > 0 && state.combo % 5 === 0) {
+            state.items.reroll += 1;
+            spawnFloatingText('🎁 5콤보 보상: 리롤 +1!', layout.boardX + layout.boardSize * 0.5, layout.boardY + layout.boardSize * 0.65, '#38bdf8', 15);
+          }
+        } else {
+          // 줄을 못 지운 경우: 3턴 유예 차감
+          playSfx('place');
+          spawnFloatingText('+' + moveScore, centerPxX, centerPxY, '#cbd5e1', 14);
+          if (state.combo > 0) {
+            state.graceMoves -= 1;
+            if (state.graceMoves <= 0) {
+              state.combo = 0;
+              state.graceMoves = 0;
+            }
+          }
+        }
+
+        state.score += moveScore;
+        if (state.score > state.bestScore) {
+          state.bestScore = state.score;
+        }
+
+        // 2,000점마다 무료 폭탄/리롤 보급
+        while (state.score >= state.nextRewardScore) {
+          state.items.bomb += 1;
+          state.items.undo += 1;
+          state.nextRewardScore += 2000;
+          spawnFloatingText('🎁 2,000점 돌파 보급: 폭탄+1 · 무르기+1', layout.boardX + layout.boardSize * 0.5, layout.boardY + layout.boardSize * 0.25, '#a7f3d0', 14);
+        }
+
+        // 트레이 3개를 모두 소진했으면 새 3개 세트 딜링
+        var allUsed = state.tray.every(function (p) { return p === null; });
+        if (allUsed) {
+          dealNewTray();
+        } else {
+          checkGameOverCondition();
+        }
+
+        updateHUD();
+        saveState();
+        return true;
+      }
+
+      // =========================================================================
+      // 7. 파티클 & 플로팅 텍스트 이펙트
+      // =========================================================================
+      function spawnCellExplosion(r, c, colorIdx) {
+        var layout = getCanvasLayout();
+        var cx = layout.boardX + (c + 0.5) * layout.cellSize;
+        var cy = layout.boardY + (r + 0.5) * layout.cellSize;
+        var pal = PALETTES[colorIdx] || PALETTES[4];
+
+        flashCells.push({ r: r, c: c, color: pal.hi, alpha: 0.95 });
+
+        for (var i = 0; i < 6; i++) {
+          var angle = (Math.PI * 2 * i) / 6 + (Math.random() - 0.5) * 0.5;
+          var speed = 1.8 + Math.random() * 4.2;
+          particles.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1.2,
+            size: 5 + Math.random() * 5,
+            color: i % 2 === 0 ? pal.hi : pal.base,
+            alpha: 1.0
+          });
+        }
+      }
+
+      function spawnFloatingText(text, x, y, color, size) {
+        floatingTexts.push({
+          text: text,
+          x: x,
+          y: y,
+          vy: -1.15,
+          color: color || '#fff05a',
+          size: size || 18,
+          alpha: 1.0,
+          life: 52
+        });
+      }
+
+      function addLogEntry(label, ptsText) {
+        var feed = document.getElementById('bb-log-feed');
+        if (!feed) return;
+        var div = document.createElement('div');
+        div.className = 'bb-log-item';
+        div.innerHTML = '<span>' + label + '</span><span class="pts">' + ptsText + '</span>';
+        feed.insertBefore(div, feed.firstChild);
+        while (feed.children.length > 8) {
+          feed.removeChild(feed.lastChild);
+        }
+      }
+
+      // =========================================================================
+      // 8. 캔버스 레이아웃 & 32-BIT HD 픽셀 보석 렌더링
+      // =========================================================================
+      var cvs = document.getElementById('bb-main-canvas');
+      var ctx = cvs.getContext('2d');
+      var LOGICAL_W = 520;
+      var LOGICAL_H = 708;
+
+      function setupHiDPICanvas() {
+        var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        cvs.width = LOGICAL_W * dpr;
+        cvs.height = LOGICAL_H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      setupHiDPICanvas();
+      window.addEventListener('resize', setupHiDPICanvas);
+
+      function getCanvasLayout() {
+        var boardMargin = 16;
+        var boardSize = LOGICAL_W - boardMargin * 2; // 488
+        var cellSize = boardSize / GRID_SIZE; // 61
+        var boardX = boardMargin;
+        var boardY = 14;
+        var trayY = boardY + boardSize + 18;
+        var trayH = LOGICAL_H - trayY - 12;
+        return {
+          boardX: boardX,
+          boardY: boardY,
+          boardSize: boardSize,
+          cellSize: cellSize,
+          trayX: boardMargin,
+          trayY: trayY,
+          trayW: boardSize,
+          trayH: trayH
+        };
+      }
+
+      // 32-Bit HD 도트 베벨 보석 타일 렌더러
+      function drawPixelGemBlock(g, x, y, size, colorIdx, alpha, isHighlightPulse) {
+        var pal = PALETTES[colorIdx] || PALETTES[4];
+        g.save();
+        if (alpha !== undefined && alpha < 1) g.globalAlpha = alpha;
+
+        var pad = 1;
+        var bx = Math.round(x + pad);
+        var by = Math.round(y + pad);
+        var bs = Math.round(size - pad * 2);
+        var bevel = Math.max(3, Math.round(bs * 0.13));
+
+        // 외곽 블랙 도트 테두리
+        g.fillStyle = '#05070d';
+        g.fillRect(bx, by, bs, bs);
+
+        // 메인 보석 베이스
+        g.fillStyle = isHighlightPulse ? pal.hi : pal.base;
+        g.fillRect(bx + 2, by + 2, bs - 4, bs - 4);
+
+        // 상단/좌측 밝은 하이라이트 베벨
+        g.fillStyle = pal.hi;
+        g.fillRect(bx + 2, by + 2, bs - 4, bevel);
+        g.fillRect(bx + 2, by + 2, bevel, bs - 4);
+
+        // 하단/우측 깊은 음영 베벨
+        g.fillStyle = pal.lo;
+        g.fillRect(bx + 2, by + bs - 2 - bevel, bs - 4, bevel);
+        g.fillRect(bx + bs - 2 - bevel, by + 2, bevel, bs - 4);
+
+        // 내부 중앙 크리스탈 코어
+        var innerOffset = bevel + 3;
+        var innerSize = bs - innerOffset * 2;
+        if (innerSize > 6) {
+          g.fillStyle = isHighlightPulse ? '#ffffff' : pal.mid;
+          g.fillRect(bx + innerOffset, by + innerOffset, innerSize, innerSize);
+
+          g.fillStyle = pal.base;
+          g.fillRect(bx + innerOffset + 2, by + innerOffset + 2, innerSize - 4, innerSize - 4);
+
+          // 좌상단 도트 스페큘러 반사광
+          g.fillStyle = '#ffffff';
+          g.fillRect(bx + innerOffset, by + innerOffset, 4, 4);
+        }
+
+        if (isHighlightPulse) {
+          g.strokeStyle = '#fff05a';
+          g.lineWidth = 2.5;
+          g.strokeRect(bx + 1, by + 1, bs - 2, bs - 2);
+        }
+
+        g.restore();
+      }
+
+      // =========================================================================
+      // 9. 드래그 앤 드롭 & 마그네틱 그리드 스냅 (모바일 손가락 오프셋 완벽 지원)
+      // =========================================================================
+      function clientToLogical(clientX, clientY) {
+        var rect = cvs.getBoundingClientRect();
+        var scaleX = LOGICAL_W / rect.width;
+        var scaleY = LOGICAL_H / rect.height;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY
+        };
+      }
+
+      function getFloatingPieceTopLeft(layout) {
+        if (!drag.active || !drag.piece) return { x: 0, y: 0 };
+        var rows = drag.piece.matrix.length;
+        var cols = drag.piece.matrix[0].length;
+        var pieceW = cols * layout.cellSize;
+        var pieceH = rows * layout.cellSize;
+        // 모바일 터치 시 손가락에 가리지 않도록 위로 92px 띄움, 마우스는 24px 살짝 띄움
+        var liftY = drag.isTouch ? 92 : 24;
+        return {
+          x: drag.pointerX - pieceW * 0.5,
+          y: drag.pointerY - pieceH * 0.5 - liftY
+        };
+      }
+
+      function updateMagneticSnap() {
+        var layout = getCanvasLayout();
+        drag.snapRow = -1;
+        drag.snapCol = -1;
+        drag.validSnap = false;
+        drag.previewRows = [];
+        drag.previewCols = [];
+
+        if (!drag.active || !drag.piece) return;
+
+        var topLeft = getFloatingPieceTopLeft(layout);
+        var rawCol = (topLeft.x - layout.boardX) / layout.cellSize;
+        var rawRow = (topLeft.y - layout.boardY) / layout.cellSize;
+
+        var baseCol = Math.round(rawCol);
+        var baseRow = Math.round(rawRow);
+
+        // 보드 근처에 있을 때만 스냅 탐색 (자석 보정: 정확한 반올림 칸 우선, 막혔으면 주변 0.68칸 이내 가장 가까운 유효 칸 탐색)
+        if (rawRow > -1.5 && rawRow < GRID_SIZE + 0.8 && rawCol > -1.5 && rawCol < GRID_SIZE + 0.8) {
+          var bestR = -1;
+          var bestC = -1;
+          var bestDist = 999;
+
+          for (var dr = -1; dr <= 1; dr++) {
+            for (var dc = -1; dc <= 1; dc++) {
+              var tr = baseRow + dr;
+              var tc = baseCol + dc;
+              if (canPlacePieceOnBoard(state.board, drag.piece.matrix, tr, tc)) {
+                var dist = Math.hypot(rawRow - tr, rawCol - tc);
+                if (dist <= 0.72 && dist < bestDist) {
+                  bestDist = dist;
+                  bestR = tr;
+                  bestC = tc;
+                }
+              }
+            }
+          }
+
+          if (bestR !== -1 && bestC !== -1) {
+            drag.snapRow = bestR;
+            drag.snapCol = bestC;
+            drag.validSnap = true;
+            var lines = findCompletedLines(state.board, drag.piece.matrix, bestR, bestC);
+            drag.previewRows = lines.rows;
+            drag.previewCols = lines.cols;
+          }
+        }
+      }
+
+      cvs.addEventListener('pointerdown', function (e) {
+        if (state.gameOver) return;
+        var pt = clientToLogical(e.clientX, e.clientY);
+        var layout = getCanvasLayout();
+
+        // 트레이 슬롯 클릭 판정
+        if (pt.y >= layout.trayY - 12 && pt.y <= layout.trayY + layout.trayH + 12) {
+          var slotW = layout.trayW / 3;
+          var slotIdx = Math.floor((pt.x - layout.trayX) / slotW);
+          if (slotIdx >= 0 && slotIdx < 3 && state.tray[slotIdx]) {
+            e.preventDefault();
+            if (cvs.setPointerCapture) {
+              try { cvs.setPointerCapture(e.pointerId); } catch (err) {}
+            }
+            drag.active = true;
+            drag.trayIndex = slotIdx;
+            drag.piece = state.tray[slotIdx];
+            drag.pointerX = pt.x;
+            drag.pointerY = pt.y;
+            drag.isTouch = (e.pointerType === 'touch' || e.pointerType === 'pen');
+            playSfx('pickup');
+            updateMagneticSnap();
+          }
+        }
+      });
+
+      cvs.addEventListener('pointermove', function (e) {
+        if (!drag.active) return;
+        e.preventDefault();
+        var pt = clientToLogical(e.clientX, e.clientY);
+        drag.pointerX = pt.x;
+        drag.pointerY = pt.y;
+        updateMagneticSnap();
+      });
+
+      function endPointerDrag(e) {
+        if (!drag.active) return;
+        if (e && e.preventDefault) e.preventDefault();
+        if (drag.validSnap && drag.snapRow !== -1 && drag.snapCol !== -1) {
+          placePieceFromTray(drag.trayIndex, drag.snapRow, drag.snapCol);
+        } else {
+          playSfx('invalid');
+        }
+        drag.active = false;
+        drag.trayIndex = -1;
+        drag.piece = null;
+        drag.validSnap = false;
+        drag.previewRows = [];
+        drag.previewCols = [];
+      }
+
+      cvs.addEventListener('pointerup', endPointerDrag);
+      cvs.addEventListener('pointercancel', endPointerDrag);
+
+      // =========================================================================
+      // 10. 메인 애니메이션 루프 (60FPS)
+      // =========================================================================
+      function renderLoop(now) {
+        var layout = getCanvasLayout();
+        ctx.save();
+
+        // 점수 롤링 카운터 애니메이션
+        if (state.displayScore < state.score) {
+          var diff = state.score - state.displayScore;
+          state.displayScore += Math.max(1, Math.ceil(diff * 0.22));
+          if (state.displayScore > state.score) state.displayScore = state.score;
+          var scoreEl = document.getElementById('bb-current-score');
+          if (scoreEl) scoreEl.textContent = state.displayScore.toLocaleString();
+        } else if (state.displayScore > state.score) {
+          state.displayScore = state.score;
+          var scoreEl2 = document.getElementById('bb-current-score');
+          if (scoreEl2) scoreEl2.textContent = state.displayScore.toLocaleString();
+        }
+
+        // 화면 흔들림 (Screen Shake)
+        if (screenShake > 0.2) {
+          var sx = (Math.random() - 0.5) * screenShake;
+          var sy = (Math.random() - 0.5) * screenShake;
+          ctx.translate(sx, sy);
+          screenShake *= 0.84;
+        } else {
+          screenShake = 0;
+        }
+
+        ctx.clearRect(-20, -20, LOGICAL_W + 40, LOGICAL_H + 40);
+
+        // 1) 8x8 보드 외곽 베젤 프레임
+        ctx.fillStyle = '#070a12';
+        ctx.fillRect(layout.boardX - 6, layout.boardY - 6, layout.boardSize + 12, layout.boardSize + 12);
+        ctx.strokeStyle = state.combo > 0 ? '#f5b700' : '#334155';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(layout.boardX - 6, layout.boardY - 6, layout.boardSize + 12, layout.boardSize + 12);
+
+        // 줄 완성 프리뷰 하이라이트 맵
+        var previewRowSet = {};
+        var previewColSet = {};
+        drag.previewRows.forEach(function (r) { previewRowSet[r] = true; });
+        drag.previewCols.forEach(function (c) { previewColSet[c] = true; });
+        var pulse = 0.5 + 0.5 * Math.sin(now * 0.014);
+
+        // 2) 8x8 격자 셀 & 배치된 블록 렌더링
+        for (var r = 0; r < GRID_SIZE; r++) {
+          for (var c = 0; c < GRID_SIZE; c++) {
+            var cx = layout.boardX + c * layout.cellSize;
+            var cy = layout.boardY + r * layout.cellSize;
+
+            // 기본 빈 격자 타일
+            ctx.fillStyle = ((r + c) % 2 === 0) ? '#111728' : '#0d1322';
+            ctx.fillRect(cx + 1, cy + 1, layout.cellSize - 2, layout.cellSize - 2);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(cx + 1, cy + 1, layout.cellSize - 2, layout.cellSize - 2);
+
+            var cellColor = state.board[r][c];
+            var willClear = previewRowSet[r] || previewColSet[c];
+
+            if (cellColor !== 0) {
+              drawPixelGemBlock(
+                ctx,
+                cx,
+                cy,
+                layout.cellSize,
+                willClear && drag.piece ? drag.piece.color : cellColor,
+                1.0,
+                willClear
+              );
+            }
+          }
+        }
+
+        // 3) 드래그 중인 조각의 보드 위 고스트(Ghost) & 완성 줄 프리뷰
+        if (drag.active && drag.piece && drag.validSnap) {
+          var gm = drag.piece.matrix;
+          for (var gr = 0; gr < gm.length; gr++) {
+            for (var gc = 0; gc < gm[0].length; gc++) {
+              if (gm[gr][gc]) {
+                var br = drag.snapRow + gr;
+                var bc = drag.snapCol + gc;
+                var gx = layout.boardX + bc * layout.cellSize;
+                var gy = layout.boardY + br * layout.cellSize;
+                var willClearGhost = previewRowSet[br] || previewColSet[bc];
+                drawPixelGemBlock(ctx, gx, gy, layout.cellSize, drag.piece.color, willClearGhost ? (0.78 + pulse * 0.2) : 0.48, willClearGhost);
+              }
+            }
+          }
+        }
+
+        // 4) 폭발 플래시 타일 연출
+        for (var fi = flashCells.length - 1; fi >= 0; fi--) {
+          var fc = flashCells[fi];
+          var fx = layout.boardX + fc.c * layout.cellSize;
+          var fy = layout.boardY + fc.r * layout.cellSize;
+          ctx.fillStyle = fc.color;
+          ctx.globalAlpha = fc.alpha;
+          ctx.fillRect(fx + 2, fy + 2, layout.cellSize - 4, layout.cellSize - 4);
+          ctx.globalAlpha = 1;
+          fc.alpha -= 0.08;
+          if (fc.alpha <= 0) flashCells.splice(fi, 1);
+        }
+
+        // 5) 하단 3-블록 드래그 트레이 독(Dock) 렌더링
+        ctx.fillStyle = '#0b0f1c';
+        ctx.fillRect(layout.trayX - 4, layout.trayY, layout.trayW + 8, layout.trayH);
+        ctx.strokeStyle = '#f5b700';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(layout.trayX - 4, layout.trayY, layout.trayW + 8, layout.trayH);
+
+        var slotW = layout.trayW / 3;
+        for (var i = 0; i < 3; i++) {
+          var sx = layout.trayX + i * slotW;
+          if (i > 0) {
+            ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(sx, layout.trayY + 10);
+            ctx.lineTo(sx, layout.trayY + layout.trayH - 10);
+            ctx.stroke();
+          }
+
+          var trayPiece = state.tray[i];
+          if (!trayPiece) continue;
+          if (drag.active && drag.trayIndex === i) continue; // 드래그 중인 조각은 손가락 위치에 그림
+
+          var canFit = canPieceFitAnywhere(state.board, trayPiece.matrix);
+          var pRows = trayPiece.matrix.length;
+          var pCols = trayPiece.matrix[0].length;
+          var maxDim = Math.max(pRows, pCols);
+          var miniCell = Math.min(30, Math.floor(( Math.min(slotW, layout.trayH) - 24 ) / Math.max(2.6, maxDim)));
+          var totalPW = pCols * miniCell;
+          var totalPH = pRows * miniCell;
+          var startX = sx + (slotW - totalPW) * 0.5;
+          var startY = layout.trayY + (layout.trayH - totalPH) * 0.5;
+
+          for (var pr = 0; pr < pRows; pr++) {
+            for (var pc = 0; pc < pCols; pc++) {
+              if (trayPiece.matrix[pr][pc]) {
+                drawPixelGemBlock(ctx, startX + pc * miniCell, startY + pr * miniCell, miniCell, trayPiece.color, canFit ? 1.0 : 0.32, false);
+              }
+            }
+          }
+
+          if (!canFit) {
+            ctx.fillStyle = '#f87171';
+            ctx.font = 'bold 10px Pretendard, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('공간 부족', sx + slotW * 0.5, layout.trayY + layout.trayH - 8);
+          }
+        }
+
+        // 6) 현재 드래그 중인 플로팅 블록 렌더링 (보드 셀과 1:1 크기)
+        if (drag.active && drag.piece) {
+          var topLeft = getFloatingPieceTopLeft(layout);
+          var dm = drag.piece.matrix;
+          ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+          ctx.shadowBlur = 14;
+          ctx.shadowOffsetY = 8;
+          for (var dr = 0; dr < dm.length; dr++) {
+            for (var dc = 0; dc < dm[0].length; dc++) {
+              if (dm[dr][dc]) {
+                drawPixelGemBlock(
+                  ctx,
+                  topLeft.x + dc * layout.cellSize,
+                  topLeft.y + dr * layout.cellSize,
+                  layout.cellSize,
+                  drag.piece.color,
+                  0.95,
+                  false
+                );
+              }
+            }
+          }
+          ctx.restore();
+        }
+
+        // 7) 블록 파편 파티클 업데이트 & 드로잉
+        for (var pi = particles.length - 1; pi >= 0; pi--) {
+          var p = particles[pi];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.18; // 중력
+          p.alpha -= 0.026;
+          if (p.alpha <= 0) {
+            particles.splice(pi, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x - p.size * 0.5, p.y - p.size * 0.5, p.size, p.size);
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(p.x - p.size * 0.5, p.y - p.size * 0.5, p.size, p.size);
+          ctx.restore();
+        }
+
+        // 8) 플로팅 텍스트 ("UNBELIEVABLE!", "+120", "COMBO x4") 드로잉
+        for (var ti = floatingTexts.length - 1; ti >= 0; ti--) {
+          var ft = floatingTexts[ti];
+          ft.y += ft.vy;
+          ft.life -= 1;
+          if (ft.life < 15) ft.alpha = ft.life / 15;
+          if (ft.life <= 0) {
+            floatingTexts.splice(ti, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = ft.alpha;
+          ctx.font = '900 ' + ft.size + 'px Pretendard, DungGeunMo, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#000000';
+          ctx.strokeText(ft.text, ft.x, ft.y);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+
+        ctx.restore();
+        requestAnimationFrame(renderLoop);
+      }
+
+      // =========================================================================
+      // 11. HUD 업데이트, 무광고 아이템 사용 & 로컬 스토리지 저장/복원
+      // =========================================================================
+      function updateHUD() {
+        var bestEl = document.getElementById('bb-best-score');
+        if (bestEl) bestEl.textContent = state.bestScore.toLocaleString();
+
+        var comboBadge = document.getElementById('bb-combo-badge');
+        var comboText = document.getElementById('bb-combo-text');
+        var stageCard = document.getElementById('bb-stage-card');
+
+        if (comboText) {
+          comboText.textContent = state.combo > 0 ? ('🔥 COMBO ×' + state.combo) : 'COMBO ×0';
+        }
+        if (comboBadge) {
+          comboBadge.classList.toggle('active-combo', state.combo > 0);
+        }
+        if (stageCard) {
+          stageCard.classList.toggle('combo-fever', state.combo >= 2);
+        }
+
+        for (var g = 1; g <= 3; g++) {
+          var pip = document.getElementById('grace-pip-' + g);
+          if (pip) {
+            pip.classList.toggle('on', state.combo > 0 && state.graceMoves >= g);
+          }
+        }
+
+        var maxComboEl = document.getElementById('stat-max-combo');
+        var linesEl = document.getElementById('stat-lines-cleared');
+        var allClearsEl = document.getElementById('stat-all-clears');
+        var densityEl = document.getElementById('stat-board-density');
+
+        if (maxComboEl) maxComboEl.textContent = state.maxCombo + ' Combo';
+        if (linesEl) linesEl.textContent = state.linesCleared + ' Lines';
+        if (allClearsEl) allClearsEl.textContent = state.allClears + ' 회';
+        if (densityEl) {
+          var pct = Math.round(getBoardOccupancyRatio(state.board) * 100);
+          densityEl.textContent = pct + '%';
+          densityEl.style.color = pct >= 70 ? '#f87171' : (pct >= 45 ? '#fde047' : '#38bdf8');
+        }
+
+        // 무광고 아이템 버튼 업데이트
+        var btnUndo = document.getElementById('btn-item-undo');
+        var btnReroll = document.getElementById('btn-item-reroll');
+        var btnBomb = document.getElementById('btn-item-bomb');
+
+        var lblUndo = document.getElementById('Undo-count-label');
+        var lblReroll = document.getElementById('reroll-count-label');
+        var lblBomb = document.getElementById('bomb-count-label');
+
+        if (lblUndo) lblUndo.textContent = '남은 횟수: ' + state.items.undo;
+        if (lblReroll) lblReroll.textContent = '남은 횟수: ' + state.items.reroll;
+        if (lblBomb) lblBomb.textContent = '남은 횟수: ' + state.items.bomb;
+
+        if (btnUndo) btnUndo.disabled = !state.undoSnapshot || state.items.undo <= 0 || state.gameOver;
+        if (btnReroll) btnReroll.disabled = state.items.reroll <= 0 || state.gameOver;
+        if (btnBomb) btnBomb.disabled = state.items.bomb <= 0 || state.gameOver;
+      }
+
+      function updateGameOverOverlay() {
+        var ov = document.getElementById('bb-gameover-overlay');
+        if (!ov) return;
+        ov.classList.toggle('visible', !!state.gameOver);
+        if (state.gameOver) {
+          var fs = document.getElementById('go-final-score');
+          var bs = document.getElementById('go-best-score');
+          var btnRevive = document.getElementById('btn-go-revive');
+          if (fs) fs.textContent = state.score.toLocaleString();
+          if (bs) bs.textContent = state.bestScore.toLocaleString();
+          if (btnRevive) {
+            btnRevive.style.display = state.reviveUsedThisGame ? 'none' : 'inline-flex';
+          }
+        }
+      }
+
+      function saveState() {
+        try {
+          var payload = {
+            board: state.board,
+            tray: state.tray,
+            score: state.score,
+            bestScore: state.bestScore,
+            combo: state.combo,
+            graceMoves: state.graceMoves,
+            maxCombo: state.maxCombo,
+            linesCleared: state.linesCleared,
+            allClears: state.allClears,
+            nextRewardScore: state.nextRewardScore,
+            items: state.items,
+            reviveUsedThisGame: state.reviveUsedThisGame,
+            gameOver: state.gameOver
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {}
+      }
+
+      function loadState() {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return false;
+          var data = JSON.parse(raw);
+          if (!data || !Array.isArray(data.board) || data.board.length !== GRID_SIZE) return false;
+          state.board = data.board;
+          state.tray = data.tray || [null, null, null];
+          state.score = data.score || 0;
+          state.displayScore = state.score;
+          state.bestScore = Math.max(data.bestScore || 0, state.score);
+          state.combo = data.combo || 0;
+          state.graceMoves = data.graceMoves || 0;
+          state.maxCombo = data.maxCombo || 0;
+          state.linesCleared = data.linesCleared || 0;
+          state.allClears = data.allClears || 0;
+          state.nextRewardScore = data.nextRewardScore || 2000;
+          state.items = data.items || { undo: 2, reroll: 2, bomb: 1 };
+          state.reviveUsedThisGame = !!data.reviveUsedThisGame;
+          state.gameOver = !!data.gameOver;
+          var scoreEl = document.getElementById('bb-current-score');
+          if (scoreEl) scoreEl.textContent = state.score.toLocaleString();
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function startNewGame() {
+        state.board = createEmptyBoard();
+        state.score = 0;
+        state.displayScore = 0;
+        state.combo = 0;
+        state.graceMoves = 0;
+        state.linesCleared = 0;
+        state.allClears = 0;
+        state.nextRewardScore = 2000;
+        state.items = { undo: 2, reroll: 2, bomb: 1 };
+        state.undoSnapshot = null;
+        state.reviveUsedThisGame = false;
+        state.gameOver = false;
+        var scoreEl = document.getElementById('bb-current-score');
+        if (scoreEl) scoreEl.textContent = '0';
+        dealNewTray();
+        updateHUD();
+        updateGameOverOverlay();
+        addLogEntry('🚀 새 클래식 게임 시작!', 'START');
+      }
+
+      // 중앙 4x4 폭탄 실행 함수 (아이템 & 무료 부활 공용)
+      function triggerCenterBlast(isFreeRevive) {
+        for (var r = 2; r <= 5; r++) {
+          for (var c = 2; c <= 5; c++) {
+            if (state.board[r][c] !== 0) {
+              var col = state.board[r][c];
+              state.board[r][c] = 0;
+              spawnCellExplosion(r, c, col);
+            }
+          }
+        }
+        screenShake = 10;
+        playSfx('clear', Math.max(3, state.combo), 3);
+        var layout = getCanvasLayout();
+        spawnFloatingText(
+          isFreeRevive ? '💣 무광고 즉시 부활!' : '💣 중앙 4×4 폭파 완료!',
+          layout.boardX + layout.boardSize * 0.5,
+          layout.boardY + layout.boardSize * 0.5,
+          '#fde047',
+          20
+        );
+      }
+
+      // 버튼 이벤트 바인딩
+      document.getElementById('btn-bb-restart').addEventListener('click', function () {
+        startNewGame();
+      });
+
+      document.getElementById('btn-go-restart').addEventListener('click', function () {
+        startNewGame();
+      });
+
+      document.getElementById('btn-go-revive').addEventListener('click', function () {
+        if (state.reviveUsedThisGame) return;
+        state.reviveUsedThisGame = true;
+        state.gameOver = false;
+        triggerCenterBlast(true);
+        dealNewTray();
+        updateHUD();
+        updateGameOverOverlay();
+        addLogEntry('💣 무광고 무료 부활 사용', 'REVIVE');
+      });
+
+      document.getElementById('btn-bb-sound').addEventListener('click', function () {
+        soundEnabled = !soundEnabled;
+        var btn = document.getElementById('btn-bb-sound');
+        if (btn) {
+          btn.textContent = soundEnabled ? '🔊 사운드 ON' : '🔇 사운드 OFF';
+          btn.className = soundEnabled ? 'btn btn-gold' : 'btn';
+        }
+      });
+
+      document.getElementById('btn-item-undo').addEventListener('click', function () {
+        if (!state.undoSnapshot || state.items.undo <= 0 || state.gameOver) return;
+        var snap = state.undoSnapshot;
+        state.board = cloneBoard(snap.board);
+        state.tray = snap.tray;
+        state.score = snap.score;
+        state.displayScore = snap.score;
+        state.combo = snap.combo;
+        state.graceMoves = snap.graceMoves;
+        state.linesCleared = snap.linesCleared;
+        state.allClears = snap.allClears;
+        state.undoSnapshot = null;
+        state.items.undo -= 1;
+        playSfx('pickup');
+        updateHUD();
+        saveState();
+        addLogEntry('↩️ 한 수 무르기 사용', 'UNDO');
+      });
+
+      document.getElementById('btn-item-reroll').addEventListener('click', function () {
+        if (state.items.reroll <= 0 || state.gameOver) return;
+        state.items.reroll -= 1;
+        playSfx('pickup');
+        dealNewTray();
+        updateHUD();
+        addLogEntry('🎲 트레이 3개 무료 리롤', 'REROLL');
+      });
+
+      document.getElementById('btn-item-bomb').addEventListener('click', function () {
+        if (state.items.bomb <= 0 || state.gameOver) return;
+        state.items.bomb -= 1;
+        triggerCenterBlast(false);
+        checkGameOverCondition();
+        updateHUD();
+        saveState();
+        addLogEntry('💣 중앙 4×4 폭탄 사용', 'BLAST');
+      });
+
+      // 초기화
+      if (!loadState() || state.tray.every(function (p) { return p === null; })) {
+        startNewGame();
+      } else {
+        checkGameOverCondition();
+        updateHUD();
+      }
+
+      requestAnimationFrame(renderLoop);
+    })();
+  </script>
+</body>
+</html>

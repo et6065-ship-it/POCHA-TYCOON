@@ -267,8 +267,8 @@
 
     <!-- 런처 메인 타이틀 -->
     <div class="arcade-header">
-      <h1>🎮 GAME LAUNCHER : 중세 배틀 장기 &amp; 중세 배틀 체스</h1>
-      <p>고려 무신 · 성전 기사단 · 비잔틴 제국 · 맘루크 술탄국 32-Bit HD 도트 일러스트 전략 보드게임 컬렉션</p>
+      <h1>🎮 GAME LAUNCHER : 장기 · 체스 · 블록 블라스트</h1>
+      <p>32-Bit HD 도트 일러스트 전략 보드게임 &amp; 무광고 아케이드 퍼즐 통합 컬렉션</p>
     </div>
 
     <!-- 통합 게임 선택 그리드 -->
@@ -296,7 +296,18 @@
         <span class="btn btn-crimson arcade-play-btn">♛ 중세 배틀 체스 실행</span>
       </a>
 
-      <!-- 3. 전세계 길거리 음식 포차 타이쿤 (기본 숨김 · 상단 '숨김 프로젝트 표시' 토글 시 노출) -->
+      <!-- 3. 블록 블라스트 : 클래식 마스터 (기본 노출 · 무광고 에디션) -->
+      <a class="arcade-card" href="./blockblast.html">
+        <div class="arcade-stage">
+          <span class="arcade-tag" style="border-color:#38bdf8;color:#bae6fd;">💎 8×8 무광고 클래식 퍼즐</span>
+          <canvas id="arcade-canvas-blockblast" width="220" height="140"></canvas>
+        </div>
+        <h2>💎 블록 블라스트 [AD-FREE]</h2>
+        <p>8×8 HD 도트 보석 퍼즐 × 3턴 유예 하트비트 콤보 · 줄 완성 프리뷰 · 광고 0% 무료 리롤/폭탄/부활</p>
+        <span class="btn btn-emerald arcade-play-btn">💎 블록 블라스트 실행</span>
+      </a>
+
+      <!-- 4. 전세계 길거리 음식 포차 타이쿤 (기본 숨김 · 상단 '숨김 프로젝트 표시' 토글 시 노출) -->
       <div class="arcade-card hidden-project" id="card-pocha-tycoon">
         <div class="arcade-stage">
           <span class="arcade-tag hidden-badge">🔒 숨김 보관 프로젝트 (pocha_tycoon/)</span>
@@ -324,6 +335,7 @@
     (function () {
       var jCvs = document.getElementById('arcade-canvas-janggi');
       var cCvs = document.getElementById('arcade-canvas-chess');
+      var bCvs = document.getElementById('arcade-canvas-blockblast');
       var pCvs = document.getElementById('arcade-canvas-pocha');
       var btnToggleHidden = document.getElementById('btn-toggle-hidden-games');
       var cardPocha = document.getElementById('card-pocha-tycoon');
@@ -419,6 +431,67 @@
         });
       }
 
+      // 블록 블라스트 캔버스 미니 프리뷰 드로잉
+      function drawBlockBlastPreview(ctx, now) {
+        ctx.clearRect(0, 0, 220, 140);
+        var cell = 17;
+        var cols = 6;
+        var rows = 5;
+        var startX = Math.floor((220 - cols * cell) * 0.5);
+        var startY = 30;
+
+        ctx.fillStyle = '#070a12';
+        ctx.fillRect(startX - 4, startY - 4, cols * cell + 8, rows * cell + 8);
+        ctx.strokeStyle = '#f5b700';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(startX - 4, startY - 4, cols * cell + 8, rows * cell + 8);
+
+        var demoGrid = [
+          [0, 0, 3, 0, 0, 0],
+          [1, 1, 3, 0, 5, 5],
+          [4, 4, 4, 4, 4, 4],
+          [2, 2, 0, 6, 6, 6],
+          [2, 0, 0, 0, 1, 1]
+        ];
+        var colors = {
+          1: { base: '#e11d48', hi: '#fda4af', lo: '#881337' },
+          2: { base: '#059669', hi: '#6ee7b7', lo: '#064e3b' },
+          3: { base: '#2563eb', hi: '#93c5fd', lo: '#1e3a8a' },
+          4: { base: '#d97706', hi: '#fef08a', lo: '#78350f' },
+          5: { base: '#7c3aed', hi: '#d8b4fe', lo: '#4c1d95' },
+          6: { base: '#0891b2', hi: '#a5f3fc', lo: '#164e63' }
+        };
+        var pulse = 0.5 + 0.5 * Math.sin(now * 0.012);
+
+        for (var r = 0; r < rows; r++) {
+          for (var c = 0; c < cols; c++) {
+            var x = startX + c * cell;
+            var y = startY + r * cell;
+            ctx.fillStyle = ((r + c) % 2 === 0) ? '#111728' : '#0d1322';
+            ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+
+            var v = demoGrid[r][c];
+            if (v) {
+              var pal = colors[v];
+              var isClearRow = (r === 2);
+              ctx.fillStyle = isClearRow && pulse > 0.5 ? pal.hi : pal.base;
+              ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+              ctx.fillStyle = pal.hi;
+              ctx.fillRect(x + 1, y + 1, cell - 2, 3);
+              ctx.fillRect(x + 1, y + 1, 3, cell - 2);
+              ctx.fillStyle = pal.lo;
+              ctx.fillRect(x + 1, y + cell - 4, cell - 2, 3);
+              ctx.fillRect(x + cell - 4, y + 1, 3, cell - 2);
+            }
+          }
+        }
+
+        ctx.fillStyle = '#fff05a';
+        ctx.font = '900 11px Pretendard, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔥 COMBO ×8 · UNBELIEVABLE!', 110, 131);
+      }
+
       // 포차 타이쿤 캔버스 미니 프리뷰 드로잉
       function drawPochaPreview(ctx, now) {
         ctx.clearRect(0, 0, 220, 140);
@@ -448,7 +521,7 @@
       }
 
       var scale = 2.5;
-      [jCvs, cCvs, pCvs].forEach(function (cvs) {
+      [jCvs, cCvs, bCvs, pCvs].forEach(function (cvs) {
         if (cvs) {
           cvs.width = 220 * scale;
           cvs.height = 140 * scale;
@@ -484,6 +557,11 @@
               state: 'IDLE', time: stepped, scale: 1.05, facing: -1, showPedestal: true
             });
           }
+        }
+        if (bCvs) {
+          var bCtx = bCvs.getContext('2d');
+          bCtx.setTransform(scale, 0, 0, scale, 0, 0);
+          drawBlockBlastPreview(bCtx, now);
         }
         if (pCvs && hiddenVisible) {
           var pCtx = pCvs.getContext('2d');
