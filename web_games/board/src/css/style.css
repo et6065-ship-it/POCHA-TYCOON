@@ -1117,6 +1117,34 @@ body.crt-off::after {
   text-shadow: 1px 1px 0 #000000;
 }
 
+/* 가이드 모달 상단: 현재 선택 기물 상세 + 장기·체스 규칙 설명 그리드 */
+.guide-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.guide-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+.guide-rule-item {
+  padding: 7px 10px;
+  background: #0a0e1a;
+  border: 2px solid #334155;
+  border-left: 4px solid var(--pixel-gold);
+}
+
+.guide-rule-item strong {
+  color: var(--pixel-gold-hi);
+}
+
 /* 데스크톱에서는 모바일 바텀시트 전용 UI 숨김 */
 .mobile-only-drawer-btn,
 .mobile-drawer-header,
@@ -1125,7 +1153,7 @@ body.crt-off::after {
 }
 
 /* ============================================================================
-   10. 모바일 9:16 세로 원스크린 레이아웃 & GPU 합성 경량화
+   10. 모바일 & 갤럭시 Z 폴드 6 (접힘 커버 화면 / 펼침 메인 화면) 완벽 대응
    ============================================================================ */
 
 @media (max-width: 960px), (pointer: coarse) {
@@ -1133,7 +1161,11 @@ body.crt-off::after {
     background-attachment: scroll !important;
     background-image: linear-gradient(180deg, #0b0e18 0%, #14192b 100%) !important;
     min-height: 100dvh;
-    overscroll-behavior-y: contain;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y pinch-zoom;
   }
 
   /* 모바일 GPU 합성 부하 방지를 위해 전체화면 고정 스캔라인 경량화 */
@@ -1143,57 +1175,61 @@ body.crt-off::after {
 
   .app-header {
     flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px 8px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .brand-box {
     gap: 6px;
-    padding: 6px 10px;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .brand-crest {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    flex-shrink: 0;
   }
 
   .brand-titles h1 {
-    font-size: 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .brand-titles p {
-    display: none;
+    display: none !important;
+  }
+
+  .turn-pill {
+    font-size: 10.5px;
+    padding: 2px 6px;
+    margin-left: auto;
   }
 
   .game-switcher-group {
     order: 2;
-    width: 100%;
+    flex: 1 1 auto;
     justify-content: stretch;
+    padding: 2px;
+    gap: 4px;
   }
 
   .game-switch-btn {
     flex: 1;
-    padding: 5px 6px;
-    font-size: 11.5px;
-  }
-
-  .commander-briefing {
-    order: 3;
-    width: 100%;
-    max-width: 100%;
-    padding: 5px 8px;
-    gap: 6px;
-  }
-
-  .turn-pill {
+    padding: 4px 6px;
     font-size: 11px;
-    padding: 3px 6px;
-  }
-
-  .briefing-text {
-    font-size: 11.5px;
   }
 
   .header-actions {
-    order: 1;
-    margin-left: auto;
+    order: 3;
     gap: 4px;
+    flex-wrap: wrap;
   }
 
   .header-actions .btn {
@@ -1201,93 +1237,140 @@ body.crt-off::after {
     font-size: 11px;
   }
 
-  #btn-open-settings {
+  /* 모바일 상단 헤더에서는 중복 버튼 숨김 (하단 툴바 & 설정 드로어에 통합) */
+  #btn-open-showcase,
+  #btn-new-game-top {
     display: none;
   }
 
-  /* 9:16 세로 원스크린 배치: 상단 적 지휘관 바 -> 중앙 보드 -> 하단 아군 지휘관 바 & 툴바 */
+  /* 모바일 세로 배치: 상단 적 지휘관 컴팩트 바 -> 중앙 보드 -> 하단 아군 지휘관 컴팩트 바 & 툴바 */
   .workspace-grid {
     display: flex !important;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 6px 6px 12px;
+    gap: 5px;
+    padding: 5px 6px 18px;
     zoom: 1 !important;
+    touch-action: pan-y pinch-zoom;
   }
 
   .left-status-column {
     display: contents;
   }
 
+  #han-faction-card,
+  #chu-faction-card {
+    width: min(96vw, 560px);
+    padding: 5px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
   #han-faction-card {
     order: 1;
-    width: min(96vw, 560px);
-    padding: 6px 10px;
-    box-shadow: inset 0 0 0 2px #ef4444, 3px 3px 0 #000000;
+    box-shadow: inset 0 0 0 2px #ef4444, 2px 2px 0 #000000;
   }
 
   .board-stage-column {
     order: 2;
     width: 100%;
-    gap: 6px;
+    gap: 5px;
+    touch-action: pan-y pinch-zoom;
   }
 
   #chu-faction-card {
     order: 3;
-    width: min(96vw, 560px);
-    padding: 6px 10px;
-    box-shadow: inset 0 0 0 2px #10b981, 3px 3px 0 #000000;
+    box-shadow: inset 0 0 0 2px #10b981, 2px 2px 0 #000000;
   }
 
+  .faction-card-top {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 7px;
+  }
+
+  /* 모바일 메인 화면에서는 부가 설명 배지 숨김 -> 가이드/설정에서 확인 */
   .power-gauge-card,
-  #selected-unit-card {
-    display: none;
+  .faction-side-badge,
+  .faction-sub-meta,
+  .captured-tray-label {
+    display: none !important;
   }
 
   .emblem-canvas {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
   }
 
   .faction-name-title {
-    font-size: 13px;
+    font-size: 12.5px;
   }
 
-  .faction-sub-meta {
-    font-size: 10.5px;
+  .score-badge {
+    padding: 3px 6px;
   }
 
-  .captured-tray-label {
-    display: none;
+  .score-number {
+    font-size: 14px;
+  }
+
+  .score-unit {
+    font-size: 9px;
   }
 
   .captured-tray {
-    min-height: 22px;
-    margin-top: 4px;
+    min-height: 20px;
+    margin-top: 0;
     padding: 2px 5px;
+    width: 100%;
+    gap: 3px;
+  }
+
+  .captured-chip {
+    font-size: 10.5px;
+    padding: 1px 4px;
+  }
+
+  .status-alert-pill {
+    width: 100%;
+    margin-top: 3px;
+    padding: 3px 6px;
+    font-size: 11px;
   }
 
   .board-frame {
-    padding: 4px;
-    box-shadow: inset 0 0 0 3px var(--pixel-gold), 4px 4px 0 rgba(0, 0, 0, 0.85);
+    padding: 3px;
+    box-shadow: inset 0 0 0 2px var(--pixel-gold), 3px 3px 0 rgba(0, 0, 0, 0.85);
+    touch-action: pan-y pinch-zoom;
   }
 
+  /* 핵심 수정: touch-action: pan-y pinch-zoom 허용으로 보드 위에서도 상하 스크롤 100% 작동 */
   #janggi-board-canvas {
-    width: min(96vw, 62dvh) !important;
+    width: min(96vw, 58dvh) !important;
     height: auto;
-    touch-action: none;
+    touch-action: pan-y pinch-zoom !important;
   }
 
   .board-bottom-toolbar {
     width: min(96vw, 560px);
-    padding: 6px 8px;
-    gap: 5px;
+    padding: 5px 6px;
+    gap: 4px;
     justify-content: center;
   }
 
+  .toolbar-group {
+    gap: 4px;
+    justify-content: center;
+    width: 100%;
+  }
+
   .board-bottom-toolbar .btn {
-    padding: 5px 8px;
+    padding: 5px 7px;
     font-size: 11px;
+    flex: 1 1 auto;
   }
 
   .mobile-only-drawer-btn {
@@ -1314,12 +1397,15 @@ body.crt-off::after {
     bottom: 0;
     z-index: 8500;
     width: 100% !important;
-    max-height: 82dvh;
-    overflow-y: auto;
+    max-height: 85dvh;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
     background: #0f1424;
     border-top: 4px solid var(--pixel-gold);
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.9);
-    padding: 12px 12px 24px;
+    padding: 12px 12px 28px;
     transform: translateY(105%);
     transition: transform 0.22s ease-out;
   }
@@ -1337,11 +1423,148 @@ body.crt-off::after {
     border-bottom: 3px solid var(--pixel-gold);
     font-size: 14px;
     color: var(--pixel-gold-hi);
+    position: sticky;
+    top: 0;
+    background: #0f1424;
+    z-index: 5;
+  }
+
+  /* 모달 내부 스크롤 및 가이드 레이아웃 모바일 최적화 */
+  .modal-backdrop {
+    padding: 8px;
+  }
+
+  .modal-window {
+    width: 98vw;
+    max-height: 92dvh;
+  }
+
+  .modal-header {
+    padding: 10px 12px;
+  }
+
+  .modal-header h2 {
+    font-size: 14px;
+  }
+
+  .modal-body {
+    padding: 10px 12px 22px;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .guide-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  #selected-unit-card {
+    display: block !important;
+  }
+
+  .art-gallery-row {
+    grid-template-columns: 1fr;
   }
 
   .promotion-card-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ============================================================================
+   11. 갤럭시 Z 폴드 6 접은 화면 (커버 디스플레이: ~316px~420px 초슬림 폭) 전용 최적화
+   ============================================================================ */
+@media (max-width: 420px) {
+  .app-header {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .brand-crest {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .brand-titles h1 {
+    font-size: 12px;
+  }
+
+  .turn-pill {
+    font-size: 10px;
+    padding: 2px 5px;
+  }
+
+  .game-switch-btn {
+    font-size: 10.5px;
+    padding: 3px 5px;
+  }
+
+  .header-actions .btn {
+    font-size: 10px;
+    padding: 3px 5px;
+  }
+
+  #han-faction-card,
+  #chu-faction-card {
+    width: 96vw;
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .emblem-canvas {
+    width: 28px;
+    height: 28px;
+  }
+
+  .faction-name-title {
+    font-size: 11.5px;
+  }
+
+  .score-number {
+    font-size: 13px;
+  }
+
+  #janggi-board-canvas {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    height: auto !important;
+    touch-action: pan-y pinch-zoom !important;
+  }
+
+  .board-bottom-toolbar {
+    width: 96vw;
+    padding: 4px 5px;
+  }
+
+  .board-bottom-toolbar .btn {
+    padding: 4px 5px;
+    font-size: 10px;
+    gap: 2px;
+  }
+
+  .unit-inspector {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ============================================================================
+   12. 갤럭시 Z 폴드 6 펼친 화면 (내부 메인 디스플레이: 580px~960px 폴더블 비율) 전용 최적화
+   ============================================================================ */
+@media (min-width: 580px) and (max-width: 960px) {
+  #han-faction-card,
+  #chu-faction-card,
+  .board-bottom-toolbar {
+    width: min(90vw, 640px);
+  }
+
+  #janggi-board-canvas {
+    width: min(86vw, 62dvh) !important;
+    touch-action: pan-y pinch-zoom !important;
+  }
+}
+
 
 

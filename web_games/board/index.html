@@ -15,43 +15,37 @@
     <div class="brand-box">
       <div class="brand-crest" id="brand-crest-icon">將</div>
       <div class="brand-titles">
-        <h1 id="app-main-title">중세 배틀체스 장기 [16-BIT PIXEL EDITION]</h1>
-        <p id="app-sub-title">정통 한국장기 &amp; 서양체스 × 4대 중세 도트 정예병 스킨 × 16-BIT 아케이드 처형 연출</p>
+        <h1 id="app-main-title">중세 배틀체스 장기</h1>
+        <p id="app-sub-title">정통 한국장기 &amp; 서양체스 × 4대 중세 도트 정예병 스킨</p>
       </div>
+      <span class="turn-pill chu-turn" id="current-turn-pill">초(楚) TURN · 1수</span>
     </div>
 
     <!-- 장기 <-> 체스 실시간 전환 스위처 그룹 -->
     <div class="game-switcher-group" role="tablist" aria-label="게임 종목 전환">
       <button type="button" class="btn game-switch-btn active" id="btn-switch-janggi" data-game-type="JANGGI">
-        🇰🇷 중세 배틀 장기 (JANGGI)
+        🇰🇷 장기 (JANGGI)
       </button>
       <button type="button" class="btn game-switch-btn" id="btn-switch-chess" data-game-type="CHESS">
-        ♟️ 중세 배틀 체스 (CHESS)
+        ♟️ 체스 (CHESS)
       </button>
-    </div>
-
-    <div class="commander-briefing" id="commander-briefing-bar">
-      <span class="turn-pill chu-turn" id="current-turn-pill">초(楚) 차례 · 1수</span>
-      <span class="briefing-text" id="commander-briefing-text">
-        초(楚) 선공으로 대국이 시작되었습니다. 출전할 정예 기물을 선택하세요.
-      </span>
     </div>
 
     <div class="header-actions">
-      <button type="button" class="btn btn-gold" id="btn-open-codex">📖 정예병 도감 &amp; 아트</button>
-      <button type="button" class="btn btn-crimson" id="btn-open-showcase">🎬 배틀 쇼케이스</button>
-      <button type="button" class="btn btn-gold" id="btn-open-settings">🖥️ 해상도 · 🔊 사운드 옵션</button>
-      <button type="button" class="btn" id="btn-toggle-sound">🔊 사운드 ON</button>
+      <button type="button" class="btn btn-gold" id="btn-open-codex">📘 가이드·도감</button>
+      <button type="button" class="btn btn-crimson" id="btn-open-showcase">🎬 쇼케이스</button>
+      <button type="button" class="btn btn-gold" id="btn-open-settings">⚙️ 환경설정</button>
+      <button type="button" class="btn" id="btn-toggle-sound">🔊 사운드</button>
       <button type="button" class="btn btn-emerald" id="btn-new-game-top">🔄 새 대국</button>
     </div>
   </header>
 
   <!-- ========================================================================
-       2. 메인 3단 전략 워크스페이스 (모바일 9:16 원스크린 자동 전환)
+       2. 메인 전략 워크스페이스 (모바일 & 갤럭시 Z 폴드 6 접힘/펼침 완벽 대응)
        ======================================================================== -->
   <main class="workspace-grid">
 
-    <!-- [좌측 컬럼] 초/한(백/흑) 진영 전황 카드, 기물 점수 게이지, 선택 기물 인스펙터 -->
+    <!-- [좌측 컬럼 / 모바일 상·하단 컴팩트 플레이어 바] -->
     <section class="panel-column left-status-column" id="left-status-column">
 
       <!-- 한(HAN / 흑 BLACK, 후공) 진영 상태 카드 -->
@@ -65,7 +59,7 @@
           </div>
           <div class="score-badge">
             <div class="score-number" id="han-score-val">73.5</div>
-            <div class="score-unit" id="han-score-unit">기물 점수</div>
+            <div class="score-unit" id="han-score-unit">점수</div>
           </div>
         </div>
         <div class="status-alert-pill" id="han-check-alert">🚨 장군(CHECK)! 한궁을 호위하세요!</div>
@@ -75,7 +69,7 @@
         <div class="captured-tray" id="han-captured-tray"></div>
       </div>
 
-      <!-- 실시간 전력 우세 비교 게이지 -->
+      <!-- 실시간 전력 우세 비교 게이지 (데스크톱 전용, 모바일은 설정/가이드에 통합) -->
       <div class="card-panel power-gauge-card">
         <div class="power-bar-container">
           <div class="power-bar-labels">
@@ -100,7 +94,7 @@
           </div>
           <div class="score-badge">
             <div class="score-number" id="chu-score-val">72.0</div>
-            <div class="score-unit" id="chu-score-unit">기물 점수</div>
+            <div class="score-unit" id="chu-score-unit">점수</div>
           </div>
         </div>
         <div class="status-alert-pill" id="chu-check-alert">🚨 장군(CHECK)! 초궁을 호위하세요!</div>
@@ -110,27 +104,9 @@
         <div class="captured-tray" id="chu-captured-tray"></div>
       </div>
 
-      <!-- 선택된 정예병 상세 인스펙터 -->
-      <div class="card-panel" id="selected-unit-card">
-        <div class="panel-title">
-          <span>🛡️ 선택 기물 정예병 브리핑</span>
-          <span style="font-size:10.5px;color:#94a3b8;">기물 클릭 시 상세 표시</span>
-        </div>
-        <div class="unit-inspector">
-          <canvas id="selected-unit-canvas" class="inspector-canvas" width="110" height="110"></canvas>
-          <div class="inspector-details">
-            <div class="inspector-unit-name" id="inspector-unit-name">개마무사 중장전차 [차 · 車]</div>
-            <div class="inspector-unit-role" id="inspector-unit-role">고려 철갑군 · 기물 가치 13점</div>
-            <div class="inspector-unit-desc" id="inspector-unit-desc">
-              가로·세로 직선 무제한 돌파 및 궁성 대각선 직선 이동이 가능한 13점 결전병기입니다.
-            </div>
-          </div>
-        </div>
-      </div>
-
     </section>
 
-    <!-- [중앙 컬럼] 9x10 장기판 / 8x8 체스판 디오라마 캔버스 & 하단 전술 툴바 -->
+    <!-- [중앙 컬럼] 9x10 장기판 / 8x8 체스판 디오라마 캔버스 & 하단 핵심 전술 툴바 -->
     <section class="board-stage-column">
       <div class="board-frame">
         <canvas id="janggi-board-canvas" width="780" height="860"></canvas>
@@ -138,28 +114,26 @@
 
       <div class="board-bottom-toolbar">
         <div class="toolbar-group">
-          <button type="button" class="btn" id="btn-pass-turn" title="장군 상태가 아닐 때 차례를 한 번 넘깁니다">
-            ⏭️ 한수 쉼 (Pass)
-          </button>
           <button type="button" class="btn" id="btn-undo-move" title="이전 착수를 되돌립니다">
-            ⏪ 무르기 (Undo)
+            ⏪ 무르기
+          </button>
+          <button type="button" class="btn" id="btn-pass-turn" title="장군 상태가 아닐 때 차례를 한 번 넘깁니다">
+            ⏭️ 한수 쉼
           </button>
           <button type="button" class="btn btn-gold" id="btn-declare-bikjang" disabled title="두 왕이 마주보았을 때 빅장 무승부를 선언합니다">
-            👑 빅장 무승부 선언
+            👑 빅장 선언
           </button>
-        </div>
-        <div class="toolbar-group">
           <button type="button" class="btn btn-emerald" id="btn-toggle-3d-view" title="2.5D 입체 틸트 보드와 2D 평면 보드 시점을 전환합니다">
-            🧊 2.5D 입체판 ON
-          </button>
-          <button type="button" class="btn" id="btn-score-decision" title="현재 잔존 기물 점수로 즉시 우열을 판정합니다">
-            ⚖️ 점수 판정 종료
+            🧊 2.5D 입체
           </button>
           <button type="button" class="btn" id="btn-flip-board" title="보드 상하 시점을 뒤집습니다">
-            🔃 시점 반전
+            🔃 반전
           </button>
-          <button type="button" class="btn btn-gold mobile-only-drawer-btn" id="btn-mobile-drawer-toggle" title="모바일 스킨·대국설정 바텀시트를 엽니다">
-            🏰 스킨·대국설정 열기
+          <button type="button" class="btn btn-gold" id="btn-open-guide-bottom" title="기물 설명·게임 규칙·정예병 도감을 엽니다">
+            📘 가이드·도감
+          </button>
+          <button type="button" class="btn btn-gold mobile-only-drawer-btn" id="btn-mobile-drawer-toggle" title="스킨·대국설정·기보·사운드 메뉴를 엽니다">
+            ⚙️ 대국설정·메뉴
           </button>
         </div>
       </div>
@@ -168,12 +142,32 @@
     <!-- 모바일 바텀시트 배경 딤 -->
     <div class="mobile-drawer-backdrop" id="mobile-drawer-backdrop"></div>
 
-    <!-- [우측 컬럼] 진영별 중세 스킨 실시간 선택기, 대국/상차림 설정, 연출 옵션, 기보 로그 -->
+    <!-- [우측 컬럼 / 모바일 설정·메뉴 드로어] 스킨 선택, 대국/상차림, 전황 브리핑, 기보 로그 -->
     <section class="panel-column right-settings-column" id="right-settings-drawer">
 
       <div class="mobile-drawer-header">
-        <span>🏰 국가 스킨 · 대국 모드 · 기보 · 설정</span>
+        <span>⚙️ 대국 설정 · 스킨 · 전황 설명 · 기보</span>
         <button type="button" class="btn btn-crimson" id="btn-close-mobile-drawer">✖ 닫기</button>
+      </div>
+
+      <!-- 0. 지휘관 전황 브리핑 & 가이드 바로가기 (메인 화면에서 이동됨) -->
+      <div class="card-panel">
+        <div class="panel-title">
+          <span>📣 실시간 전황 브리핑 &amp; 도움말</span>
+        </div>
+        <div class="commander-briefing" id="commander-briefing-bar" style="max-width:100%;margin-bottom:8px;">
+          <span class="briefing-text" id="commander-briefing-text" style="white-space:normal;line-height:1.45;">
+            초(楚) 선공으로 대국이 시작되었습니다. 출전할 정예 기물을 선택하세요.
+          </span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-gold" id="btn-open-codex-side" style="flex:1;">
+            📘 게임 규칙 · 기물 설명 · 도감
+          </button>
+          <button type="button" class="btn btn-crimson" id="btn-open-showcase-side" style="flex:1;">
+            🎬 처형 모션 쇼케이스
+          </button>
+        </div>
       </div>
 
       <!-- 1. 국가별 중세 정예병 스킨 실시간 선택기 -->
@@ -243,9 +237,12 @@
               <option value="RIGHT">오른상 (마·상·마·상)</option>
             </select>
           </div>
-          <div class="form-field full-width" style="margin-top: 4px;">
-            <button type="button" class="btn btn-gold" id="btn-new-game" style="width:100%;padding:9px;">
-              ⚔️ 설정한 진형으로 새 대국 시작
+          <div class="form-field full-width" style="display:flex;flex-direction:row;gap:6px;margin-top:4px;">
+            <button type="button" class="btn btn-gold" id="btn-new-game" style="flex:1;padding:9px;">
+              ⚔️ 새 대국 시작
+            </button>
+            <button type="button" class="btn" id="btn-score-decision" style="flex:1;padding:9px;" title="현재 잔존 기물 점수로 즉시 우열을 판정합니다">
+              ⚖️ 점수 판정 종료
             </button>
           </div>
         </div>
@@ -267,9 +264,6 @@
             🏟️ 별도 아레나 씬
           </button>
         </div>
-        <button type="button" class="btn btn-crimson" id="btn-open-showcase-side" style="width:100%;margin-top:8px;">
-          🎬 병종별 배틀 처형 모션 테스트 (Showcase)
-        </button>
       </div>
 
       <!-- 4. 실시간 착수 기보 로그 -->
@@ -280,17 +274,17 @@
         <div class="move-log-list" id="move-history-list"></div>
       </div>
 
-      <!-- 5. 내 컴퓨터 해상도 & 사운드 퀵 컨트롤 패널 -->
+      <!-- 5. 디스플레이 해상도 & 사운드 퀵 컨트롤 패널 -->
       <div class="card-panel" id="quick-settings-panel">
         <div class="panel-title">
-          <span>🖥️ 내 컴퓨터 해상도 &amp; 🔊 사운드 옵션</span>
-          <span id="detected-monitor-badge" style="font-size:10.5px;color:#6ee7b7;">모니터 감지 중...</span>
+          <span>🖥️ 화면 배율 &amp; 🔊 사운드 옵션</span>
+          <span id="detected-monitor-badge" style="font-size:10.5px;color:#6ee7b7;">화면 감지 중...</span>
         </div>
         <div class="form-grid">
           <div class="form-field full-width">
-            <label for="quick-resolution-select">🖥️ 화면 해상도 &amp; 보드 디자인 스케일 (내 모니터 기준)</label>
+            <label for="quick-resolution-select">🖥️ 화면 해상도 &amp; 보드 디자인 스케일</label>
             <select id="quick-resolution-select" class="select-input">
-              <option value="AUTO_NATIVE">✨ 내 컴퓨터 모니터 자동 맞춤 (권장)</option>
+              <option value="AUTO_NATIVE">✨ 내 화면 자동 맞춤 (권장)</option>
               <option value="2560x1440">🖥️ 2560 × 1440 (QHD 16:9 · 메인 모니터 최적)</option>
               <option value="2048x1152">💻 2048 × 1152 (QHD+ 16:9 · 서브 디스플레이 최적)</option>
               <option value="1920x1080">📺 1920 × 1080 (FHD 16:9 · 표준 와이드)</option>
@@ -326,15 +320,55 @@
   </main>
 
   <!-- ========================================================================
-       모달 1: 국가별 정예병 도감 & 컨셉 아트 갤러리 (#codex-modal)
+       모달 1: 게임 규칙 가이드 · 선택 기물 브리핑 · 4대 국가 정예병 도감 (#codex-modal)
        ======================================================================== -->
   <div class="modal-backdrop" id="codex-modal">
     <div class="modal-window">
       <div class="modal-header">
-        <h2>📖 4대 중세 국가 정예병 도감 (장기 7병종 &amp; 체스 6병종)</h2>
+        <h2>📘 게임 규칙 가이드 · 기물 설명 · 4대 국가 정예병 도감</h2>
         <button type="button" class="btn" id="btn-close-codex">✖ 닫기</button>
       </div>
       <div class="modal-body">
+
+        <!-- [가이드 섹션 1] 현재 선택 기물 정예병 브리핑 & 장기·체스 핵심 규칙 설명 -->
+        <div class="guide-overview-grid">
+          <!-- 선택된 정예병 상세 인스펙터 (메인 화면에서 가이드 모달로 이동) -->
+          <div class="card-panel" id="selected-unit-card">
+            <div class="panel-title">
+              <span>🛡️ 현재 선택 기물 상세 설명</span>
+              <span style="font-size:10.5px;color:#94a3b8;">보드에서 기물 터치 시 자동 갱신</span>
+            </div>
+            <div class="unit-inspector">
+              <canvas id="selected-unit-canvas" class="inspector-canvas" width="110" height="110"></canvas>
+              <div class="inspector-details">
+                <div class="inspector-unit-name" id="inspector-unit-name">개마무사 중장전차 [차 · 車]</div>
+                <div class="inspector-unit-role" id="inspector-unit-role">고려 철갑군 · 기물 가치 13점</div>
+                <div class="inspector-unit-desc" id="inspector-unit-desc">
+                  가로·세로 직선 무제한 돌파 및 궁성 대각선 직선 이동이 가능한 13점 결전병기입니다.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 장기 & 체스 핵심 규칙 및 모바일 조작 가이드 -->
+          <div class="card-panel guide-rules-card">
+            <div class="panel-title">
+              <span>📜 한국 장기 &amp; 서양 체스 핵심 규칙 · 조작 가이드</span>
+            </div>
+            <div class="guide-rules-list">
+              <div class="guide-rule-item">
+                <strong>🇰🇷 한국 장기 핵심 규칙:</strong> 궁(將/楚)·사(士)는 궁성(3×3) 안에서만 이동합니다. <strong>포(包)</strong>는 다른 기물 1개를 다리 삼아 넘어야 하며(포끼리 넘기·잡기 불가), <strong>마(馬)·상(象)</strong>은 직선 첫 칸(멱)이 막히면 이동할 수 없습니다. 두 왕이 마주보면 <code>[👑 빅장 선언]</code>이 활성화됩니다.
+              </div>
+              <div class="guide-rule-item">
+                <strong>♟️ 서양 체스 특수 행마:</strong> <strong>캐슬링(O-O / O-O-O)</strong>은 킹과 룩이 첫 이동 전이고 사이가 비어 있을 때 킹을 좌·우 2칸 이동하면 발동합니다. <strong>앙파상</strong>(적 폰 2칸 전진 직후 대각선 포획)과 <strong>프로모션</strong>(폰 끝줄 도달 시 퀸/룩/비숍/나이트 각성)을 완벽 지원합니다.
+              </div>
+              <div class="guide-rule-item">
+                <strong>📱 모바일 · 갤럭시 폴드 조작 안내:</strong> 기물을 터치하면 이동 가능 칸(초록/노랑)과 포획 가능 칸(빨강)이 표시됩니다. 접은 화면(커버 화면)과 펼친 화면 어디서든 위·아래로 쓸어넘기면 자연스럽게 스크롤됩니다.
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
           <div class="codex-tabs">
             <button type="button" class="btn mode-btn active" data-codex-faction="GORYEO">🇰🇷 고려 천군</button>

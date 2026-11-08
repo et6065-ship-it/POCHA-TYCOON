@@ -262,14 +262,12 @@
       const subTitle = document.getElementById('app-sub-title');
       if (crest) crest.textContent = isChess ? '♔' : '將';
       if (mainTitle) {
-        mainTitle.textContent = isChess
-          ? '중세 배틀 체스 [16-BIT PIXEL EDITION]'
-          : '중세 배틀체스 장기 [16-BIT PIXEL EDITION]';
+        mainTitle.textContent = isChess ? '중세 배틀 체스' : '중세 배틀체스 장기';
       }
       if (subTitle) {
         subTitle.textContent = isChess
-          ? '정통 FIDE 서양체스 × 4대 중세 도트 정예병 스킨 × 16-BIT 아케이드 처형 연출'
-          : '정통 한국장기 규칙 × 4대 중세 도트 정예병 스킨 × 16-BIT 아케이드 처형 연출';
+          ? '정통 FIDE 서양체스 × 4대 중세 도트 정예병 스킨'
+          : '정통 한국장기 & 서양체스 × 4대 중세 도트 정예병 스킨';
       }
 
       const setText = (id, text) => {
@@ -316,10 +314,9 @@
 
       const passBtn = document.getElementById('btn-pass-turn');
       if (passBtn) {
-        passBtn.textContent = isChess ? '🏰 캐슬링 가이드' : '⏭️ 한수 쉼 (Pass)';
-        passBtn.title = isChess
-          ? '킹과 룩 사이가 비어 있고 두 기물이 움직인 적 없을 때 킹을 2칸 이동하여 캐슬링합니다'
-          : '장군 상태가 아닐 때 차례를 한 번 넘깁니다';
+        passBtn.style.display = isChess ? 'none' : '';
+        passBtn.textContent = '⏭️ 한수 쉼';
+        passBtn.title = '장군 상태가 아닐 때 차례를 한 번 넘깁니다';
       }
 
       const bikjangBtn = document.getElementById('btn-declare-bikjang');
@@ -340,10 +337,10 @@
       const btn = document.getElementById('btn-toggle-3d-view');
       if (!btn) return;
       if (this.is3DView()) {
-        btn.textContent = '🧊 2.5D 입체판 ON';
+        btn.textContent = '🧊 2.5D 입체';
         btn.className = 'btn btn-emerald';
       } else {
-        btn.textContent = '🗺️ 2D 평면판 ON';
+        btn.textContent = '🗺️ 2D 평면';
         btn.className = 'btn';
       }
     }
@@ -599,15 +596,29 @@
           this._forceRedraw = true;
         });
 
-        // 모바일 터치 루페(Magnifier) & 자석 스냅 이벤트
+        // 모바일 & 갤럭시 폴드 터치: 스크롤 제스처와 기물 탭(착수)을 정밀 구분하여 스크롤 먹통 방지
+        this._touchGesture = null;
+
         this.boardCanvas.addEventListener(
           'touchstart',
           (e) => {
-            if (!e.touches || e.touches.length === 0) return;
-            const pos = this._getCanvasClientPos(e.touches[0].clientX, e.touches[0].clientY);
+            if (!e.touches || e.touches.length !== 1) {
+              this._touchGesture = null;
+              this.touchLoupe.active = false;
+              return;
+            }
+            const t = e.touches[0];
+            const pos = this._getCanvasClientPos(t.clientX, t.clientY);
             const coord = this._resolveMagneticTouchCoord(pos.px, pos.py, true);
+            this._touchGesture = {
+              startX: t.clientX,
+              startY: t.clientY,
+              px: pos.px,
+              py: pos.py,
+              coord,
+              isScroll: false
+            };
             this.hoveredCoord = coord;
-            this.touchLoupe = { active: true, px: pos.px, py: pos.py, coord };
             this._forceRedraw = true;
           },
           { passive: true }
@@ -616,27 +627,47 @@
         this.boardCanvas.addEventListener(
           'touchmove',
           (e) => {
-            if (!e.touches || e.touches.length === 0) return;
-            const pos = this._getCanvasClientPos(e.touches[0].clientX, e.touches[0].clientY);
+            if (!this._touchGesture || !e.touches || e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const dx = Math.abs(t.clientX - this._touchGesture.startX);
+            const dy = Math.abs(t.clientY - this._touchGesture.startY);
+
+            // 손가락이 9px 이상 움직이면 화면 스크롤 제스처로 판정 -> 루페 해제 & 브라우저 기본 스크롤 허용
+            if (dx > 9 || dy > 9) {
+              this._touchGesture.isScroll = true;
+              if (this.touchLoupe.active) {
+                this.touchLoupe.active = false;
+                this._forceRedraw = true;
+              }
+              return;
+            }
+
+            const pos = this._getCanvasClientPos(t.clientX, t.clientY);
             const coord = this._resolveMagneticTouchCoord(pos.px, pos.py, true);
+            this._touchGesture.px = pos.px;
+            this._touchGesture.py = pos.py;
+            this._touchGesture.coord = coord;
             this.hoveredCoord = coord;
-            this.touchLoupe = { active: true, px: pos.px, py: pos.py, coord };
             this._forceRedraw = true;
           },
           { passive: true }
         );
 
         this.boardCanvas.addEventListener('touchend', (e) => {
-          if (this.touchLoupe && this.touchLoupe.active) {
-            const { px, py } = this.touchLoupe;
-            this.touchLoupe.active = false;
-            this._forceRedraw = true;
-            if (e.cancelable) e.preventDefault();
-            this._handleBoardPointerAction(px, py, true);
-          }
+          const gesture = this._touchGesture;
+          this._touchGesture = null;
+          this.touchLoupe.active = false;
+          this._forceRedraw = true;
+
+          // 스크롤 동작이었으면 기물 클릭을 실행하지 않고 네이티브 스크롤 유지
+          if (!gesture || gesture.isScroll) return;
+
+          if (e.cancelable) e.preventDefault();
+          this._handleBoardPointerAction(gesture.px, gesture.py, true);
         });
 
         this.boardCanvas.addEventListener('touchcancel', () => {
+          this._touchGesture = null;
           this.touchLoupe.active = false;
           this._forceRedraw = true;
         });
@@ -758,7 +789,10 @@
       bindClick('btn-pass-turn', () => this.handlePassTurn());
       bindClick('btn-undo-move', () => this.handleUndoMove());
       bindClick('btn-declare-bikjang', () => this.handleDeclareBikjang());
-      bindClick('btn-score-decision', () => this.handleScoreDecision());
+      bindClick('btn-score-decision', () => {
+        toggleMobileDrawer(false);
+        this.handleScoreDecision();
+      });
       bindClick('btn-flip-board', () => {
         this.boardFlipped = !this.boardFlipped;
         this._pixelBoardCache = null;
@@ -786,10 +820,16 @@
         this._saveUserSettings();
       });
 
-      bindClick('btn-open-codex', () => {
+      const openGuideAndCodex = () => {
+        toggleMobileDrawer(false);
         this.SFX.playSelect();
+        this.updateInspectorText();
         this.openModal('codex-modal');
-      });
+      };
+
+      bindClick('btn-open-codex', openGuideAndCodex);
+      bindClick('btn-open-guide-bottom', openGuideAndCodex);
+      bindClick('btn-open-codex-side', openGuideAndCodex);
       bindClick('btn-close-codex', () => this.closeModal('codex-modal'));
 
       bindClick('btn-open-showcase', () => {
