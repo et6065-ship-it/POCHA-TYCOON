@@ -6,13 +6,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#0b0f1a" />
-  <title>🐟 전설의 붕어빵 타이쿤 : 포차에서 강남 5층 빌딩까지</title>
+  <meta name="theme-color" content="#090d18" />
+  <title>🐟 전설의 붕어빵 타이쿤 : 수직 4단계 포트레이트 에디션</title>
   <style>
     :root {
-      --bg: #0b0f1a;
-      --panel: #151c2f;
-      --card: #1e2942;
+      --bg-dark: #080b14;
       --gold: #fbbf24;
       --green: #22c55e;
       --cyan: #06b6d4;
@@ -35,274 +33,545 @@
       width: 100%;
       height: 100%;
       height: 100dvh;
-      background: #060911;
+      background: #05070e;
       color: var(--text);
       overflow: hidden;
-      touch-action: manipulation;
+      touch-action: none;
     }
 
-    .app-shell {
-      width: min(100vw, 520px);
+    /* =====================================================================
+       반응형 9:16 ~ 9:21 포트레이트 래퍼 (V-Stretch 상·하 배경 확장 적용)
+       - 스마트폰이 9:19.5 ~ 9:21로 길어져도 코어 4단계 영역은 9:16 황금비율을 유지하고,
+         남는 상하 공간은 [최상단 포차 간판/밤하늘]과 [최하단 포장마차 원목 앞판]이 자연스럽게 채움!
+       ===================================================================== */
+    .portrait-viewport {
+      width: min(100vw, 540px);
       height: 100%;
       height: 100dvh;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      background: var(--bg);
-      border-left: 1px solid rgba(251, 191, 36, 0.22);
-      border-right: 1px solid rgba(251, 191, 36, 0.22);
+      background: #090d18;
+      border-left: 1px solid rgba(251, 191, 36, 0.25);
+      border-right: 1px solid rgba(251, 191, 36, 0.25);
       position: relative;
       overflow: hidden;
     }
 
-    /* =========================================================
-       1. 상단 심플 헤더 (48px 고정, 절대 깨지지 않음)
-       ========================================================= */
-    .top-bar {
-      height: 48px;
-      padding: 0 12px;
-      background: #111728;
-      border-bottom: 2px solid rgba(251, 191, 36, 0.4);
+    /* 상단 V-Stretch 확장 영역: 가게 간판 / 겨울 밤하늘 / 어닝 천막 */
+    .v-stretch-top {
+      flex: 1 1 0;
+      min-height: env(safe-area-inset-top, 0px);
+      max-height: 72px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          #b91c1c 0px,
+          #b91c1c 22px,
+          #fef08a 22px,
+          #fef08a 44px
+        );
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      border-bottom: 3px solid #78350f;
+      box-shadow: inset 0 -10px 18px rgba(0, 0, 0, 0.55);
+      overflow: hidden;
+    }
+    .v-stretch-top::before {
+      content: "🏮 청춘 황금 붕어빵 포차 · 겉바속촉 수제 통단팥 🏮";
+      width: 100%;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 900;
+      color: #fde047;
+      background: rgba(9, 13, 24, 0.82);
+      padding: 2px 0;
+      letter-spacing: 0.04em;
+    }
+
+    /* 하단 V-Stretch 확장 영역: 포장마차 매대 하단 원목 앞판 텍스처 */
+    .v-stretch-bottom {
+      flex: 1 1 0;
+      min-height: env(safe-area-inset-bottom, 0px);
+      max-height: 72px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          #2e190d 0px,
+          #2e190d 32px,
+          #231208 32px,
+          #231208 35px
+        );
+      border-top: 3px solid #78350f;
+      box-shadow: inset 0 8px 16px rgba(0, 0, 0, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(253, 224, 71, 0.45);
+      font-size: 10.5px;
+      font-weight: 800;
+    }
+
+    /* =====================================================================
+       코어 9:16 수직 4단계 레이아웃 컨테이너 (10% / 25% / 25% / 40%)
+       ===================================================================== */
+    .core-9x16-stage {
+      width: 100%;
+      /* 9:16 기준 높이를 우선 확보하되 화면 높이를 넘지 않도록 고정 */
+      height: min(100dvh, calc(min(100vw, 540px) * 16 / 9));
+      min-height: 540px;
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      background: #0d1322;
+    }
+    @media (max-height: 760px) {
+      .v-stretch-top, .v-stretch-bottom {
+        display: none;
+      }
+      .core-9x16-stage {
+        height: 100dvh;
+        min-height: 0;
+      }
+    }
+
+    /* ---------------------------------------------------------------------
+       [1단계: 0% ~ 10% (높이 10%)] 스테이지 현황 & 정적 UI
+       - 매출(골드), 챕터 목표 달성률 게이지, 남은 피버/시간, 상점·빌딩·스토리 버튼
+       --------------------------------------------------------------------- */
+    .zone-1-hud {
+      height: 10%;
+      min-height: 54px;
+      padding: 4px 10px;
+      background: linear-gradient(180deg, #141c30 0%, #0f1526 100%);
+      border-bottom: 2px solid rgba(251, 191, 36, 0.45);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .hud-top-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      flex-shrink: 0;
+      gap: 6px;
     }
 
-    .money-box {
-      font-size: 17px;
+    .hud-gold {
+      font-size: 16px;
       font-weight: 900;
       color: var(--gold);
       white-space: nowrap;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
     }
 
-    .top-right-group {
+    .hud-static-btns {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
 
-    .stage-pill {
-      padding: 5px 10px;
-      border-radius: 8px;
+    .hud-btn {
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 6px;
+      border: 1.5px solid #475569;
       background: #1e293b;
-      border: 1.5px solid var(--cyan);
-      color: #cffafe;
-      font-size: 12px;
+      color: #f8fafc;
+      font-size: 11px;
       font-weight: 900;
       cursor: pointer;
-      white-space: nowrap;
-    }
-    .stage-pill.ready {
-      background: #16a34a;
-      border-color: #86efac;
-      color: #fff;
-      animation: pulseScale 0.65s infinite alternate;
-    }
-
-    .home-link {
-      height: 32px;
-      padding: 0 9px;
-      border-radius: 8px;
-      background: #1e293b;
-      border: 1.5px solid #475569;
-      color: #e2e8f0;
-      font-size: 12px;
-      font-weight: 800;
-      text-decoration: none;
       display: inline-flex;
       align-items: center;
-    }
-
-    @keyframes pulseScale {
-      from { transform: scale(1); }
-      to { transform: scale(1.06); }
-    }
-
-    /* 스토리 달성 즉시 알림 배너 */
-    .story-alert-banner {
-      padding: 8px 12px;
-      background: linear-gradient(90deg, #15803d 0%, #0d9488 100%);
-      border-bottom: 2px solid #fde047;
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .story-alert-banner.show {
-      display: flex;
-    }
-    .story-alert-banner span {
-      font-size: 12.5px;
-      font-weight: 900;
-      color: #fff;
-    }
-    .story-alert-banner strong {
-      padding: 4px 9px;
-      border-radius: 6px;
-      background: #fef08a;
-      color: #0f172a;
-      font-size: 11.5px;
-      font-weight: 900;
+      gap: 3px;
+      text-decoration: none;
       white-space: nowrap;
     }
+    .hud-btn.gold { border-color: var(--gold); background: #451a03; color: #fef08a; }
+    .hud-btn.cyan { border-color: var(--cyan); background: #083344; color: #cffafe; }
+    .hud-btn.clear-ready {
+      border-color: #86efac;
+      background: #16a34a;
+      color: #fff;
+      animation: pulseGlow 0.65s infinite alternate;
+    }
 
-    /* =========================================================
-       2. 화면 분리형 메인 뷰 컨테이너 (한 화면에 하나만 깔끔하게!)
-       ========================================================= */
-    .screen-container {
+    @keyframes pulseGlow {
+      from { transform: scale(1); box-shadow: 0 0 4px #22c55e; }
+      to { transform: scale(1.06); box-shadow: 0 0 12px #4ade80; }
+    }
+
+    .hud-bottom-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .goal-progress-wrap {
       flex: 1;
-      min-height: 0;
+      height: 16px;
+      background: #090d16;
+      border: 1px solid #334155;
+      border-radius: 999px;
       position: relative;
-      display: flex;
-      flex-direction: column;
       overflow: hidden;
+      cursor: pointer;
     }
-
-    .tab-screen {
-      flex: 1;
-      min-height: 0;
-      display: none;
-      flex-direction: column;
-      overflow: hidden;
+    .goal-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b 0%, #22c55e 100%);
+      transition: width 0.2s;
     }
-    .tab-screen.active {
-      display: flex;
-    }
-
-    /* =========================================================
-       [탭 1] 🔥 포차 조리 화면 (오직 주문 1줄 + 양면 주물기계 + 속재료만!)
-       ========================================================= */
-    .order-strip {
-      height: 74px;
-      padding: 8px 12px;
-      background: linear-gradient(180deg, #131b2e 0%, #1b253d 100%);
-      border-bottom: 2px solid #2d3b5e;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-
-    .cust-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .cust-face {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: #0f172a;
-      border: 2px solid var(--gold);
+    .goal-progress-text {
+      position: absolute;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 26px;
+      font-size: 10.5px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 1px 2px #000;
+      white-space: nowrap;
+    }
+
+    .combo-pill {
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: #3b0764;
+      border: 1px solid #c084fc;
+      color: #f3e8ff;
+      font-size: 10.5px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    /* ---------------------------------------------------------------------
+       [2단계: 10% ~ 35% (높이 25%)] 카운터 & 손님 대기열 (시각 모니터링 구역)
+       - 손님 3명 대기 슬롯, 주문 말풍선, 실시간 인내심 게이지
+       --------------------------------------------------------------------- */
+    .zone-2-customers {
+      height: 25%;
+      padding: 6px 8px;
+      background: linear-gradient(180deg, #0c1428 0%, #162238 72%, #243048 100%);
+      border-bottom: 3px solid #475569;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
       flex-shrink: 0;
     }
 
-    .cust-meta {
+    .street-header-tag {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 800;
+      color: #93c5fd;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+
+    .customer-slots-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      align-items: stretch;
+      padding-top: 3px;
+    }
+
+    .cust-slot-card {
+      background: rgba(15, 23, 42, 0.86);
+      border: 2px solid #334155;
+      border-radius: 10px;
+      padding: 5px 6px;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
+    }
+    .cust-slot-card.match-ready {
+      border-color: #4ade80;
+      box-shadow: inset 0 0 10px rgba(34, 197, 94, 0.28);
+    }
+    .cust-slot-card.urgent {
+      border-color: #ef4444;
+    }
+
+    /* 주문 말풍선 */
+    .order-bubble {
+      background: #f8fafc;
+      color: #0f172a;
+      border-radius: 8px;
+      padding: 4px 5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    }
+    .order-icon-badge {
+      font-size: 14px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
       gap: 3px;
+      white-space: nowrap;
+    }
+    .order-qty-tag {
+      padding: 1px 5px;
+      border-radius: 5px;
+      background: #0f172a;
+      color: #fde047;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    /* 손님 얼굴 + 이름 + 가격 */
+    .cust-body-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 2px;
+    }
+    .cust-emoji {
+      font-size: 22px;
+      line-height: 1;
+    }
+    .cust-info-col {
+      display: flex;
+      flex-direction: column;
       min-width: 0;
       flex: 1;
     }
-
-    .cust-who {
-      font-size: 12.5px;
-      font-weight: 800;
-      color: #cbd5e1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .cust-want {
-      font-size: 14px;
+    .cust-name-lbl {
+      font-size: 11px;
       font-weight: 900;
-      color: #fef08a;
+      color: #e2e8f0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .cust-price-lbl {
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--gold);
+    }
 
-    .sell-now-btn {
-      height: 54px;
-      min-width: 116px;
-      padding: 0 12px;
-      border-radius: 12px;
-      border: 2px solid #475569;
+    /* 실시간 인내심 게이지 */
+    .patience-track {
+      width: 100%;
+      height: 6px;
       background: #1e293b;
-      color: #94a3b8;
-      font-size: 13px;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .patience-fill {
+      height: 100%;
+      width: 100%;
+      background: #22c55e;
+      transition: width 0.1s linear;
+    }
+
+    /* ---------------------------------------------------------------------
+       [3단계: 35% ~ 60% (높이 25%)] 완성품 진열대 & 서빙존 (인터랙션 연계 완충 구역)
+       - 구워진 붕어빵 스택 진열대 + 종이봉투 포장대
+       - 탭(원터치) 또는 위로 짧게 플릭(Flick) 시 주문 손님에게 오토 타겟팅 비행 서빙!
+       --------------------------------------------------------------------- */
+    .zone-3-serving-rack {
+      height: 25%;
+      padding: 6px 10px;
+      background: linear-gradient(180deg, #1c2436 0%, #131929 100%);
+      border-bottom: 3px solid #78350f;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 5px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .rack-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
       font-weight: 900;
+      color: #fde68a;
+      flex-shrink: 0;
+    }
+    .rack-sub-hint {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #67e8f9;
+    }
+
+    .rack-main-grid {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    /* 맛별 완성품 보온 스택 슬롯들 */
+    .stack-trays-wrap {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .stack-tray-slot {
+      background: #0f1626;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      padding: 4px 6px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 2px;
       cursor: pointer;
-      flex-shrink: 0;
+      position: relative;
+      transition: transform 0.08s, border-color 0.15s;
     }
-    .sell-now-btn.ready {
-      background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+    .stack-tray-slot.has-stock {
+      border-color: #fbbf24;
+      background: #231c10;
+    }
+    .stack-tray-slot.order-wanted {
+      border-color: #4ade80;
+      background: #0d2e1b;
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+    }
+    .stack-tray-slot:active {
+      transform: translateY(-4px) scale(0.97);
+    }
+
+    .stack-fish-visual {
+      font-size: 18px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+    .stack-name {
+      font-size: 11px;
+      font-weight: 900;
+      color: #e2e8f0;
+      white-space: nowrap;
+    }
+    .stack-count-badge {
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: #1e293b;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .stack-tray-slot.has-stock .stack-count-badge {
+      background: #f59e0b;
+      color: #090d16;
+    }
+    .stack-tray-slot.order-wanted .stack-count-badge {
+      background: #22c55e;
+      color: #052e16;
+    }
+
+    /* 우측 종이봉투 원터치 오토 서빙 포장대 */
+    .auto-pack-station {
+      width: 106px;
+      border-radius: 12px;
+      border: 2px solid #475569;
+      background: #1e293b;
+      color: #94a3b8;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      flex-shrink: 0;
+      text-align: center;
+    }
+    .auto-pack-station.can-pack {
       border-color: #86efac;
+      background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
       color: #fff;
       box-shadow: 0 0 14px rgba(34, 197, 94, 0.5);
     }
-    .sell-now-btn:active {
-      transform: scale(0.96);
+    .auto-pack-station:active {
+      transform: scale(0.95);
     }
 
-    .cook-workspace {
-      flex: 1;
-      min-height: 0;
-      padding: 8px 10px;
+    /* ---------------------------------------------------------------------
+       [4단계: 60% ~ 100% (높이 40%)] 조리대 & 원터치 컨트롤존 (하단 엄지 도달 구역)
+       - 블록형 그리드(2×2, 3×2, 3×3) 양면 주물 불판 + 반죽/앙금 투입구
+       - 우측 하단 모서리 쓰레기통(폐기) 고정 앵커링 (오터치 폐기 대참사 방지!)
+       --------------------------------------------------------------------- */
+    .zone-4-thumb-cooking {
+      height: 40%;
+      padding: 6px 10px 8px;
+      background: #0b0f1c;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       gap: 6px;
-      background: #0d1220;
-    }
-
-    .batch-action-bar {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
+      position: relative;
       flex-shrink: 0;
     }
 
-    .batch-btn {
-      height: 36px;
+    /* 상단 원터치 조리 보조 컨트롤 바 */
+    .mold-quick-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .thumb-act-btn {
+      flex: 1;
+      height: 32px;
       border-radius: 8px;
       border: 1.5px solid #334155;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 900;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 3px;
+      white-space: nowrap;
     }
-    .batch-btn.pour { background: #451a03; border-color: #f59e0b; color: #fde68a; }
-    .batch-btn.flip { background: #083344; border-color: #06b6d4; color: #a5f3fc; }
-    .batch-btn.harvest { background: #052e16; border-color: #22c55e; color: #bbf7d0; }
-    .batch-btn:active { transform: scale(0.96); }
+    .thumb-act-btn.pour { background: #451a03; border-color: #f59e0b; color: #fde68a; }
+    .thumb-act-btn.flip { background: #083344; border-color: #06b6d4; color: #a5f3fc; }
+    .thumb-act-btn.up-rack { background: #052e16; border-color: #22c55e; color: #bbf7d0; }
+    .thumb-act-btn:active { transform: scale(0.96); }
 
-    .mold-canvas-wrap {
+    /* 중앙 블록형 그리드 주물 불판 캔버스 */
+    .mold-canvas-container {
       flex: 1;
-      min-height: 160px;
+      min-height: 120px;
       width: 100%;
       position: relative;
       border-radius: 12px;
@@ -316,49 +585,169 @@
       cursor: pointer;
     }
 
-    .filling-selector-bar {
+    /* 최하단 반죽/앙금 투입구 + 우측 모서리 고정 쓰레기통(폐기) */
+    .thumb-bottom-dock {
       display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
       flex-shrink: 0;
     }
 
-    .fill-chip {
+    .ingredient-Dispenser {
       flex: 1;
-      min-width: calc(33.3% - 6px);
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding-bottom: 1px;
+    }
+
+    .ing-btn {
+      flex: 1;
+      min-width: 74px;
       height: 40px;
-      padding: 0 10px;
+      padding: 0 8px;
       border-radius: 9px;
       border: 2px solid #334155;
       background: #1e293b;
       color: #f8fafc;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 900;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
+      gap: 4px;
       cursor: pointer;
+      white-space: nowrap;
     }
-    .fill-chip.active {
+    .ing-btn.active {
       border-color: var(--gold);
       background: #422006;
       color: #fef08a;
-    }
-    .fill-stock {
-      padding: 2px 6px;
-      border-radius: 5px;
-      background: #0f172a;
-      color: #4ade80;
-      font-size: 11.5px;
-      font-weight: 900;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
     }
 
-    /* =========================================================
-       [탭 2 / 탭 3 / 탭 4] 전용 전체화면 스크롤 뷰
-       ========================================================= */
-    .full-pane {
-      flex: 1;
-      min-height: 0;
+    /* 우측 하단 모서리 고정 쓰레기통 (조리대와 분리하여 실수로 버리는 사고 방지!) */
+    .corner-trash-btn {
+      width: 58px;
+      height: 40px;
+      border-radius: 9px;
+      border: 2px solid #475569;
+      background: #1f2430;
+      color: #cbd5e1;
+      font-size: 11px;
+      font-weight: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.1;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-left: 2px;
+    }
+    .corner-trash-btn.trash-active {
+      border-color: #ef4444;
+      background: #7f1d1d;
+      color: #fecaca;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+    }
+
+    /* 비행 디쉬(오토 타겟팅 서빙 애니메이션) 레이어 */
+    .flying-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 90;
+      overflow: hidden;
+    }
+    .flying-item {
+      position: absolute;
+      font-size: 24px;
+      font-weight: 900;
+      color: #fef08a;
+      text-shadow: 0 2px 6px #000;
+      transform: translate(-50%, -50%);
+      transition: transform 0.32s cubic-bezier(0.2, 0.85, 0.35, 1), opacity 0.32s;
+      white-space: nowrap;
+    }
+
+    /* =====================================================================
+       팝업 시트 모달 (스토리 / 설비·출장 상점 / 강남 5층 빌딩)
+       ===================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 16, 0.92);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-sheet {
+      width: min(480px, 96vw);
+      max-height: 90dvh;
+      background: #141c30;
+      border: 3px solid var(--gold);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 50px #000;
+    }
+
+    .modal-head {
+      padding: 12px 14px;
+      background: #1e293b;
+      border-bottom: 2px solid rgba(251, 191, 36, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .modal-head h2 {
+      font-size: 14.5px;
+      font-weight: 900;
+      color: var(--gold);
+    }
+    .modal-close {
+      padding: 5px 11px;
+      border-radius: 7px;
+      border: none;
+      background: #ef4444;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .modal-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      background: #0f172a;
+      border-bottom: 1px solid #334155;
+      flex-shrink: 0;
+    }
+    .modal-tab {
+      height: 38px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .modal-tab.active {
+      color: var(--gold);
+      background: #1e293b;
+      border-bottom: 3px solid var(--gold);
+    }
+
+    .modal-body {
       padding: 12px;
       overflow-y: auto;
       display: flex;
@@ -366,65 +755,45 @@
       gap: 10px;
     }
 
-    .pane-header-card {
-      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-      border: 2px solid var(--gold);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .pane-header-card h2 {
-      font-size: 15px;
-      font-weight: 900;
-      color: var(--gold);
-    }
-    .pane-header-card p {
-      font-size: 12px;
-      color: #cbd5e1;
-      line-height: 1.4;
-    }
-
-    .item-card {
+    .card-row {
       background: #1a2338;
       border: 2px solid #334155;
       border-radius: 12px;
-      padding: 12px;
+      padding: 11px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
     }
-    .item-card.owned {
+    .card-row.owned {
       border-color: #22c55e;
       background: rgba(20, 83, 45, 0.3);
     }
-    .item-card.ready {
+    .card-row.highlight {
       border-color: var(--gold);
       background: #2b2212;
     }
 
-    .item-info {
+    .card-info {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
       flex: 1;
     }
-    .item-info h3 {
-      font-size: 14px;
+    .card-info h3 {
+      font-size: 13.5px;
       font-weight: 900;
       color: #fff;
     }
-    .item-info p {
-      font-size: 12px;
+    .card-info p {
+      font-size: 11.5px;
       color: #cbd5e1;
       line-height: 1.38;
     }
 
-    .act-btn {
-      padding: 9px 12px;
-      border-radius: 9px;
+    .buy-btn {
+      padding: 8px 12px;
+      border-radius: 8px;
       border: 2px solid var(--gold);
       background: #d97706;
       color: #fff;
@@ -434,339 +803,198 @@
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .act-btn.green {
+    .buy-btn.green {
       background: #16a34a;
       border-color: #86efac;
     }
-    .act-btn:disabled {
+    .buy-btn:disabled {
       background: #334155;
       border-color: #475569;
       color: #94a3b8;
       cursor: not-allowed;
     }
 
-    /* 강남 5층 빌딩 전용 타워 시각화 */
-    .building-tower-box {
-      background: linear-gradient(180deg, #090d1a 0%, #172554 100%);
-      border: 2px solid var(--gold);
-      border-radius: 14px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .floor-tier {
-      border-radius: 10px;
-      border: 2px solid #334155;
-      background: rgba(15, 23, 42, 0.85);
-      padding: 10px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .floor-tier.built {
-      border-color: var(--gold);
-      background: linear-gradient(90deg, rgba(180, 83, 9, 0.45) 0%, rgba(30, 58, 138, 0.75) 100%);
-      box-shadow: inset 0 0 12px rgba(251, 191, 36, 0.25);
-    }
-    .floor-tier.next-up {
-      border-color: #4ade80;
-      background: rgba(20, 83, 45, 0.45);
-    }
-
-    /* =========================================================
-       3. 하단 4분할 화면 전환 탭 바 (한 화면 몰아넣기 완전 해결!)
-       ========================================================= */
-    .bottom-nav {
-      height: calc(58px + env(safe-area-inset-bottom, 0px));
-      padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px));
-      background: #111728;
-      border-top: 2px solid rgba(251, 191, 36, 0.35);
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .nav-tab {
-      border-radius: 10px;
-      border: 1.5px solid #2e3a59;
-      background: #192236;
-      color: #94a3b8;
-      font-size: 11.5px;
-      font-weight: 900;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      cursor: pointer;
-      position: relative;
-    }
-    .nav-tab .ico {
-      font-size: 17px;
-      line-height: 1;
-    }
-    .nav-tab.active {
-      border-color: var(--gold);
-      background: #3b2508;
-      color: #fef08a;
-    }
-    .nav-badge {
-      position: absolute;
-      top: 3px;
-      right: 6px;
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 8px #22c55e;
-      display: none;
-    }
-    .nav-badge.show {
-      display: block;
-    }
-
-    /* =========================================================
-       4. 스토리 컷신 전체화면 모달 (삽화 + 대사)
-       ========================================================= */
-    .cutscene-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(5, 8, 16, 0.94);
-      z-index: 300;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-    }
-    .cutscene-overlay.open {
-      display: flex;
-    }
-
-    .cutscene-card {
-      width: min(480px, 96vw);
-      background: #141c30;
-      border: 3px solid var(--gold);
-      border-radius: 16px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 50px #000;
-    }
-    .cutscene-head {
-      padding: 11px 14px;
-      background: #1e293b;
-      border-bottom: 2px solid rgba(251, 191, 36, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .cutscene-head h3 {
-      font-size: 13.5px;
-      font-weight: 900;
-      color: var(--gold);
-    }
-    .skip-btn {
-      padding: 5px 10px;
-      border-radius: 7px;
-      border: none;
-      background: #475569;
-      color: #fff;
-      font-size: 11.5px;
-      font-weight: 900;
-      cursor: pointer;
-    }
-    .cutscene-img-box {
+    .cutscene-img {
       width: 100%;
       aspect-ratio: 16 / 9;
-      background: #000;
+      border-radius: 10px;
+      border: 2px solid var(--gold);
       overflow: hidden;
+      background: #000;
       cursor: pointer;
     }
-    .cutscene-img-box img {
+    .cutscene-img img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
-    .cutscene-dialog {
-      padding: 14px;
+    .cutscene-box {
+      background: #0f172a;
+      border: 2px solid var(--cyan);
+      border-radius: 12px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
       gap: 8px;
       cursor: pointer;
     }
-    .speaker-tag {
+    .speaker-pill {
       align-self: flex-start;
-      padding: 3px 10px;
+      padding: 3px 9px;
       border-radius: 6px;
       background: var(--gold);
       color: #0f172a;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 900;
-    }
-    .dialog-txt {
-      font-size: 14px;
-      line-height: 1.55;
-      color: #f8fafc;
-      min-height: 58px;
-    }
-    .dialog-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-top: 8px;
-      border-top: 1px solid #334155;
     }
   </style>
 </head>
 <body>
-  <div class="app-shell">
-    <!-- 1. 상단 심플 바 -->
-    <header class="top-bar">
-      <div class="money-box">💰 <span id="gold-txt">35,000</span>원</div>
-      <div class="top-right-group">
-        <button type="button" class="stage-pill" id="btn-stage-pill">🎯 제1장 (0/3)</button>
-        <a href="./arcade.html" class="home-link">🎮 런처</a>
-      </div>
-    </header>
+  <div class="portrait-viewport">
+    <!-- 9:19.5 ~ 9:21 롱스크린 상단 V-Stretch 배경 확장 (가게 어닝 & 간판) -->
+    <div class="v-stretch-top"></div>
 
-    <!-- 스토리 챕터 목표 달성 시 자동 표시되는 배너 -->
-    <div class="story-alert-banner" id="story-banner">
-      <span id="story-banner-txt">🎉 제1장 달성! 터치하여 스토리 클리어 &amp; 보상 받기!</span>
-      <strong>클리어 ▶</strong>
-    </div>
+    <!-- ===================================================================
+         코어 9:16 수직 4단계 레이아웃 (10% / 25% / 25% / 40%)
+         =================================================================== -->
+    <div class="core-9x16-stage" id="core-stage">
 
-    <!-- 2. 화면 분리형 메인 컨테이너 (한 번에 하나의 탭 화면만 깔끔하게 표시!) -->
-    <div class="screen-container">
-
-      <!-- [화면 1] 🔥 포차 조리 (기본 화면) -->
-      <section class="tab-screen active" id="screen-cook">
-        <!-- 1인 집중 주문 카운터 -->
-        <div class="order-strip">
-          <div class="cust-left">
-            <div class="cust-face" id="cust-avatar">👩‍🎓</div>
-            <div class="cust-meta">
-              <div class="cust-who">
-                <span id="cust-name">공시생 이지은</span> · <span id="region-label" style="color:#38bdf8;">역전 포차</span>
-              </div>
-              <div class="cust-want" id="cust-order-txt">주문: 통단팥 1개 (보유: 2개)</div>
-            </div>
+      <!-- [1단계: 0% ~ 10%] 스테이지 현황 & 정적 UI (10%) -->
+      <header class="zone-1-hud">
+        <div class="hud-top-row">
+          <div class="hud-gold">💰 <span id="gold-txt">35,000</span>원</div>
+          <div class="hud-static-btns">
+            <button type="button" class="hud-btn cyan" id="btn-open-story">📖 스토리</button>
+            <button type="button" class="hud-btn gold" id="btn-open-shop">🏪 업그레이드·빌딩</button>
+            <a href="./arcade.html" class="hud-btn">🎮</a>
           </div>
-          <button type="button" class="sell-now-btn" id="btn-sell-now">
-            <span id="sell-btn-main">🛍️ 즉시 판매!</span>
-            <span id="sell-btn-sub" style="font-size:11px;">+3,500원</span>
+        </div>
+        <div class="hud-bottom-row">
+          <div class="goal-progress-wrap" id="goal-bar-click" title="터치하여 스토리 미션 확인 또는 즉시 클리어">
+            <div class="goal-progress-fill" id="goal-fill"></div>
+            <div class="goal-progress-text" id="goal-txt">🎯 제1장: 붕어빵 3마리 수확 (0/3)</div>
+          </div>
+          <div class="combo-pill" id="combo-txt">🔥 0콤보</div>
+        </div>
+      </header>
+
+      <!-- [2단계: 10% ~ 35%] 카운터 & 손님 대기열 (25% · 시각 모니터링 전용 구역) -->
+      <section class="zone-2-customers">
+        <div class="street-header-tag">
+          <span id="region-banner-txt">📍 역전 3번 출구 포차 (단가 ×1.0)</span>
+          <span id="building-badge-txt" style="color:#fde047;">🏢 강남 빌딩 0/5층</span>
+        </div>
+        <div class="customer-slots-grid" id="customer-grid"></div>
+      </section>
+
+      <!-- [3단계: 35% ~ 60%] 완성품 진열대 & 서빙존 (25% · 스택 진열대 + 오토 타겟팅 서빙) -->
+      <section class="zone-3-serving-rack" id="serving-rack-zone">
+        <div class="rack-header">
+          <span>🛍️ 완성품 보온 진열대 &amp; 서빙존</span>
+          <span class="rack-sub-hint">👆 탭 또는 위로 튕기면(Flick) 주문 손님에게 자동 비행!</span>
+        </div>
+        <div class="rack-main-grid">
+          <div class="stack-trays-wrap" id="stack-trays-grid"></div>
+          <button type="button" class="auto-pack-station" id="btn-auto-pack">
+            <span style="font-size:20px;">🛍️</span>
+            <span id="pack-main-lbl" style="font-size:12px;font-weight:900;">자동 서빙</span>
+            <span id="pack-sub-lbl" style="font-size:10.5px;">대기 중</span>
           </button>
         </div>
+      </section>
 
-        <!-- 상·하판 1:1 대칭 양면 주물틀 조리 공간 -->
-        <div class="cook-workspace">
-          <div class="batch-action-bar">
-            <button type="button" class="batch-btn pour" id="btn-pour-all">🥣 전체 붓기</button>
-            <button type="button" class="batch-btn flip" id="btn-flip-all">🔄 전체 뒤집기</button>
-            <button type="button" class="batch-btn harvest" id="btn-harvest-all">🛍️ 전체 수확</button>
-          </div>
-
-          <div class="mold-canvas-wrap">
-            <canvas id="mold-canvas"></canvas>
-          </div>
-
-          <div class="filling-selector-bar" id="filling-bar"></div>
+      <!-- [4단계: 60% ~ 100%] 조리대 & 원터치 컨트롤존 (40% · 엄지 도달 구역 Natural Thumb Zone) -->
+      <main class="zone-4-thumb-cooking">
+        <!-- 원터치 일괄 컨트롤 -->
+        <div class="mold-quick-bar">
+          <button type="button" class="thumb-act-btn pour" id="btn-pour-all">🥣 빈틀 모두 붓기</button>
+          <button type="button" class="thumb-act-btn flip" id="btn-flip-all">🔄 모두 뒤집기</button>
+          <button type="button" class="thumb-act-btn up-rack" id="btn-harvest-all">⬆️ 진열대로 올리기</button>
         </div>
-      </section>
 
-      <!-- [화면 2] 📖 스토리 & 챕터 클리어 (전용 화면) -->
-      <section class="tab-screen" id="screen-story">
-        <div class="full-pane" id="story-pane-list"></div>
-      </section>
+        <!-- 블록형 그리드(2×2 / 3×2 / 3×3) 상·하 대칭 양면 주물 불판 -->
+        <div class="mold-canvas-container">
+          <canvas id="mold-canvas"></canvas>
+        </div>
 
-      <!-- [화면 3] 🏪 주물틀 업그레이드 & 전국 푸드트럭 출장 (전용 화면) -->
-      <section class="tab-screen" id="screen-shop">
-        <div class="full-pane" id="shop-pane-list"></div>
-      </section>
+        <!-- 반죽/앙금 투입구 + 우측 하단 모서리 고정 쓰레기통(폐기) -->
+        <div class="thumb-bottom-dock">
+          <div class="ingredient-Dispenser" id="ingredient-bar"></div>
+          <button type="button" class="corner-trash-btn" id="btn-corner-trash" title="우측 모서리 안전 쓰레기통 (탄 붕어빵 폐기)">
+            <span>🗑️</span>
+            <span id="trash-lbl">폐기</span>
+          </button>
+        </div>
+      </main>
 
-      <!-- [화면 4] 🏢 강남 5층 황금 붕어 빌딩 건설 (전용 화면) -->
-      <section class="tab-screen" id="screen-building">
-        <div class="full-pane" id="building-pane-list"></div>
-      </section>
-
+      <!-- 오토 타겟팅 비행 애니메이션 레이어 -->
+      <div class="flying-layer" id="flying-layer"></div>
     </div>
 
-    <!-- 3. 하단 4분할 전용 화면 전환 탭 바 -->
-    <nav class="bottom-nav">
-      <button type="button" class="nav-tab active" data-tab="cook">
-        <span class="ico">🔥</span>
-        <span>포차 조리</span>
-      </button>
-      <button type="button" class="nav-tab" data-tab="story">
-        <span class="nav-badge" id="badge-story"></span>
-        <span class="ico">📖</span>
-        <span>스토리·미션</span>
-      </button>
-      <button type="button" class="nav-tab" data-tab="shop">
-        <span class="ico">🏪</span>
-        <span>설비·출장</span>
-      </button>
-      <button type="button" class="nav-tab" data-tab="building">
-        <span class="ico">🏢</span>
-        <span id="nav-building-txt">강남 빌딩(0층)</span>
-      </button>
-    </nav>
+    <!-- 9:19.5 ~ 9:21 롱스크린 하단 V-Stretch 배경 확장 (포장마차 원목 매대 앞판) -->
+    <div class="v-stretch-bottom">WOODEN POCHA COUNTER · 9:16 PORTRAIT GOLDEN RATIO</div>
   </div>
 
-  <!-- 4. 스토리 삽화 컷신 모달 -->
-  <div class="cutscene-overlay" id="cutscene-modal">
-    <div class="cutscene-card">
-      <div class="cutscene-head">
-        <h3 id="cs-title">❄️ 프롤로그</h3>
-        <button type="button" class="skip-btn" id="btn-cs-skip">건너뛰기 ✕</button>
+  <!-- ===================================================================
+       모달 1: 🏪 설비(블록 주물틀) · 전국 푸드트럭 · 강남 5층 빌딩
+       =================================================================== -->
+  <div class="modal-backdrop" id="shop-modal">
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <h2>🏪 주물틀 업그레이드 · 전국 출장 · 강남 5층 빌딩</h2>
+        <button type="button" class="modal-close" id="btn-close-shop">✕ 닫기</button>
       </div>
-      <div class="cutscene-img-box" id="cs-img-click">
-        <img id="cs-img" src="./assets/story_bungeo/bungeo_ep1_prologue_cart.jpg" alt="스토리 삽화" />
+      <div class="modal-tabs">
+        <button type="button" class="modal-tab active" data-stab="mold">🔥 블록 주물틀</button>
+        <button type="button" class="modal-tab" data-stab="region">🚚 전국 출장</button>
+        <button type="button" class="modal-tab" data-stab="building">🏢 5층 빌딩</button>
       </div>
-      <div class="cutscene-dialog" id="cs-dialog-click">
-        <span class="speaker-tag" id="cs-speaker">박청춘 (27세)</span>
-        <p class="dialog-txt" id="cs-text"></p>
-        <div class="dialog-footer">
-          <span id="cs-step" style="font-size:12px;color:#94a3b8;">1 / 4</span>
-          <button type="button" class="act-btn green" id="btn-cs-next">다음 대사 ▶</button>
-        </div>
+      <div class="modal-body" id="shop-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ===================================================================
+       모달 2: 📖 스토리 챕터 미션 & 7장 삽화 컷신
+       =================================================================== -->
+  <div class="modal-backdrop" id="story-modal">
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <h2 id="story-modal-title">📖 청년 역전 스토리 &amp; 챕터 클리어</h2>
+        <button type="button" class="modal-close" id="btn-close-story">✕ 닫기</button>
       </div>
+      <div class="modal-body" id="story-modal-body"></div>
     </div>
   </div>
 
   <script>
     // =========================================================================
-    // 1. 스토리 삽화 7종 & 대사 데이터
+    // 1. 7장 스토리 삽화 & 에피소드 대본
     // =========================================================================
     const EPISODES = {
       ep1_prologue: {
-        title: "❄️ 프롤로그: 100번째 불합격 문자와 할머니의 3구 무쇠틀",
+        title: "❄️ 프롤로그: 100번째 불합격 문자와 할머니의 무쇠틀",
         img: "./assets/story_bungeo/bungeo_ep1_prologue_cart.jpg",
         lines: [
           { speaker: "문자 알림", text: "[안내] 박청춘 님, 아쉽게도 이번 채용 최종 면접에서 모시지 못하게 되었습니다…" },
-          { speaker: "박청춘 (27세)", text: "이걸로 100번째 불합격 문자네. 12월 칼바람은 부는데 할머니가 남기신 이 3구 무쇠 붕어빵 틀로 다시 일어설 수 있을까?" },
-          { speaker: "할머니의 기억", text: "‘청춘아, 붕어빵은 꼬리 끝까지 팥이 꽉 차 있어야 손님 마음이 안 시리단다. 세상이 널 안 뽑아주면 네 손으로 따뜻한 걸 구워내렴.’" },
-          { speaker: "박청춘 (27세)", text: "좋아, 역전 3번 출구 앞에서 내 손으로 대한민국에서 제일 따뜻한 붕어빵 포차를 시작해 보자!" }
+          { speaker: "박청춘 (27세)", text: "이걸로 100번째 불합격 문자네. 칼바람 부는 역전 앞에서 할머니가 물려주신 이 양면 무쇠 붕어빵 틀로 다시 일어설 수 있을까?" },
+          { speaker: "할머니의 기억", text: "‘청춘아, 붕어빵은 꼬리 끝까지 팥이 꽉 차 있어야 손님 마음이 안 시리단다. 세상이 널 안 뽑아주면 네 손으로 따뜻한 걸 구워내렴.’" }
         ]
       },
       ep1_5_crackdown: {
-        title: "🚨 제1장 클리어: 구청 단속반 출동과 양면 6구 회전틀 장착!",
+        title: "🚨 제1장 클리어: 구청 단속반 출동과 3×2 6구 회전틀 장착!",
         img: "./assets/story_bungeo/bungeo_ep1_5_crackdown_crisis.jpg",
         lines: [
           { speaker: "강원칙 주무관 (구청 단속반)", text: "역전 3번 출구 앞 무허가 노점 민원이 접수됐습니다! 계고장 발부 대상입니다." },
           { speaker: "공시생 단골 이지은", text: "단속반 아저씨 잠깐만요! 이 사장님 매일 새벽 보도블록까지 물청소하고 구워주시는 우리 동네 유일한 온기예요! 정식 허가 받는 법을 알려주세요!" },
-          { speaker: "강원칙 주무관", text: "음… 손수레 밑바닥까지 기름때 하나 없이 닦여 있군. 좋다! 양면 6구 회전틀을 갖추면 구청 정식 영업허가 제1호를 내주겠소!" }
+          { speaker: "강원칙 주무관", text: "음… 손수레 밑바닥까지 기름때 하나 없이 닦여 있군. 좋다! 양면 6구(3×2) 회전틀을 갖추면 구청 정식 영업허가 제1호를 내주겠소!" }
         ]
       },
       ep2_5_mold_craft: {
-        title: "🔥 장비 진화: 상·하판 1:1 대칭 양면 개폐식 주물 기계!",
+        title: "🔥 장비 진화: 상·하판 1:1 대칭 3×2 양면 회전 기계!",
         img: "./assets/story_bungeo/bungeo_ep2_5_mold_craft_upgrade.jpg",
         lines: [
-          { speaker: "박청춘 (27세)", text: "드디어 장착한 상·하판 1:1 대칭 양면 개폐식 6구 붕어빵 기계! 위 뚜껑과 아래 판이 빈틈없이 맞물려 돌아간다!" }
+          { speaker: "박청춘 (27세)", text: "위쪽 주물 뚜껑과 아래쪽 구이틀이 1:1로 빈틈없이 맞물리는 3×2 6구 양면 개폐식 기계 장착 완료!" }
         ]
       },
       ep1_8_permit: {
@@ -800,23 +1028,22 @@
         lines: [
           { speaker: "김민지 본점 매니저", text: "대표님! 드디어 강남대로 5층 루프탑 옥상에 초대형 황금 붕어빵 동상 점등식이 끝났습니다!" },
           { speaker: "합격한 단골 이지은", text: "사장님, 아니 이제 건물주 회장님이시네요! 저도 공무원 시험 최종 합격해서 첫 월급으로 축하드리러 달려왔어요!" },
-          { speaker: "박청춘 (청년 건물주 CEO)", text: "할머니의 3구 무쇠틀 하나로 시작해 마침내 강남 5층 빌딩을 세웠습니다! 대한민국 모든 청춘들, 화이팅!" }
+          { speaker: "박청춘 (청년 건물주 CEO)", text: "할머니의 무쇠틀 하나로 시작해 마침내 강남 5층 빌딩을 세웠습니다! 대한민국 모든 청춘들, 화이팅!" }
         ]
       }
     };
 
     // =========================================================================
-    // 2. 막힘없이 클리어되는 5단계 스토리 챕터
+    // 2. 막힘없이 술술 클리어되는 5단계 스토리 챕터
     // =========================================================================
     const CHAPTERS = [
       {
         id: 1,
         name: "제1장: 역전 앞 첫 불씨",
-        goalDesc: "붕어빵 3마리 구워서 수확하기",
-        rewardDesc: "보상: +20,000원 & 상·하 대칭 6구 양면 회전틀 즉시 장착!",
+        goalDesc: "붕어빵 3마리 구워 진열대로 올리기",
+        rewardDesc: "보상: +20,000원 & 3×2(6구) 양면 회전틀 즉시 장착!",
         epKey: "ep1_5_crackdown",
-        isReady: (s) => s.totalBaked >= 3,
-        progText: (s) => `${Math.min(3, s.totalBaked)}/3마리`,
+        getProg: (s) => ({ cur: Math.min(3, s.totalBaked), max: 3 }),
         onClear: (s) => {
           s.gold += 20000;
           if (!s.ownedMolds.includes("mold_6")) s.ownedMolds.push("mold_6");
@@ -827,11 +1054,10 @@
       {
         id: 2,
         name: "제2장: 구청 정식 영업허가 제1호 취득",
-        goalDesc: "붕어빵 6마리 수확 또는 25,000원 보유",
-        rewardDesc: "보상: 구청 정식 영업허가증 취득 (모든 붕어빵 단가 +30%) & +15,000원",
+        goalDesc: "붕어빵 6마리 수확",
+        rewardDesc: "보상: 구청 정식 영업허가증 (판매가 +30%) & +15,000원",
         epKey: "ep1_8_permit",
-        isReady: (s) => s.totalBaked >= 6 || s.gold >= 25000,
-        progText: (s) => `${Math.min(6, s.totalBaked)}/6마리`,
+        getProg: (s) => ({ cur: Math.min(6, s.totalBaked), max: 6 }),
         onClear: (s) => {
           s.licensed = true;
           s.gold += 15000;
@@ -840,11 +1066,10 @@
       {
         id: 3,
         name: "제3장: 강남 대기업 앞 푸드트럭 출고",
-        goalDesc: "붕어빵 12마리 수확 또는 45,000원 보유",
-        rewardDesc: "보상: 민트 푸드트럭 + 정통 9구(3×3) 틀 + 강남 빌딩숲 진출!",
+        goalDesc: "붕어빵 12마리 수확",
+        rewardDesc: "보상: 푸드트럭 + 3×3(9구) 고화력틀 + 피자붕어빵 해금!",
         epKey: "ep2_gangnam",
-        isReady: (s) => s.totalBaked >= 12 || s.gold >= 45000,
-        progText: (s) => `${Math.min(12, s.totalBaked)}/12마리`,
+        getProg: (s) => ({ cur: Math.min(12, s.totalBaked), max: 12 }),
         onClear: (s) => {
           s.hasFoodTruck = true;
           s.currentRegionId = "gangnam";
@@ -857,24 +1082,21 @@
       {
         id: 4,
         name: "제4장: 강원·부산·제주 전국 유랑 대박",
-        goalDesc: "붕어빵 20마리 수확 또는 속재료 4종 해금",
-        rewardDesc: "보상: 유튜버 먹짱 전국 홍보 지원금 +100,000원 & 꿀고구마 해금!",
+        goalDesc: "붕어빵 20마리 수확",
+        rewardDesc: "보상: 유튜버 먹짱 홍보금 +100,000원!",
         epKey: "ep3_nationwide",
-        isReady: (s) => s.totalBaked >= 20 || s.unlockedFillings.length >= 4,
-        progText: (s) => `${Math.min(20, s.totalBaked)}/20마리`,
+        getProg: (s) => ({ cur: Math.min(20, s.totalBaked), max: 20 }),
         onClear: (s) => {
           s.gold += 100000;
-          if (!s.unlockedFillings.includes("sweetpotato")) s.unlockedFillings.push("sweetpotato");
         }
       },
       {
         id: 5,
-        name: "최종장: 강남 5층 『청춘 황금 붕어 타워』 완공",
-        goalDesc: "[🏢 강남 빌딩] 탭에서 5층 완공 또는 붕어빵 35마리 수확",
-        rewardDesc: "보상: 강남 5층 빌딩 건물주 최종 엔딩 & 축하금 +300,000원!",
+        name: "최종장: 강남 5층 황금 붕어 빌딩 완공",
+        goalDesc: "붕어빵 30마리 수확 또는 강남 5층 빌딩 완공",
+        rewardDesc: "보상: 강남 5층 빌딩 건물주 등극 & +300,000원!",
         epKey: "ep4_ending",
-        isReady: (s) => s.buildingFloor >= 5 || s.totalBaked >= 35,
-        progText: (s) => `빌딩 ${s.buildingFloor}/5층 (빵 ${Math.min(35, s.totalBaked)}/35)`,
+        getProg: (s) => ({ cur: s.buildingFloor >= 5 ? 30 : Math.min(30, s.totalBaked), max: 30 }),
         onClear: (s) => {
           s.buildingFloor = 5;
           s.gold += 300000;
@@ -883,62 +1105,61 @@
     ];
 
     // =========================================================================
-    // 3. 속재료 · 주물틀 · 지역 · 강남 5층 빌딩 (층별 금액 명시!)
+    // 3. 블록형 그리드 주물틀 (가로 나열 금지 -> 2×2 / 3×2 / 3×3 블록형 그리드!)
     // =========================================================================
-    const FILLINGS = [
-      { id: "redbean", name: "🔴 통단팥", shortName: "통단팥", price: 3500, color: "#dc2626", cost: 0 },
-      { id: "cream", name: "🟡 슈크림", shortName: "슈크림", price: 4000, color: "#eab308", cost: 0 },
-      { id: "pizza", name: "🍕 피자치즈", shortName: "피자치즈", price: 5500, color: "#ea580c", cost: 12000 },
-      { id: "sweetpotato", name: "🍠 꿀고구마", shortName: "꿀고구마", price: 6500, color: "#9333ea", cost: 20000 },
-      { id: "seed_hotteok", name: "🍯 씨앗흑당", shortName: "씨앗흑당", price: 8000, color: "#78350f", cost: 30000 },
-      { id: "hallabong", name: "🍊 한라봉", shortName: "한라봉", price: 10000, color: "#f97316", cost: 45000 }
+    const MOLDS = [
+      { id: "mold_4", name: "할머니의 2×2(4구) 블록 무쇠틀", slots: 4, cols: 2, rows: 2, speed: 1.4, yieldBonus: 1, priceMult: 1.0, cost: 0, desc: "세로 화면 오터치 제로! 큼직한 2×2 블록형 양면 주물틀" },
+      { id: "mold_6", name: "양면 회전 3×2(6구) 블록 기계", slots: 6, cols: 3, rows: 2, speed: 1.7, yieldBonus: 1, priceMult: 1.15, cost: 15000, desc: "상·하판 1:1 대칭 3×2 블록형 양면 회전 기계" },
+      { id: "mold_9", name: "정통 3×3(9구) 고화력 블록틀", slots: 9, cols: 3, rows: 3, speed: 2.1, yieldBonus: 1, priceMult: 1.3, cost: 35000, desc: "9마리를 한 번에 구워내는 3×3 블록 그리드 주물틀" },
+      { id: "mold_brass9", name: "테플론 황동 3×3 명품틀", slots: 9, cols: 3, rows: 3, speed: 2.6, yieldBonus: 2, priceMult: 1.5, cost: 75000, desc: "수확 시 2마리씩(+2) 진열대 적재 & 단가 1.5배!" },
+      { id: "mold_croiffle9", name: "크로아상 붕어빵(크로붕) 프레스", slots: 9, cols: 3, rows: 3, speed: 3.1, yieldBonus: 3, priceMult: 2.2, cost: 150000, desc: "수확 시 3마리씩(+3) 진열대 적재 & 단가 2.2배!" }
     ];
 
-    const MOLDS = [
-      { id: "mold_3", name: "할머니의 3구 양면 무쇠틀", slots: 3, cols: 3, rows: 1, speed: 1.35, yieldBonus: 1, priceMult: 1.0, cost: 0, desc: "상판 3칸·하판 3칸이 맞물리는 시작용 무쇠 주물틀" },
-      { id: "mold_6", name: "양면 회전 6구(3×2) 기계", slots: 6, cols: 3, rows: 2, speed: 1.65, yieldBonus: 1, priceMult: 1.15, cost: 15000, desc: "상판 6칸·하판 6칸 1:1 대칭 양면 개폐식 회전 기계" },
-      { id: "mold_9", name: "정통 9구(3×3) 고화력 기계", slots: 9, cols: 3, rows: 3, speed: 2.0, yieldBonus: 1, priceMult: 1.3, cost: 35000, desc: "9마리를 동시에 구워내는 정통 3×3 양면 주물 기계" },
-      { id: "mold_brass9", name: "테플론 황동 9구 명품 기계", slots: 9, cols: 3, rows: 3, speed: 2.5, yieldBonus: 2, priceMult: 1.5, cost: 75000, desc: "수확 시 2마리씩(+2) 적재 & 판매 단가 1.5배!" },
-      { id: "mold_croiffle9", name: "크로아상 붕어빵(크로붕) 프레스", slots: 9, cols: 3, rows: 3, speed: 3.0, yieldBonus: 3, priceMult: 2.2, cost: 150000, desc: "수확 시 3마리씩(+3) 적재 & 판매 단가 2.2배!" }
+    const FILLINGS = [
+      { id: "redbean", name: "🔴 통단팥", shortName: "통단팥", icon: "🔴", price: 3500, color: "#dc2626", cost: 0 },
+      { id: "cream", name: "🟡 슈크림", shortName: "슈크림", icon: "🟡", price: 4000, color: "#eab308", cost: 0 },
+      { id: "pizza", name: "🍕 피자치즈", shortName: "피자치즈", icon: "🍕", price: 5500, color: "#ea580c", cost: 12000 }
     ];
 
     const REGIONS = [
-      { id: "station", name: "역전 3번 출구 포차", mult: 1.0, fillId: "redbean", cost: 0, desc: "정겨운 첫 시작 영업지 (기본 단가 1.0배)" },
-      { id: "gangnam", name: "서울 강남 대기업 빌딩숲", mult: 1.5, fillId: "pizza", cost: 12000, desc: "나를 떨어뜨렸던 대기업 앞! (단가 1.5배 + 피자치즈 해금)" },
-      { id: "gangwon", name: "강원 평창 설원 스키장", mult: 1.9, fillId: "sweetpotato", cost: 20000, desc: "영하 15도 스키장 특수! (단가 1.9배 + 꿀고구마 해금)" },
-      { id: "busan", name: "부산 해운대 밤바다 야시장", mult: 2.3, fillId: "seed_hotteok", cost: 30000, desc: "해운대 야시장 인파! (단가 2.3배 + 씨앗흑당 해금)" },
-      { id: "jeju", name: "제주 애월 노을 해안도로", mult: 3.0, fillId: "hallabong", cost: 45000, desc: "최고급 휴양지 코스! (단가 3.0배 + 한라봉 해금)" }
+      { id: "station", name: "역전 3번 출구 포차", mult: 1.0, fillId: "redbean", cost: 0, desc: "정겨운 첫 시작 영업지 (단가 ×1.0)" },
+      { id: "gangnam", name: "서울 강남 대기업 빌딩숲", mult: 1.5, fillId: "pizza", cost: 12000, desc: "나를 떨어뜨렸던 대기업 앞! (단가 ×1.5 + 피자치즈 해금)" },
+      { id: "gangwon", name: "강원 평창 설원 스키장", mult: 1.9, fillId: "pizza", cost: 20000, desc: "영하 15도 스키장 특수! (단가 ×1.9)" },
+      { id: "busan", name: "부산 해운대 밤바다 야시장", mult: 2.3, fillId: "pizza", cost: 30000, desc: "해운대 야시장 인파! (단가 ×2.3)" },
+      { id: "jeju", name: "제주 애월 노을 해안도로", mult: 3.0, fillId: "pizza", cost: 45000, desc: "최고급 휴양지 코스! (단가 ×3.0)" }
     ];
 
     const BUILDINGS = [
-      { floor: 1, name: "1층: 강남 황금 붕어빵 플래그십 본점", cost: 50000, desc: "강남대로 1층 본점 오픈! (모든 붕어빵 판매 단가 +30%)" },
-      { floor: 2, name: "2층: 수제 통단팥·특제 반죽 연구소", cost: 100000, desc: "할머니 비법 연구소 증축! (주물틀 굽기 속도 +40% 가속)" },
-      { floor: 3, name: "3층: 전국 청년 가맹사업 본부", cost: 180000, desc: "2초마다 가맹점 로열티 +20,000원 자동 입금!" },
-      { floor: 4, name: "4층: VIP 스카이 디저트 라운지", cost: 300000, desc: "해외 바이어 라운지 오픈! (판매 수익 +50% 추가 상승)" },
-      { floor: 5, name: "5층: 루프탑 황금 붕어 동상 (최종 완공!)", cost: 500000, desc: "강남 5층 빌딩 건물주 등극 & 최종 엔딩 달성!" }
+      { floor: 1, name: "🏢 1층: 강남 황금 붕어빵 플래그십 본점", cost: 50000, desc: "강남대로 1층 본점 오픈! (모든 판매 단가 +30%)" },
+      { floor: 2, name: "🏢 2층: 수제 통단팥·특제 반죽 연구소", cost: 100000, desc: "할머니 비법 연구소 증축! (굽기 속도 +40% 가속)" },
+      { floor: 3, name: "🏢 3층: 전국 청년 가맹사업 본부", cost: 180000, desc: "2초마다 가맹점 로열티 +20,000원 자동 입금!" },
+      { floor: 4, name: "🏢 4층: VIP 스카이 디저트 라운지", cost: 300000, desc: "해외 바이어 라운지 오픈! (판매 수익 +50% 추가 상승)" },
+      { floor: 5, name: "👑 5층: 루프탑 황금 붕어 동상 (최종 완공!)", cost: 500000, desc: "강남 5층 빌딩 건물주 등극 & 최종 엔딩 달성!" }
     ];
 
     // =========================================================================
-    // 4. 게임 상태 & 세이브
+    // 4. 게임 상태
     // =========================================================================
-    const SAVE_KEY = "bungeo_tycoon_v4_clean";
+    const SAVE_KEY = "bungeo_portrait_4stage_v1";
     const state = {
       gold: 35000,
       totalBaked: 0,
+      combo: 0,
       clearedIds: [],
       licensed: false,
       hasFoodTruck: false,
       autoAlba: false,
       buildingFloor: 0,
       currentMoldIdx: 0,
-      ownedMolds: ["mold_3"],
+      ownedMolds: ["mold_4"],
       currentRegionId: "station",
-      unlockedFillings: ["redbean", "cream"],
+      unlockedFillings: ["redbean", "cream", "pizza"],
       selectedFillingId: "redbean",
-      stock: { redbean: 2, cream: 1, pizza: 0, sweetpotato: 0, seed_hotteok: 0, hallabong: 0 },
+      stock: { redbean: 2, cream: 1, pizza: 0 },
+      trashMode: false,
       slots: [],
-      customer: null,
-      activeTab: "cook",
+      customers: [null, null, null],
+      shopTab: "mold",
       activeEpKey: null,
       activeLineIdx: 0,
       floats: []
@@ -994,14 +1215,121 @@
         o.stop(actx.currentTime + dur);
       } catch (e) {}
     }
-    const sfxPour = () => tone(350, 0.07, "triangle");
-    const sfxFlip = () => tone(490, 0.07, "square");
-    const sfxHarvest = () => { tone(660, 0.07); setTimeout(() => tone(880, 0.1), 45); };
-    const sfxCash = () => { tone(784, 0.08, "triangle"); setTimeout(() => tone(1046, 0.14, "triangle"), 55); };
+    const sfxPour = () => tone(350, 0.06, "triangle");
+    const sfxFlip = () => tone(490, 0.06, "square");
+    const sfxHarvest = () => { tone(660, 0.06); setTimeout(() => tone(880, 0.09), 40); };
+    const sfxCash = () => { tone(784, 0.07, "triangle"); setTimeout(() => tone(1046, 0.13, "triangle"), 50); };
+    const sfxTrash = () => tone(190, 0.1, "sawtooth");
 
     // =========================================================================
-    // 6. 상·하판 1:1 대칭 양면 개폐식 주물 기계 캔버스 렌더링
-    //    (프라이팬 느낌 완전 탈피: 위쪽 열린 주물 뚜껑 + 황동 경첩 + 아래쪽 주물 구이틀 1:1 대칭!)
+    // 6. 손님 3인 대기열 (2단계 영역: 10% ~ 35%)
+    // =========================================================================
+    const CUST_POOL = [
+      { name: "공시생 지은", emoji: "👩‍🎓" },
+      { name: "김대리", emoji: "👨‍💼" },
+      { name: "최상무", emoji: "🕴️" },
+      { name: "유튜버 먹짱", emoji: "📸" },
+      { name: "단골 여대생", emoji: "🧣" }
+    ];
+
+    function spawnCustomerAt(idx) {
+      const pick = CUST_POOL[Math.floor(Math.random() * CUST_POOL.length)];
+      const avail = FILLINGS.filter(f => state.unlockedFillings.includes(f.id));
+      const fill = avail[Math.floor(Math.random() * avail.length)] || FILLINGS[0];
+      const qty = 1 + Math.floor(Math.random() * 2);
+      state.customers[idx] = {
+        slotIdx: idx,
+        name: pick.name,
+        emoji: pick.emoji,
+        fillingId: fill.id,
+        qty,
+        patience: 32,
+        maxPatience: 32
+      };
+    }
+
+    function ensureCustomers() {
+      for (let i = 0; i < 3; i++) {
+        if (!state.customers[i]) spawnCustomerAt(i);
+      }
+    }
+
+    function getUnitPrice(fid) {
+      const f = FILLINGS.find(x => x.id === fid) || FILLINGS[0];
+      const m = MOLDS[state.currentMoldIdx] || MOLDS[0];
+      const reg = REGIONS.find(r => r.id === state.currentRegionId) || REGIONS[0];
+      let mult = m.priceMult * reg.mult;
+      if (state.licensed) mult *= 1.3;
+      if (state.buildingFloor >= 1) mult *= 1.3;
+      if (state.buildingFloor >= 4) mult *= 1.5;
+      return Math.round(f.price * mult);
+    }
+
+    // =========================================================================
+    // 7. 오토 타겟팅 서빙 (3단계 진열대 탭/플릭 -> 2단계 주문 손님에게 자동 비행!)
+    // =========================================================================
+    function spawnFlyingEffect(startX, startY, endX, endY, labelText) {
+      const layer = document.getElementById("flying-layer");
+      const stageRect = document.getElementById("core-stage").getBoundingClientRect();
+      const el = document.createElement("div");
+      el.className = "flying-item";
+      el.textContent = labelText;
+      el.style.left = `${startX - stageRect.left}px`;
+      el.style.top = `${startY - stageRect.top}px`;
+      layer.appendChild(el);
+
+      requestAnimationFrame(() => {
+        const dx = endX - startX;
+        const dy = endY - startY;
+        el.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.12)`;
+        el.style.opacity = "0.15";
+      });
+      setTimeout(() => el.remove(), 340);
+    }
+
+    function tryAutoServeByFilling(fillingId, startClientX, startClientY) {
+      // 해당 맛을 주문한 대기 손님 중 인내심이 가장 급한 손님 최우선 타겟팅!
+      const candidates = state.customers
+        .filter(c => c && c.fillingId === fillingId && (state.stock[fillingId] || 0) >= c.qty)
+        .sort((a, b) => (a.patience / a.maxPatience) - (b.patience / b.maxPatience));
+
+      if (candidates.length === 0) return false;
+      const target = candidates[0];
+      state.stock[fillingId] -= target.qty;
+      state.combo += 1;
+      const bonus = 1 + Math.min(0.5, state.combo * 0.05);
+      const earned = Math.round(getUnitPrice(fillingId) * target.qty * bonus);
+      state.gold += earned;
+      sfxCash();
+
+      const slotEls = document.querySelectorAll(".cust-slot-card");
+      const targetEl = slotEls[target.slotIdx];
+      if (targetEl) {
+        const tr = targetEl.getBoundingClientRect();
+        spawnFlyingEffect(
+          startClientX || window.innerWidth / 2,
+          startClientY || window.innerHeight * 0.48,
+          tr.left + tr.width / 2,
+          tr.top + tr.height / 2,
+          `🛍️ +${earned.toLocaleString()}원!`
+        );
+      }
+
+      spawnCustomerAt(target.slotIdx);
+      updateUI();
+      saveGame();
+      return true;
+    }
+
+    function tryAutoServeAny(startClientX, startClientY) {
+      for (const f of FILLINGS) {
+        if (tryAutoServeByFilling(f.id, startClientX, startClientY)) return true;
+      }
+      return false;
+    }
+
+    // =========================================================================
+    // 8. 4단계 블록형 그리드 주물 불판 (60% ~ 100% 엄지 도달 구역)
     // =========================================================================
     const canvas = document.getElementById("mold-canvas");
     const ctx = canvas.getContext("2d");
@@ -1009,17 +1337,15 @@
     function getMold() {
       return MOLDS[state.currentMoldIdx] || MOLDS[0];
     }
-    function getRegion() {
-      return REGIONS.find(r => r.id === state.currentRegionId) || REGIONS[0];
-    }
 
     function syncSlots() {
       const m = getMold();
       while (state.slots.length < m.slots) {
         state.slots.push({
-          state: "IDLE", // IDLE, FRONT, FLIP_READY, BACK, READY
+          state: "IDLE", // IDLE, FRONT, FLIP_READY, BACK, READY, BURNT
           fillingId: "redbean",
           progress: 0,
+          burnTimer: 0,
           rect: { x: 0, y: 0, w: 0, h: 0 }
         });
       }
@@ -1036,9 +1362,8 @@
     }
     window.addEventListener("resize", resizeCanvas);
 
-    function drawFishShape(cx, cy, rx, ry, bodyCol, rimCol, mode, fillingId) {
+    function drawFishGraphic(cx, cy, rx, ry, bodyCol, rimCol, mode, fillingId) {
       ctx.save();
-      // 꼬리 지느러미
       ctx.beginPath();
       ctx.moveTo(cx + rx * 0.36, cy);
       ctx.lineTo(cx + rx * 0.98, cy - ry * 0.68);
@@ -1047,27 +1372,17 @@
       ctx.closePath();
       ctx.fillStyle = bodyCol;
       ctx.fill();
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 1.6;
       ctx.strokeStyle = rimCol;
       ctx.stroke();
 
-      // 몸통
       ctx.beginPath();
       ctx.ellipse(cx - rx * 0.14, cy, rx * 0.74, ry * 0.76, 0, 0, Math.PI * 2);
       ctx.fillStyle = bodyCol;
       ctx.fill();
-      ctx.lineWidth = mode === "READY" ? 2.6 : 1.8;
+      ctx.lineWidth = mode === "READY" ? 2.5 : 1.6;
       ctx.strokeStyle = rimCol;
       ctx.stroke();
-
-      // 비늘 격자 디테일
-      ctx.strokeStyle = mode === "IDLE" ? "rgba(148,163,184,0.22)" : "rgba(120,53,15,0.35)";
-      ctx.lineWidth = 1.1;
-      for (let i = -1; i <= 1; i++) {
-        ctx.beginPath();
-        ctx.arc(cx - rx * 0.1 + i * rx * 0.2, cy, ry * 0.36, -0.7, 0.7);
-        ctx.stroke();
-      }
 
       if (mode === "FRONT" || mode === "FLIP_READY") {
         const f = FILLINGS.find(x => x.id === fillingId) || FILLINGS[0];
@@ -1096,83 +1411,66 @@
       const rows = mold.rows;
       const isGold = state.currentMoldIdx >= 3;
 
-      // 1) 상단 열린 주물 뚜껑 (상판: 하판과 가로·세로 칸수가 1:1로 완벽히 맞물리는 양면 개폐식 주물틀!)
-      const lidH = Math.max(54, Math.min(88, h * 0.23));
-      const hingeH = 14;
+      // 상판 열린 뚜껑 (하판과 1:1 대칭되는 양면 개폐식 주물틀 헤더)
+      const lidH = Math.max(36, Math.min(54, h * 0.2));
+      const hingeH = 10;
       const plateY = lidH + hingeH;
-      const plateH = h - plateY - 4;
+      const plateH = h - plateY - 2;
 
-      // 상판 뚜껑 외곽 (사다리꼴 원근감 + 리벳)
       ctx.fillStyle = isGold ? "#423215" : "#1f2737";
       ctx.strokeStyle = isGold ? "#fbbf24" : "#64748b";
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(10, 2, w - 20, lidH - 2, 10);
+      ctx.roundRect(8, 2, w - 16, lidH - 2, 8);
       ctx.fill();
       ctx.stroke();
 
-      // 상판 뚜껑 내부 1:1 대칭 붕어 음각 홈 (하판과 똑같은 cols × rows!)
-      const lidPadX = 16;
-      const lidPadY = 6;
-      const lidCellW = (w - 20 - lidPadX * 2 - (cols - 1) * 8) / cols;
-      const lidCellH = (lidH - lidPadY * 2 - (rows - 1) * 4) / rows;
+      const lidPadX = 14;
+      const lidPadY = 4;
+      const lidCellW = (w - 16 - lidPadX * 2 - (cols - 1) * 6) / cols;
+      const lidCellH = (lidH - lidPadY * 2 - (rows - 1) * 3) / rows;
       for (let i = 0; i < mold.slots; i++) {
         const c = i % cols;
         const row = Math.floor(i / cols);
-        const lx = 10 + lidPadX + c * (lidCellW + 8);
-        const ly = 2 + lidPadY + row * (lidCellH + 4);
+        const lx = 8 + lidPadX + c * (lidCellW + 6);
+        const ly = 2 + lidPadY + row * (lidCellH + 3);
         ctx.fillStyle = "#111622";
         ctx.strokeStyle = "#475569";
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(lx, ly, lidCellW, lidCellH, 6);
+        ctx.roundRect(lx, ly, lidCellW, lidCellH, 4);
         ctx.fill();
         ctx.stroke();
-        drawFishShape(
-          lx + lidCellW * 0.5,
-          ly + lidCellH * 0.5,
-          Math.min(lidCellW * 0.34, 34),
-          Math.min(lidCellH * 0.36, 12),
-          "#192132",
-          "#475569",
-          "IDLE",
-          null
-        );
       }
 
-      // 2) 중앙 황동 회전 경첩 바 (위 뚜껑과 아래 판을 연결하는 회전축!)
+      // 황동 경첩
       ctx.fillStyle = "#0f172a";
       ctx.fillRect(6, lidH, w - 12, hingeH);
       for (let c = 0; c < cols; c++) {
-        const hx = 26 + c * ((w - 52) / cols) + ((w - 52) / cols) * 0.5 - 18;
+        const hx = 22 + c * ((w - 44) / cols) + ((w - 44) / cols) * 0.5 - 14;
         ctx.fillStyle = "#d97706";
-        ctx.strokeStyle = "#fde047";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(hx, lidH + 2, 36, hingeH - 4, 4);
-        ctx.fill();
-        ctx.stroke();
+        ctx.fillRect(hx, lidH + 2, 28, hingeH - 4);
       }
 
-      // 3) 하판 메인 구이 주물틀 본체
+      // 하판 블록형 그리드 주물 불판
       ctx.fillStyle = isGold ? "#3b2c12" : "#182030";
-      ctx.strokeStyle = isGold ? "#fbbf24" : "#64748b";
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = state.trashMode ? "#ef4444" : (isGold ? "#fbbf24" : "#64748b");
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.roundRect(4, plateY, w - 8, plateH, 12);
+      ctx.roundRect(3, plateY, w - 6, plateH, 10);
       ctx.fill();
       ctx.stroke();
 
-      const pad = 8;
-      const cellW = (w - 24 - pad * (cols - 1)) / cols;
-      const cellH = (plateH - 18 - pad * (rows - 1)) / rows;
+      const pad = 6;
+      const cellW = (w - 20 - pad * (cols - 1)) / cols;
+      const cellH = (plateH - 12 - pad * (rows - 1)) / rows;
 
       for (let i = 0; i < mold.slots; i++) {
         const sl = state.slots[i];
         const c = i % cols;
         const row = Math.floor(i / cols);
-        const sx = 12 + c * (cellW + pad);
-        const sy = plateY + 9 + row * (cellH + pad);
+        const sx = 10 + c * (cellW + pad);
+        const sy = plateY + 6 + row * (cellH + pad);
         sl.rect = { x: sx, y: sy, w: cellW, h: cellH };
 
         let bg = "#0f1420";
@@ -1182,83 +1480,85 @@
         if (sl.state === "FLIP_READY") {
           bg = "#083344";
           border = Math.sin(tick * 10) > 0 ? "#22d3ee" : "#fbbf24";
-          bw = 3;
+          bw = 2.5;
         } else if (sl.state === "READY") {
           bg = "#14532d";
           border = "#4ade80";
-          bw = 3;
+          bw = 2.5;
+        } else if (sl.state === "BURNT") {
+          bg = "#3f1111";
+          border = "#ef4444";
+          bw = 2.5;
         }
 
         ctx.fillStyle = bg;
         ctx.strokeStyle = border;
         ctx.lineWidth = bw;
         ctx.beginPath();
-        ctx.roundRect(sx, sy, cellW, cellH, 10);
+        ctx.roundRect(sx, sy, cellW, cellH, 9);
         ctx.fill();
         ctx.stroke();
 
-        // 양옆 회전 손잡이 핀 표현
-        ctx.fillStyle = "#64748b";
-        ctx.fillRect(sx + 2, sy + cellH * 0.42 - 3, 4, 6);
-        ctx.fillRect(sx + cellW - 6, sy + cellH * 0.42 - 3, 4, 6);
-
         const cx = sx + cellW * 0.5;
-        const cy = sy + cellH * 0.42;
-        const rx = Math.min(cellW * 0.36, 48);
-        const ry = Math.min(cellH * 0.27, 26);
+        const cy = sy + cellH * 0.4;
+        const rx = Math.min(cellW * 0.34, 42);
+        const ry = Math.min(cellH * 0.26, 22);
 
         let label = "";
         let labelCol = "#94a3b8";
 
         if (sl.state === "IDLE") {
-          drawFishShape(cx, cy, rx, ry, "#1e293b", "#475569", "IDLE", null);
+          drawFishGraphic(cx, cy, rx, ry, "#1e293b", "#475569", "IDLE", null);
           label = "🥣 터치: 붓기";
           labelCol = "#cbd5e1";
         } else if (sl.state === "FRONT") {
-          drawFishShape(cx, cy, rx, ry, "#fef3c7", "#d97706", "FRONT", sl.fillingId);
+          drawFishGraphic(cx, cy, rx, ry, "#fef3c7", "#d97706", "FRONT", sl.fillingId);
           label = `앞면 ${Math.min(99, Math.floor((sl.progress / 0.5) * 100))}%`;
           labelCol = "#fde047";
         } else if (sl.state === "FLIP_READY") {
-          drawFishShape(cx, cy, rx, ry, "#fde68a", "#ea580c", "FLIP_READY", sl.fillingId);
+          drawFishGraphic(cx, cy, rx, ry, "#fde68a", "#ea580c", "FLIP_READY", sl.fillingId);
           label = "🔄 뒤집기!";
           labelCol = "#67e8f9";
         } else if (sl.state === "BACK") {
-          drawFishShape(cx, cy, rx, ry, "#ea580c", "#7c2d12", "BACK", sl.fillingId);
+          drawFishGraphic(cx, cy, rx, ry, "#ea580c", "#7c2d12", "BACK", sl.fillingId);
           label = `뒷면 ${Math.min(99, Math.floor(((sl.progress - 0.5) / 0.5) * 100))}%`;
           labelCol = "#fdba74";
         } else if (sl.state === "READY") {
-          drawFishShape(cx, cy, rx, ry, "#facc15", "#b45309", "READY", sl.fillingId);
-          label = "✨ 완성! 수확";
+          drawFishGraphic(cx, cy, rx, ry, "#facc15", "#b45309", "READY", sl.fillingId);
+          label = "⬆️ 진열대로!";
           labelCol = "#86efac";
+        } else if (sl.state === "BURNT") {
+          drawFishGraphic(cx, cy, rx, ry, "#1c1917", "#7f1d1d", "BURNT", sl.fillingId);
+          label = "🗑️ 탄 빵 폐기";
+          labelCol = "#fca5a5";
         }
 
         ctx.fillStyle = labelCol;
-        ctx.font = "900 11.5px Pretendard, sans-serif";
+        ctx.font = "900 11px Pretendard, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(label, cx, sy + cellH - 7);
+        ctx.fillText(label, cx, sy + cellH - 6);
       }
 
       for (let i = state.floats.length - 1; i >= 0; i--) {
         const ft = state.floats[i];
         ctx.fillStyle = ft.color;
-        ctx.font = "900 13.5px Pretendard, sans-serif";
+        ctx.font = "900 13px Pretendard, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(ft.text, ft.x, ft.y);
       }
     }
 
     function addFloat(text, x, y, color = "#fef08a") {
-      state.floats.push({ text, x, y, color, life: 0.8 });
+      state.floats.push({ text, x, y, color, life: 0.75 });
     }
 
-    // =========================================================================
-    // 7. 조리 조작 (개별 슬롯 터치 + 전체 일괄 버튼)
-    // =========================================================================
+    // 슬롯 조작 & 위로 플릭(Flick)하여 3번 진열대로 올리기 지원
     function pourSlot(sl) {
       if (sl.state !== "IDLE") return false;
       sl.state = "FRONT";
       sl.fillingId = state.selectedFillingId;
       sl.progress = 0;
+      sl.burnTimer = 0;
       return true;
     }
 
@@ -1268,7 +1568,7 @@
       return true;
     }
 
-    function harvestSlot(sl) {
+    function moveSlotToRack(sl) {
       if (sl.state !== "READY") return false;
       const m = getMold();
       const bonus = m.yieldBonus || 1;
@@ -1276,31 +1576,50 @@
       state.totalBaked += bonus;
       sl.state = "IDLE";
       sl.progress = 0;
+      sl.burnTimer = 0;
       return true;
     }
+
+    let pointerDownSlot = null;
+    let pointerStartY = 0;
 
     canvas.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
+      pointerStartY = e.clientY;
+      pointerDownSlot = null;
 
       for (const sl of state.slots) {
         const r = sl.rect;
         if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue;
+        pointerDownSlot = sl;
+
+        // 우측 하단 쓰레기통(폐기 모드)이 켜져 있거나 탄 빵(BURNT)일 때
+        if (sl.state === "BURNT" || (state.trashMode && sl.state !== "IDLE")) {
+          sl.state = "IDLE";
+          sl.progress = 0;
+          sl.burnTimer = 0;
+          state.trashMode = false;
+          sfxTrash();
+          addFloat("🗑️ 폐기 완료", r.x + r.w / 2, r.y + 16, "#fca5a5");
+          updateUI();
+          return;
+        }
 
         if (sl.state === "IDLE") {
           pourSlot(sl);
           sfxPour();
-          addFloat("🥣 반죽 붓기!", r.x + r.w / 2, r.y + 18, "#bae6fd");
+          addFloat("🥣 반죽+앙금!", r.x + r.w / 2, r.y + 16, "#bae6fd");
         } else if (sl.state === "FLIP_READY") {
           flipSlot(sl);
           sfxFlip();
-          addFloat("🔄 철컥! 뒤집기!", r.x + r.w / 2, r.y + 18, "#67e8f9");
+          addFloat("🔄 뒤집기!", r.x + r.w / 2, r.y + 16, "#67e8f9");
         } else if (sl.state === "READY") {
-          harvestSlot(sl);
+          moveSlotToRack(sl);
           sfxHarvest();
-          addFloat("🛍️ 수확 완료!", r.x + r.w / 2, r.y + 18, "#4ade80");
+          addFloat("⬆️ 진열대 적재!", r.x + r.w / 2, r.y + 16, "#4ade80");
           updateUI();
           saveGame();
         }
@@ -1308,106 +1627,62 @@
       }
     });
 
+    canvas.addEventListener("pointerup", (e) => {
+      if (!pointerDownSlot) return;
+      const dy = e.clientY - pointerStartY;
+      if (dy < -20 && pointerDownSlot.state === "READY") {
+        moveSlotToRack(pointerDownSlot);
+        sfxHarvest();
+        updateUI();
+        saveGame();
+      }
+      pointerDownSlot = null;
+    });
+
     document.getElementById("btn-pour-all").onclick = () => {
-      let cnt = 0;
-      for (const sl of state.slots) if (pourSlot(sl)) cnt++;
-      if (cnt > 0) sfxPour();
+      let c = 0;
+      for (const sl of state.slots) if (pourSlot(sl)) c++;
+      if (c > 0) sfxPour();
     };
-
     document.getElementById("btn-flip-all").onclick = () => {
-      let cnt = 0;
-      for (const sl of state.slots) if (flipSlot(sl)) cnt++;
-      if (cnt > 0) sfxFlip();
+      let c = 0;
+      for (const sl of state.slots) if (flipSlot(sl)) c++;
+      if (c > 0) sfxFlip();
     };
-
     document.getElementById("btn-harvest-all").onclick = () => {
-      let cnt = 0;
-      for (const sl of state.slots) if (harvestSlot(sl)) cnt++;
-      if (cnt > 0) {
+      let c = 0;
+      for (const sl of state.slots) if (moveSlotToRack(sl)) c++;
+      if (c > 0) {
         sfxHarvest();
         updateUI();
         saveGame();
       }
     };
 
-    // =========================================================================
-    // 8. 손님 주문 & 즉시 판매
-    // =========================================================================
-    const CUST_POOL = [
-      { name: "공시생 이지은", avatar: "👩‍🎓" },
-      { name: "퇴근길 김대리", avatar: "👨‍💼" },
-      { name: "대기업 최상무", avatar: "🕴️" },
-      { name: "유튜버 먹짱", avatar: "📸" },
-      { name: "단골 여대생", avatar: "🧣" }
-    ];
-
-    function nextCustomer() {
-      const pickCust = CUST_POOL[Math.floor(Math.random() * CUST_POOL.length)];
-      const avail = FILLINGS.filter(f => state.unlockedFillings.includes(f.id));
-      const pickFill = avail[Math.floor(Math.random() * avail.length)] || FILLINGS[0];
-      const qty = 1 + Math.floor(Math.random() * 2);
-      state.customer = {
-        name: pickCust.name,
-        avatar: pickCust.avatar,
-        fillingId: pickFill.id,
-        qty
-      };
-    }
-
-    function getUnitPrice(fid) {
-      const f = FILLINGS.find(x => x.id === fid) || FILLINGS[0];
-      const m = getMold();
-      const reg = getRegion();
-      let mult = m.priceMult * reg.mult;
-      if (state.licensed) mult *= 1.3;
-      if (state.buildingFloor >= 1) mult *= 1.3;
-      if (state.buildingFloor >= 4) mult *= 1.5;
-      return Math.round(f.price * mult);
-    }
-
-    function canServe() {
-      if (!state.customer) return false;
-      return (state.stock[state.customer.fillingId] || 0) >= state.customer.qty;
-    }
-
-    function serveCustomer() {
-      if (!canServe()) return;
-      const c = state.customer;
-      state.stock[c.fillingId] -= c.qty;
-      const pay = getUnitPrice(c.fillingId) * c.qty;
-      state.gold += pay;
-      sfxCash();
-      nextCustomer();
+    // 우측 하단 모서리 고정 쓰레기통 (탄 빵은 즉시 제거, 아니면 폐기 선택 토글)
+    document.getElementById("btn-corner-trash").onclick = () => {
+      let clearedBurnt = 0;
+      for (const sl of state.slots) {
+        if (sl.state === "BURNT") {
+          sl.state = "IDLE";
+          sl.progress = 0;
+          sl.burnTimer = 0;
+          clearedBurnt++;
+        }
+      }
+      if (clearedBurnt > 0) {
+        sfxTrash();
+        updateUI();
+        return;
+      }
+      state.trashMode = !state.trashMode;
+      sfxTrash();
       updateUI();
-      saveGame();
-    }
-
-    document.getElementById("btn-sell-now").onclick = () => serveCustomer();
+    };
 
     // =========================================================================
-    // 9. 화면 탭 전환 & 전용 뷰 렌더링
+    // 9. 수직 4단계 전체 UI 동기화
     // =========================================================================
-    function switchTab(tabKey) {
-      state.activeTab = tabKey;
-      document.querySelectorAll(".nav-tab").forEach(btn => {
-        btn.classList.toggle("active", btn.dataset.tab === tabKey);
-      });
-      document.getElementById("screen-cook").classList.toggle("active", tabKey === "cook");
-      document.getElementById("screen-story").classList.toggle("active", tabKey === "story");
-      document.getElementById("screen-shop").classList.toggle("active", tabKey === "shop");
-      document.getElementById("screen-building").classList.toggle("active", tabKey === "building");
-
-      if (tabKey === "cook") setTimeout(resizeCanvas, 20);
-      updateUI();
-    }
-
-    document.querySelectorAll(".nav-tab").forEach(btn => {
-      btn.onclick = () => {
-        sfxPour();
-        switchTab(btn.dataset.tab);
-      };
-    });
-
     function getCurrentChapter() {
       for (const ch of CHAPTERS) {
         if (!state.clearedIds.includes(ch.id)) return ch;
@@ -1425,360 +1700,405 @@
       openCutscene(ch.epKey);
     }
 
-    function renderStoryPane() {
-      const box = document.getElementById("story-pane-list");
-      box.innerHTML = `
-        <div class="pane-header-card">
-          <h2>📖 청년 성공 스토리 &amp; 챕터 미션</h2>
-          <p>조건을 달성하거나 <strong>[⚡ 즉시 클리어]</strong> 버튼을 눌러 막힘없이 스토리를 감상하고 보상을 받으세요!</p>
-        </div>
-      `;
+    function updateUI() {
+      ensureCustomers();
+      document.getElementById("gold-txt").textContent = state.gold.toLocaleString();
+      document.getElementById("combo-txt").textContent = `🔥 ${state.combo}콤보`;
 
+      const reg = REGIONS.find(r => r.id === state.currentRegionId) || REGIONS[0];
+      document.getElementById("region-banner-txt").textContent = `📍 ${reg.name} (단가 ×${reg.mult})`;
+      document.getElementById("building-badge-txt").textContent = `🏢 강남 빌딩 ${state.buildingFloor}/5층`;
+
+      // 1단계: 챕터 진행률 게이지 바
+      const ch = getCurrentChapter();
+      const storyBtn = document.getElementById("btn-open-story");
+      const goalFill = document.getElementById("goal-fill");
+      const goalTxt = document.getElementById("goal-txt");
+
+      if (!ch) {
+        goalFill.style.width = "100%";
+        goalTxt.textContent = "👑 강남 5층 황금 붕어 타워 건물주 엔딩 달성!";
+        storyBtn.className = "hud-btn cyan";
+        storyBtn.textContent = "📖 스토리";
+      } else {
+        const p = ch.getProg(state);
+        const ratio = Math.min(100, Math.round((p.cur / p.max) * 100));
+        const ready = p.cur >= p.max;
+        goalFill.style.width = `${ratio}%`;
+        goalTxt.textContent = ready
+          ? `🎉 [${ch.name}] 달성! 터치하여 클리어 & 보상 받기 ▶`
+          : `🎯 ${ch.name}: ${ch.goalDesc} (${p.cur}/${p.max})`;
+        storyBtn.className = `hud-btn ${ready ? "clear-ready" : "cyan"}`;
+        storyBtn.textContent = ready ? "🎉 클리어!" : "📖 스토리";
+      }
+
+      // 2단계: 손님 3인 대기열 렌더링
+      const custGrid = document.getElementById("customer-grid");
+      custGrid.innerHTML = "";
+      for (let i = 0; i < 3; i++) {
+        const c = state.customers[i];
+        if (!c) continue;
+        const f = FILLINGS.find(x => x.id === c.fillingId) || FILLINGS[0];
+        const canFulfill = (state.stock[c.fillingId] || 0) >= c.qty;
+        const pRatio = Math.max(0, Math.min(1, c.patience / c.maxPatience));
+        const pay = getUnitPrice(c.fillingId) * c.qty;
+
+        const card = document.createElement("div");
+        card.className = `cust-slot-card ${canFulfill ? "match-ready" : ""} ${pRatio < 0.28 ? "urgent" : ""}`;
+        card.innerHTML = `
+          <div class="order-bubble">
+            <span class="order-icon-badge">${f.icon} ${f.shortName}</span>
+            <span class="order-qty-tag">×${c.qty}</span>
+          </div>
+          <div class="cust-body-row">
+            <span class="cust-emoji">${c.emoji}</span>
+            <div class="cust-info-col">
+              <span class="cust-name-lbl">${c.name}</span>
+              <span class="cust-price-lbl">+${pay.toLocaleString()}원</span>
+            </div>
+          </div>
+          <div class="patience-track">
+            <div class="patience-fill" style="width:${Math.round(pRatio * 100)}%;background:${pRatio > 0.5 ? "#22c55e" : pRatio > 0.25 ? "#f59e0b" : "#ef4444"};"></div>
+          </div>
+        `;
+        card.onclick = (e) => {
+          tryAutoServeByFilling(c.fillingId, e.clientX, e.clientY);
+        };
+        custGrid.appendChild(card);
+      }
+
+      // 3단계: 완성품 진열대 & 서빙존 (탭 또는 위로 플릭 시 오토 타겟팅 서빙!)
+      const stackGrid = document.getElementById("stack-trays-grid");
+      stackGrid.innerHTML = "";
+      let anyCanPack = false;
+
+      for (const f of FILLINGS) {
+        const count = state.stock[f.id] || 0;
+        const wanted = state.customers.some(c => c && c.fillingId === f.id && count >= c.qty);
+        if (wanted) anyCanPack = true;
+
+        const tray = document.createElement("div");
+        tray.className = `stack-tray-slot ${count > 0 ? "has-stock" : ""} ${wanted ? "order-wanted" : ""}`;
+        const fishIcons = count > 0 ? "🐟".repeat(Math.min(3, count)) : "🍽️";
+        tray.innerHTML = `
+          <div class="stack-fish-visual">${fishIcons}</div>
+          <div class="stack-name">${f.icon} ${f.shortName}</div>
+          <div class="stack-count-badge">${wanted ? `서빙 가능! (${count}개)` : `${count}개 적재`}</div>
+        `;
+
+        let startY = 0;
+        tray.onpointerdown = (e) => {
+          startY = e.clientY;
+        };
+        tray.onpointerup = (e) => {
+          const dy = e.clientY - startY;
+          if (dy <= 15) {
+            tryAutoServeByFilling(f.id, e.clientX, e.clientY);
+          }
+        };
+        stackGrid.appendChild(tray);
+      }
+
+      const packBtn = document.getElementById("btn-auto-pack");
+      packBtn.className = `auto-pack-station ${anyCanPack ? "can-pack" : ""}`;
+      document.getElementById("pack-main-lbl").textContent = anyCanPack ? "⚡ 즉시 서빙!" : "포장 대기";
+      document.getElementById("pack-sub-lbl").textContent = anyCanPack ? "터치 시 자동 발송" : "빵을 구워주세요";
+      packBtn.onclick = (e) => tryAutoServeAny(e.clientX, e.clientY);
+
+      // 4단계 하단: 속재료(앙금) 투입구 & 우측 모서리 쓰레기통
+      const ingBar = document.getElementById("ingredient-bar");
+      ingBar.innerHTML = "";
+      for (const f of FILLINGS) {
+        if (!state.unlockedFillings.includes(f.id)) continue;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = `ing-btn ${state.selectedFillingId === f.id ? "active" : ""}`;
+        b.textContent = `${f.name}`;
+        b.onclick = () => {
+          state.selectedFillingId = f.id;
+          state.trashMode = false;
+          sfxPour();
+          updateUI();
+        };
+        ingBar.appendChild(b);
+      }
+
+      const trashBtn = document.getElementById("btn-corner-trash");
+      trashBtn.className = `corner-trash-btn ${state.trashMode ? "trash-active" : ""}`;
+      document.getElementById("trash-lbl").textContent = state.trashMode ? "슬롯선택" : "폐기";
+    }
+
+    document.getElementById("goal-bar-click").onclick = () => {
+      const ch = getCurrentChapter();
+      if (ch) {
+        const p = ch.getProg(state);
+        if (p.cur >= p.max) {
+          triggerChapterClear(ch);
+          return;
+        }
+      }
+      openStoryModal();
+    };
+
+    // =========================================================================
+    // 10. 상점(블록 주물틀 · 전국 출장 · 강남 5층 빌딩) & 스토리 모달
+    // =========================================================================
+    function renderShopModal() {
+      const body = document.getElementById("shop-modal-body");
+      body.innerHTML = "";
+
+      if (state.shopTab === "mold") {
+        const albaRow = document.createElement("div");
+        albaRow.className = `card-row ${state.autoAlba ? "owned" : "highlight"}`;
+        albaRow.innerHTML = `
+          <div class="card-info">
+            <h3>👩‍🍳 김민지 포장 전담 매니저 고용</h3>
+            <p>3번 진열대에 빵이 올라오면 손님에게 100% 자동으로 포장·서빙합니다!</p>
+          </div>
+        `;
+        const ab = document.createElement("button");
+        ab.className = "buy-btn";
+        ab.textContent = state.autoAlba ? "✔ 고용 중" : "30,000원 고용";
+        ab.disabled = state.autoAlba || state.gold < 30000;
+        ab.onclick = () => {
+          state.gold -= 30000;
+          state.autoAlba = true;
+          sfxCash();
+          saveGame();
+          updateUI();
+          renderShopModal();
+        };
+        albaRow.appendChild(ab);
+        body.appendChild(albaRow);
+
+        for (let i = 0; i < MOLDS.length; i++) {
+          const m = MOLDS[i];
+          const owned = state.ownedMolds.includes(m.id);
+          const eq = state.currentMoldIdx === i;
+          const row = document.createElement("div");
+          row.className = `card-row ${owned ? "owned" : ""}`;
+          row.innerHTML = `
+            <div class="card-info">
+              <h3>🔥 ${m.name}</h3>
+              <p>${m.desc}</p>
+            </div>
+          `;
+          const btn = document.createElement("button");
+          btn.className = "buy-btn";
+          if (eq) {
+            btn.textContent = "✔ 장착 중";
+            btn.disabled = true;
+          } else if (owned) {
+            btn.textContent = "장착하기";
+            btn.onclick = () => {
+              state.currentMoldIdx = i;
+              syncSlots();
+              saveGame();
+              updateUI();
+              renderShopModal();
+            };
+          } else {
+            btn.textContent = `${m.cost.toLocaleString()}원 구매`;
+            btn.disabled = state.gold < m.cost;
+            btn.onclick = () => {
+              state.gold -= m.cost;
+              state.ownedMolds.push(m.id);
+              state.currentMoldIdx = i;
+              syncSlots();
+              sfxCash();
+              saveGame();
+              updateUI();
+              renderShopModal();
+              if (i === 1) openCutscene("ep2_5_mold_craft");
+            };
+          }
+          row.appendChild(btn);
+          body.appendChild(row);
+        }
+      } else if (state.shopTab === "region") {
+        for (const reg of REGIONS) {
+          const isCur = state.currentRegionId === reg.id;
+          const row = document.createElement("div");
+          row.className = `card-row ${isCur ? "owned" : ""}`;
+          row.innerHTML = `
+            <div class="card-info">
+              <h3>🚚 ${reg.name} (단가 ×${reg.mult})</h3>
+              <p>${reg.desc}</p>
+            </div>
+          `;
+          const btn = document.createElement("button");
+          btn.className = "buy-btn";
+          if (isCur) {
+            btn.textContent = "✔ 영업 중";
+            btn.disabled = true;
+          } else {
+            btn.textContent = reg.cost === 0 ? "이동하기" : `${reg.cost.toLocaleString()}원 출장`;
+            btn.disabled = state.gold < reg.cost;
+            btn.onclick = () => {
+              state.gold -= reg.cost;
+              state.currentRegionId = reg.id;
+              sfxCash();
+              saveGame();
+              updateUI();
+              renderShopModal();
+            };
+          }
+          row.appendChild(btn);
+          body.appendChild(row);
+        }
+      } else {
+        for (let idx = BUILDINGS.length - 1; idx >= 0; idx--) {
+          const b = BUILDINGS[idx];
+          const built = state.buildingFloor >= b.floor;
+          const isNext = state.buildingFloor === b.floor - 1;
+          const row = document.createElement("div");
+          row.className = `card-row ${built ? "owned" : isNext ? "highlight" : ""}`;
+          row.innerHTML = `
+            <div class="card-info">
+              <h3>${b.name}</h3>
+              <p>${b.desc}</p>
+              <p style="color:#fbbf24;font-weight:900;">🏢 분양·증축 금액: ${b.cost.toLocaleString()}원</p>
+            </div>
+          `;
+          const btn = document.createElement("button");
+          btn.className = `buy-btn ${isNext ? "green" : ""}`;
+          if (built) {
+            btn.textContent = `✔ ${b.floor}층 완공`;
+            btn.disabled = true;
+          } else if (!isNext) {
+            btn.textContent = `${b.floor - 1}층 먼저`;
+            btn.disabled = true;
+          } else {
+            btn.textContent = `${b.cost.toLocaleString()}원 건설`;
+            btn.disabled = state.gold < b.cost;
+            btn.onclick = () => {
+              state.gold -= b.cost;
+              state.buildingFloor = b.floor;
+              sfxCash();
+              saveGame();
+              updateUI();
+              renderShopModal();
+              if (b.floor === 5) triggerChapterClear(CHAPTERS[4]);
+            };
+          }
+          row.appendChild(btn);
+          body.appendChild(row);
+        }
+      }
+    }
+
+    document.querySelectorAll(".modal-tab").forEach(tab => {
+      tab.onclick = () => {
+        state.shopTab = tab.dataset.stab;
+        document.querySelectorAll(".modal-tab").forEach(t => t.classList.toggle("active", t === tab));
+        renderShopModal();
+      };
+    });
+
+    document.getElementById("btn-open-shop").onclick = () => {
+      renderShopModal();
+      document.getElementById("shop-modal").classList.add("open");
+    };
+    document.getElementById("btn-close-shop").onclick = () => {
+      document.getElementById("shop-modal").classList.remove("open");
+    };
+
+    function openCutscene(epKey) {
+      state.activeEpKey = epKey;
+      state.activeLineIdx = 0;
+      renderStoryModal();
+      document.getElementById("story-modal").classList.add("open");
+    }
+
+    function openStoryModal() {
+      state.activeEpKey = null;
+      renderStoryModal();
+      document.getElementById("story-modal").classList.add("open");
+    }
+
+    function renderStoryModal() {
+      const body = document.getElementById("story-modal-body");
+      body.innerHTML = "";
+
+      if (state.activeEpKey && EPISODES[state.activeEpKey]) {
+        const ep = EPISODES[state.activeEpKey];
+        const line = ep.lines[state.activeLineIdx] || ep.lines[0];
+        document.getElementById("story-modal-title").textContent = ep.title;
+
+        const wrap = document.createElement("div");
+        wrap.style.display = "flex";
+        wrap.style.flexDirection = "column";
+        wrap.style.gap = "10px";
+        wrap.innerHTML = `
+          <div class="cutscene-img"><img src="${ep.img}" alt="스토리 삽화" /></div>
+          <div class="cutscene-box">
+            <span class="speaker-pill">${line.speaker}</span>
+            <p style="font-size:13.5px;line-height:1.5;color:#f8fafc;min-height:54px;">${line.text}</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid #334155;">
+              <span style="font-size:11.5px;color:#94a3b8;">${state.activeLineIdx + 1} / ${ep.lines.length} (터치하여 진행)</span>
+              <button type="button" class="buy-btn green">${state.activeLineIdx + 1 >= ep.lines.length ? "영업 계속하기 ▶" : "다음 대사 ▶"}</button>
+            </div>
+          </div>
+        `;
+        wrap.onclick = () => {
+          if (state.activeLineIdx + 1 < ep.lines.length) {
+            state.activeLineIdx++;
+            sfxPour();
+            renderStoryModal();
+          } else {
+            state.activeEpKey = null;
+            document.getElementById("story-modal").classList.remove("open");
+          }
+        };
+        body.appendChild(wrap);
+        return;
+      }
+
+      document.getElementById("story-modal-title").textContent = "📖 스토리 챕터 진행 & 즉시 클리어";
       for (const ch of CHAPTERS) {
         const cleared = state.clearedIds.includes(ch.id);
-        const ready = !cleared && ch.isReady(state);
-        const card = document.createElement("div");
-        card.className = `item-card ${cleared ? "owned" : ready ? "ready" : ""}`;
-        card.innerHTML = `
-          <div class="item-info">
+        const p = ch.getProg(state);
+        const ready = !cleared && p.cur >= p.max;
+        const row = document.createElement("div");
+        row.className = `card-row ${cleared ? "owned" : ready ? "highlight" : ""}`;
+        row.innerHTML = `
+          <div class="card-info">
             <h3>${cleared ? "✔ " : "🎯 "}${ch.name}</h3>
-            <p>목표: ${ch.goalDesc} (${ch.progText(state)})</p>
+            <p>조건: ${ch.goalDesc} (${p.cur}/${p.max})</p>
             <p style="color:#fef08a;font-weight:800;">${ch.rewardDesc}</p>
           </div>
         `;
         const btn = document.createElement("button");
-        btn.className = `act-btn ${ready ? "green" : ""}`;
+        btn.className = `buy-btn ${ready ? "green" : ""}`;
         if (cleared) {
-          btn.textContent = "🎬 삽화 다시보기";
+          btn.textContent = "🎬 삽화 보기";
           btn.onclick = () => openCutscene(ch.epKey);
         } else if (ready) {
-          btn.textContent = "🎉 보상 받고 클리어!";
+          btn.textContent = "🎉 보상 받기!";
           btn.onclick = () => triggerChapterClear(ch);
         } else {
           btn.textContent = "⚡ 즉시 클리어";
           btn.onclick = () => triggerChapterClear(ch);
         }
-        card.appendChild(btn);
-        box.appendChild(card);
-      }
-
-      const prolCard = document.createElement("div");
-      prolCard.className = "item-card owned";
-      prolCard.innerHTML = `
-        <div class="item-info">
-          <h3>❄️ 프롤로그: 100번째 불합격 문자와 할머니의 3구 무쇠틀</h3>
-          <p>취업난 겨울밤, 할머니의 붕어빵 틀로 다시 일어서는 첫 이야기</p>
-        </div>
-      `;
-      const pBtn = document.createElement("button");
-      pBtn.className = "act-btn";
-      pBtn.textContent = "🎬 삽화 보기";
-      pBtn.onclick = () => openCutscene("ep1_prologue");
-      prolCard.appendChild(pBtn);
-      box.appendChild(prolCard);
-    }
-
-    function renderShopPane() {
-      const box = document.getElementById("shop-pane-list");
-      box.innerHTML = `
-        <div class="pane-header-card">
-          <h2>🏪 양면 주물 기계 업그레이드 &amp; 전국 푸드트럭 출장</h2>
-          <p>상·하판 대칭 주물틀을 업그레이드하고 전국 핫플레이스로 출장을 떠나세요!</p>
-        </div>
-      `;
-
-      // 김민지 매니저
-      const alba = document.createElement("div");
-      alba.className = `item-card ${state.autoAlba ? "owned" : "ready"}`;
-      alba.innerHTML = `
-        <div class="item-info">
-          <h3>👩‍🍳 김민지 자동 판매 매니저 고용</h3>
-          <p>보온함에 구워진 붕어빵이 있으면 손님에게 100% 자동으로 판매합니다!</p>
-        </div>
-      `;
-      const aBtn = document.createElement("button");
-      aBtn.className = "act-btn";
-      aBtn.textContent = state.autoAlba ? "✔ 고용 완료" : "30,000원 고용";
-      aBtn.disabled = state.autoAlba || state.gold < 30000;
-      aBtn.onclick = () => {
-        state.gold -= 30000;
-        state.autoAlba = true;
-        sfxCash();
-        saveGame();
-        updateUI();
-      };
-      alba.appendChild(aBtn);
-      box.appendChild(alba);
-
-      // 주물틀 목록
-      for (let i = 0; i < MOLDS.length; i++) {
-        const m = MOLDS[i];
-        const owned = state.ownedMolds.includes(m.id);
-        const eq = state.currentMoldIdx === i;
-        const card = document.createElement("div");
-        card.className = `item-card ${owned ? "owned" : ""}`;
-        card.innerHTML = `
-          <div class="item-info">
-            <h3>🔥 ${m.name} (${m.slots}구)</h3>
-            <p>${m.desc}</p>
-          </div>
-        `;
-        const btn = document.createElement("button");
-        btn.className = "act-btn";
-        if (eq) {
-          btn.textContent = "✔ 장착 중";
-          btn.disabled = true;
-        } else if (owned) {
-          btn.textContent = "장착하기";
-          btn.onclick = () => {
-            state.currentMoldIdx = i;
-            syncSlots();
-            saveGame();
-            updateUI();
-          };
-        } else {
-          btn.textContent = `${m.cost.toLocaleString()}원 구매`;
-          btn.disabled = state.gold < m.cost;
-          btn.onclick = () => {
-            state.gold -= m.cost;
-            state.ownedMolds.push(m.id);
-            state.currentMoldIdx = i;
-            syncSlots();
-            sfxCash();
-            saveGame();
-            updateUI();
-            if (i === 1) openCutscene("ep2_5_mold_craft");
-          };
-        }
-        card.appendChild(btn);
-        box.appendChild(card);
-      }
-
-      // 전국 푸드트럭 출장지
-      for (const reg of REGIONS) {
-        const isCur = state.currentRegionId === reg.id;
-        const unlocked = state.unlockedFillings.includes(reg.fillId);
-        const card = document.createElement("div");
-        card.className = `item-card ${isCur ? "owned" : ""}`;
-        card.innerHTML = `
-          <div class="item-info">
-            <h3>🚚 [출장] ${reg.name} (단가 ${reg.mult}배)</h3>
-            <p>${reg.desc}</p>
-          </div>
-        `;
-        const btn = document.createElement("button");
-        btn.className = "act-btn";
-        if (isCur) {
-          btn.textContent = "✔ 현재 영업지";
-          btn.disabled = true;
-        } else if (unlocked) {
-          btn.textContent = "이동하기";
-          btn.onclick = () => {
-            state.currentRegionId = reg.id;
-            sfxFlip();
-            saveGame();
-            updateUI();
-          };
-        } else {
-          btn.textContent = `${reg.cost.toLocaleString()}원 개척`;
-          btn.disabled = state.gold < reg.cost;
-          btn.onclick = () => {
-            state.gold -= reg.cost;
-            state.unlockedFillings.push(reg.fillId);
-            state.selectedFillingId = reg.fillId;
-            state.currentRegionId = reg.id;
-            sfxCash();
-            saveGame();
-            updateUI();
-          };
-        }
-        card.appendChild(btn);
-        box.appendChild(card);
+        row.appendChild(btn);
+        body.appendChild(row);
       }
     }
 
-    function renderBuildingPane() {
-      const box = document.getElementById("building-pane-list");
-      const invested = BUILDINGS.filter(b => state.buildingFloor >= b.floor).reduce((a, b) => a + b.cost, 0);
-      box.innerHTML = `
-        <div class="pane-header-card">
-          <h2>🏢 강남 5층 『청춘 황금 붕어 타워』 건설 현황 (${state.buildingFloor}/5층)</h2>
-          <p>누적 빌딩 자산 가치: <strong style="color:#fbbf24;">${invested.toLocaleString()}원</strong> / 최종 목표 1,130,000원</p>
-        </div>
-      `;
-
-      const tower = document.createElement("div");
-      tower.className = "building-tower-box";
-
-      // 5층부터 1층까지 실제 건물 층 구조대로 위에서 아래로 표시!
-      for (let idx = BUILDINGS.length - 1; idx >= 0; idx--) {
-        const b = BUILDINGS[idx];
-        const built = state.buildingFloor >= b.floor;
-        const isNext = state.buildingFloor === b.floor - 1;
-
-        const tier = document.createElement("div");
-        tier.className = `floor-tier ${built ? "built" : isNext ? "next-up" : ""}`;
-        tier.innerHTML = `
-          <div class="item-info">
-            <h3>${built ? "🌕 " : "🏗️ "}${b.name}</h3>
-            <p>${b.desc}</p>
-            <p style="color:#fbbf24;font-weight:900;">🏢 분양·증축 금액: ${b.cost.toLocaleString()}원</p>
-          </div>
-        `;
-        const btn = document.createElement("button");
-        btn.className = `act-btn ${isNext ? "green" : ""}`;
-        if (built) {
-          btn.textContent = `✔ ${b.floor}층 완공`;
-          btn.disabled = true;
-        } else if (!isNext) {
-          btn.textContent = `${b.floor - 1}층 먼저`;
-          btn.disabled = true;
-        } else {
-          btn.textContent = `${b.cost.toLocaleString()}원 증축`;
-          btn.disabled = state.gold < b.cost;
-          btn.onclick = () => {
-            state.gold -= b.cost;
-            state.buildingFloor = b.floor;
-            sfxCash();
-            saveGame();
-            updateUI();
-            if (b.floor === 5) triggerChapterClear(CHAPTERS[4]);
-          };
-        }
-        tier.appendChild(btn);
-        tower.appendChild(tier);
-      }
-
-      box.appendChild(tower);
-    }
-
-    function updateUI() {
-      document.getElementById("gold-txt").textContent = state.gold.toLocaleString();
-      document.getElementById("nav-building-txt").textContent = `강남 빌딩(${state.buildingFloor}층)`;
-
+    document.getElementById("btn-open-story").onclick = () => {
       const ch = getCurrentChapter();
-      const stagePill = document.getElementById("btn-stage-pill");
-      const banner = document.getElementById("story-banner");
-      const badge = document.getElementById("badge-story");
-
-      if (!ch) {
-        stagePill.textContent = "👑 최종 엔딩 달성!";
-        stagePill.classList.remove("ready");
-        banner.classList.remove("show");
-        badge.classList.remove("show");
-      } else {
-        const ready = ch.isReady(state);
-        stagePill.textContent = ready ? `🎉 제${ch.id}장 클리어!` : `🎯 제${ch.id}장 (${ch.progText(state)})`;
-        stagePill.classList.toggle("ready", ready);
-        banner.classList.toggle("show", ready);
-        badge.classList.toggle("show", ready);
-        if (ready) {
-          document.getElementById("story-banner-txt").textContent = `🎉 [${ch.name}] 달성! 터치하여 스토리 클리어 & 보상 받기!`;
+      if (ch) {
+        const p = ch.getProg(state);
+        if (p.cur >= p.max) {
+          triggerChapterClear(ch);
+          return;
         }
       }
-
-      // 손님 카운터 갱신
-      if (!state.customer) nextCustomer();
-      const c = state.customer;
-      const f = FILLINGS.find(x => x.id === c.fillingId) || FILLINGS[0];
-      const have = state.stock[c.fillingId] || 0;
-      const totalPay = getUnitPrice(c.fillingId) * c.qty;
-      const reg = getRegion();
-
-      document.getElementById("cust-avatar").textContent = c.avatar;
-      document.getElementById("cust-name").textContent = c.name;
-      document.getElementById("region-label").textContent = reg.name;
-      document.getElementById("cust-order-txt").textContent = `주문: ${f.shortName} ${c.qty}개 (보온함: ${have}개)`;
-
-      const sellBtn = document.getElementById("btn-sell-now");
-      const ok = canServe();
-      sellBtn.className = `sell-now-btn ${ok ? "ready" : ""}`;
-      document.getElementById("sell-btn-main").textContent = ok ? "🛍️ 즉시 판매!" : "🛍️ 빵 굽는 중";
-      document.getElementById("sell-btn-sub").textContent = ok ? `+${totalPay.toLocaleString()}원` : `${f.shortName} 구워주세요`;
-
-      // 속재료 버튼 바 갱신 (해금된 메뉴만 노출)
-      const fBar = document.getElementById("filling-bar");
-      fBar.innerHTML = "";
-      for (const item of FILLINGS) {
-        if (!state.unlockedFillings.includes(item.id)) continue;
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = `fill-chip ${state.selectedFillingId === item.id ? "active" : ""}`;
-        const cnt = state.stock[item.id] || 0;
-        btn.innerHTML = `
-          <span>${item.name}</span>
-          <span class="fill-stock">${cnt}개</span>
-        `;
-        btn.onclick = () => {
-          state.selectedFillingId = item.id;
-          sfxPour();
-          updateUI();
-        };
-        fBar.appendChild(btn);
-      }
-
-      if (state.activeTab === "story") renderStoryPane();
-      if (state.activeTab === "shop") renderShopPane();
-      if (state.activeTab === "building") renderBuildingPane();
-    }
-
-    document.getElementById("btn-stage-pill").onclick = () => {
-      const ch = getCurrentChapter();
-      if (ch && ch.isReady(state)) {
-        triggerChapterClear(ch);
-      } else {
-        switchTab("story");
-      }
+      openStoryModal();
     };
-
-    document.getElementById("story-banner").onclick = () => {
-      const ch = getCurrentChapter();
-      if (ch) triggerChapterClear(ch);
-    };
-
-    // =========================================================================
-    // 10. 스토리 컷신 모달 제어
-    // =========================================================================
-    function openCutscene(epKey) {
-      if (!EPISODES[epKey]) return;
-      state.activeEpKey = epKey;
-      state.activeLineIdx = 0;
-      syncCutsceneModal();
-      document.getElementById("cutscene-modal").classList.add("open");
-    }
-
-    function syncCutsceneModal() {
-      const ep = EPISODES[state.activeEpKey];
-      if (!ep) return;
-      const line = ep.lines[state.activeLineIdx] || ep.lines[0];
-      document.getElementById("cs-title").textContent = ep.title;
-      document.getElementById("cs-img").src = ep.img;
-      document.getElementById("cs-speaker").textContent = line.speaker;
-      document.getElementById("cs-text").textContent = line.text;
-      document.getElementById("cs-step").textContent = `${state.activeLineIdx + 1} / ${ep.lines.length} (화면을 터치하면 넘어갑니다)`;
-      document.getElementById("btn-cs-next").textContent =
-        state.activeLineIdx + 1 >= ep.lines.length ? "영업 계속하기 ▶" : "다음 대사 ▶";
-    }
-
-    function advanceCutscene() {
-      const ep = EPISODES[state.activeEpKey];
-      if (!ep) return;
-      if (state.activeLineIdx + 1 < ep.lines.length) {
-        state.activeLineIdx++;
-        sfxPour();
-        syncCutsceneModal();
-      } else {
-        state.activeEpKey = null;
-        document.getElementById("cutscene-modal").classList.remove("open");
-      }
-    }
-
-    document.getElementById("cs-img-click").onclick = advanceCutscene;
-    document.getElementById("cs-dialog-click").onclick = advanceCutscene;
-    document.getElementById("btn-cs-skip").onclick = (e) => {
-      e.stopPropagation();
+    document.getElementById("btn-close-story").onclick = () => {
       state.activeEpKey = null;
-      document.getElementById("cutscene-modal").classList.remove("open");
+      document.getElementById("story-modal").classList.remove("open");
     };
 
     // =========================================================================
@@ -1787,6 +2107,7 @@
     let last = performance.now();
     let albaTimer = 0;
     let royaltyTimer = 0;
+    let uiTimer = 0;
 
     function loop(now) {
       const dt = Math.min(0.1, (now - last) / 1000);
@@ -1810,17 +2131,41 @@
           if (sl.progress >= 1.0) {
             sl.progress = 1.0;
             sl.state = "READY";
+            sl.burnTimer = 0;
+            changed = true;
+          }
+        } else if (sl.state === "READY") {
+          sl.burnTimer += dt;
+          if (sl.burnTimer >= 16.0) {
+            sl.state = "BURNT";
             changed = true;
           }
         }
       }
-      if (changed) updateUI();
 
-      if (state.autoAlba && canServe()) {
+      // 손님 인내심 감소
+      for (let i = 0; i < 3; i++) {
+        const c = state.customers[i];
+        if (!c) continue;
+        c.patience -= dt * 0.45;
+        if (c.patience <= 0) {
+          state.combo = 0;
+          spawnCustomerAt(i);
+          changed = true;
+        }
+      }
+
+      uiTimer += dt;
+      if (changed || uiTimer >= 0.35) {
+        uiTimer = 0;
+        updateUI();
+      }
+
+      if (state.autoAlba) {
         albaTimer += dt;
-        if (albaTimer >= 0.5) {
+        if (albaTimer >= 0.55) {
           albaTimer = 0;
-          serveCustomer();
+          tryAutoServeAny(window.innerWidth * 0.5, window.innerHeight * 0.48);
         }
       }
 
@@ -1839,15 +2184,13 @@
         if (state.floats[i].life <= 0) state.floats.splice(i, 1);
       }
 
-      if (state.activeTab === "cook") {
-        renderCanvas(tick);
-      }
+      renderCanvas(tick);
       requestAnimationFrame(loop);
     }
 
     const hadSave = loadGame();
     syncSlots();
-    nextCustomer();
+    ensureCustomers();
     updateUI();
     setTimeout(resizeCanvas, 30);
     if (!hadSave) {

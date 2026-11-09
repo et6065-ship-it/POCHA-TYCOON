@@ -2,5 +2,60 @@
 
 [ext_resource type="Script" path="res://scripts/BungeoTycoon.gd" id="1_bungeo"]
 
-[node name="BungeoTycoon" type="Node2D"]
+[node name="BungeoTycoon" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_bungeo")
+
+[node name="Zone1_HUD" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 0.1
+
+[node name="Zone2_CustomerQueue" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 0.1
+anchor_right = 1.0
+anchor_bottom = 0.35
+
+[node name="Zone3_ServingStackRack" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 0.35
+anchor_right = 1.0
+anchor_bottom = 0.6
+
+[node name="Zone4_ThumbCookingZone" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0
+anchor_top = 0.6
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="MoldGridContainer" type="GridContainer" parent="Zone4_ThumbCookingZone"]
+layout_mode = 2
+columns = 2
+
+[node name="CornerTrashButton" type="Button" parent="Zone4_ThumbCookingZone"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -140.0
+offset_top = -140.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "🗑️ 폐기"
