@@ -823,9 +823,10 @@ class SceneManager:
             full_spec_r = pygame.Rect(16, 352, 688, 828)
             if not full_spec_r.collidepoint(px, py):
                 return False
-            in_r = pygame.Rect(16, 352, 688, 146)
-            ap_r = pygame.Rect(16, 504, 688, 326)
-            tr_r = pygame.Rect(16, 836, 688, 344)
+            is_bungeo_only = getattr(getattr(sc, "specialist_station", None), "specialist_id", "bungeo") == "bungeo"
+            in_r = pygame.Rect(16, 352, 688, 136) if is_bungeo_only else pygame.Rect(16, 352, 688, 146)
+            ap_r = pygame.Rect(16, 496, 688, 680) if is_bungeo_only else pygame.Rect(16, 504, 688, 326)
+            tr_r = pygame.Rect(0, 0, 0, 0) if is_bungeo_only else pygame.Rect(16, 836, 688, 344)
 
             if (in_r.inflate(4, 4).collidepoint(px, py) or ap_r.inflate(4, 4).collidepoint(px, py)) and hasattr(sc, "specialist_station"):
                 sp = sc.specialist_station
@@ -2166,9 +2167,10 @@ class SceneManager:
         if is_spec:
             sp_st = getattr(sc, "specialist_station", None)
             tray = getattr(sc, "assembly_tray", None)
-            in_r = pygame.Rect(16, 352, 688, 146)
-            ap_r = pygame.Rect(16, 504, 688, 326)
-            tr_r = pygame.Rect(16, 836, 688, 344)
+            is_bungeo_only = getattr(getattr(sc, "specialist_station", None), "specialist_id", "bungeo") == "bungeo"
+            in_r = pygame.Rect(16, 352, 688, 136) if is_bungeo_only else pygame.Rect(16, 352, 688, 146)
+            ap_r = pygame.Rect(16, 496, 688, 680) if is_bungeo_only else pygame.Rect(16, 504, 688, 326)
+            tr_r = pygame.Rect(0, 0, 0, 0) if is_bungeo_only else pygame.Rect(16, 836, 688, 344)
 
             if sp_st is not None:
                 orig_r = sp_st.rect.copy()
@@ -2187,7 +2189,7 @@ class SceneManager:
                     sp_st.appliance_rect = orig_app
                     sp_st._rebuild_layout()
 
-            if tray is not None:
+            if tray is not None and tr_r.height > 0:
                 orig_tr = tray.rect.copy()
                 try:
                     tray.rect = tr_r.copy()

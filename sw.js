@@ -1,5 +1,5 @@
 // Service Worker for Standalone Home Screen WebApp (PWA)
-const CACHE_NAME = 'game-launcher-pwa-v2';
+const CACHE_NAME = 'game-launcher-pwa-v3';
 
 self.addEventListener('install', function (event) {
   self.skipWaiting();
