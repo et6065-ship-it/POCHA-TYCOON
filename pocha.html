@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#141829" />
+  <title>🐟 전설의 붕어빵 타이쿤 : 포차에서 빌딩까지</title>
+  <style>
+    :root {
+      --bg-deep: #0b0e18;
+      --bg-panel: #171c2d;
+      --bg-card: #212840;
+      --gold: #ffcf40;
+      --gold-dark: #c98a14;
+      --orange: #ff7b29;
+      --cyan: #38ef7d;
+      --mint: #22d3ee;
+      --red: #f43f5e;
+      --text-main: #f8fafc;
+      --text-sub: #cbd5e1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      font-family: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100dvh;
+      background: radial-gradient(circle at 50% 10%, #1e2640 0%, #090b12 85%);
+      color: var(--text-main);
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    .app-shell {
+      width: min(100vw, 560px);
+      height: 100dvh;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      background: #111524;
+      border-left: 2px solid rgba(255, 207, 64, 0.3);
+      border-right: 2px solid rgba(255, 207, 64, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 1. 상단 HUD 바 */
+    .hud-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: linear-gradient(180deg, #1e243b 0%, #131728 100%);
+      border-bottom: 2px solid var(--gold);
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .hud-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .stage-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--gold);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .permit-pill {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-size: 10.5px;
+      font-weight: 800;
+      background: #7f1d1d;
+      color: #fecaca;
+      border: 1px solid #f87171;
+    }
+    .permit-pill.licensed {
+      background: #065f46;
+      color: #a7f3d0;
+      border-color: #34d399;
+    }
+
+    .gold-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 900;
+      color: #fff;
+    }
+    .gold-val {
+      color: var(--gold);
+      text-shadow: 0 1px 2px #000;
+    }
+
+    .hud-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .hud-btn {
+      padding: 6px 9px;
+      border-radius: 8px;
+      border: 1.5px solid rgba(255, 207, 64, 0.65);
+      background: #232b46;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-decoration: none;
+      box-shadow: 0 2px 0 #000;
+    }
+    .hud-btn:active {
+      transform: translateY(1px);
+    }
+    .hud-btn.highlight {
+      background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+      border-color: #fde68a;
+    }
+    .hud-btn.building-btn {
+      background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+      border-color: #93c5fd;
+    }
+
+    /* 2. 상단 점포 전경 & 손님 주문 창구 */
+    .street-zone {
+      position: relative;
+      height: 158px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, #0f172a 0%, #1e293b 72%, #262f45 100%);
+      border-bottom: 2px solid #334155;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px 8px;
+    }
+
+    .street-top-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 2;
+      gap: 6px;
+    }
+
+    .region-pill {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--mint);
+      color: #e0f2fe;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 11.5px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .goal-pill {
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--gold);
+      color: #fef08a;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    /* 구청 단속 경보 배너 */
+    .crackdown-banner {
+      position: absolute;
+      top: 32px;
+      left: 10px;
+      right: 10px;
+      background: rgba(185, 28, 28, 0.95);
+      border: 2px solid #fde047;
+      border-radius: 8px;
+      padding: 5px 10px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+      animation: pulseAlert 0.6s infinite alternate;
+    }
+    @keyframes pulseAlert {
+      from { transform: scale(1); }
+      to { transform: scale(1.02); }
+    }
+
+    /* 손님 3인 카드 영역 */
+    .customers-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      z-index: 2;
+      margin-top: auto;
+    }
+
+    .customer-card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 2px solid #475569;
+      border-radius: 10px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 112px;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.1s, border-color 0.15s;
+    }
+    .customer-card.ready-to-serve {
+      border-color: #22c55e;
+      background: linear-gradient(180deg, rgba(20, 83, 45, 0.94) 0%, rgba(15, 23, 42, 0.95) 100%);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.55);
+    }
+    .customer-card:active {
+      transform: scale(0.97);
+    }
+
+    .cust-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+    .cust-avatar {
+      font-size: 18px;
+    }
+    .cust-quote {
+      font-size: 10.5px;
+      color: #cbd5e1;
+      line-height: 1.25;
+      height: 26px;
+      overflow: hidden;
+    }
+    .cust-orders {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      margin-top: auto;
+    }
+    .order-tag {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: #1e293b;
+      border: 1px solid #64748b;
+      color: #f1f5f9;
+    }
+    .order-tag.fulfilled {
+      background: #14532d;
+      border-color: #4ade80;
+      color: #bbf7d0;
+    }
+
+    .serve-cta {
+      font-size: 11px;
+      font-weight: 900;
+      text-align: center;
+      padding: 3px 4px;
+      border-radius: 5px;
+      background: #16a34a;
+      color: #fff;
+      display: none;
+    }
+    .customer-card.ready-to-serve .serve-cta {
+      display: block;
+    }
+
+    .patience-bar {
+      height: 5px;
+      background: #0f172a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .patience-fill {
+      height: 100%;
+      background: #22c55e;
+      transition: width 0.15s linear;
+    }
+
+    /* 3. 중단: 🛍️ 보온 쇼케이스 무제한 적재함 (서빙대 대체!) */
+    .warmer-bar {
+      background: linear-gradient(180deg, #272038 0%, #1a1628 100%);
+      border-bottom: 2px solid var(--gold-dark);
+      padding: 6px 8px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .warmer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    .warmer-slots {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+    }
+
+    .warmer-slot {
+      background: #12101d;
+      border: 1.5px solid #4b3f6b;
+      border-radius: 8px;
+      padding: 4px 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      position: relative;
+    }
+    .warmer-slot.has-stock {
+      border-color: var(--gold);
+      background: #292116;
+    }
+    .warmer-slot.locked {
+      opacity: 0.4;
+    }
+    .warmer-name {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #e2e8f0;
+      white-space: nowrap;
+    }
+    .warmer-count {
+      font-size: 13px;
+      font-weight: 900;
+      color: #4ade80;
+    }
+
+    /* 4. 메인 중앙: 주물 붕어빵 기계 캔버스 영역 */
+    .mold-stage {
+      flex: 1;
+      min-height: 220px;
+      position: relative;
+      background: #181c29;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+    }
+
+    #mold-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    /* 5. 하단: 속재료 선택 탭 & 퀵 액션 바 */
+    .bottom-dock {
+      background: linear-gradient(180deg, #1b2238 0%, #101422 100%);
+      border-top: 2px solid var(--gold);
+      padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .dock-top-hint {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #bae6fd;
+    }
+
+    .filling-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .filling-btn {
+      background: #232b45;
+      border: 2px solid #475569;
+      border-radius: 9px;
+      padding: 6px 6px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .filling-btn.selected {
+      background: #0e4f63;
+      border-color: var(--mint);
+      box-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
+    }
+    .filling-btn.locked {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+    .filling-price {
+      font-size: 10.5px;
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    /* 모달 공통 */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 16, 0.86);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 12px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: min(520px, 96vw);
+      max-height: 90dvh;
+      background: #161c2e;
+      border: 3px solid var(--gold);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-header {
+      padding: 12px 14px;
+      background: #222a45;
+      border-bottom: 2px solid rgba(255, 207, 64, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h2 {
+      font-size: 16px;
+      color: var(--gold);
+    }
+    .close-btn {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .modal-body {
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .shop-item {
+      background: #1f2742;
+      border: 2px solid #3b476e;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .shop-item.owned {
+      border-color: #22c55e;
+      background: rgba(20, 83, 45, 0.35);
+    }
+    .shop-info h3 {
+      font-size: 14px;
+      color: #fff;
+      margin-bottom: 3px;
+    }
+    .shop-info p {
+      font-size: 11.5px;
+      color: #cbd5e1;
+      line-height: 1.35;
+    }
+    .buy-btn {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 2px solid var(--gold);
+      background: #d97706;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .buy-btn:disabled {
+      background: #334155;
+      border-color: #64748b;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    /* 스토리 컷신 모달 */
+    .cutscene-img-wrap {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--gold);
+    }
+    .cutscene-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .cutscene-dialogue-box {
+      background: #0f1424;
+      border: 2px solid var(--mint);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .speaker-tag {
+      display: inline-block;
+      align-self: flex-start;
+      background: var(--gold);
+      color: #111;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .dialogue-text {
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: #f8fafc;
+      min-height: 58px;
+    }
+    .cutscene-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- 1. 상단 HUD -->
+    <header class="hud-bar">
+      <div class="hud-left">
+        <div class="stage-badge" id="stage-badge-txt">⛺ 제1막: 역전 앞 손수레 포차</div>
+        <div class="gold-row">
+          <span>💰 <span class="gold-val" id="gold-txt">32,400</span>원</span>
+          <span class="permit-pill" id="permit-pill">🚨 무허가 노점</span>
+        </div>
+      </div>
+      <div class="hud-actions">
+        <a href="./arcade.html" class="hud-btn" title="통합 게임 런처로 이동">🎮 런처</a>
+        <button type="button" class="hud-btn" id="btn-open-story">🎬 스토리</button>
+        <button type="button" class="hud-btn" id="btn-open-map">🚚 전국출장</button>
+        <button type="button" class="hud-btn highlight" id="btn-open-shop">🏪 장비·빌딩</button>
+      </div>
+    </header>
+
+    <!-- 2. 상단 거리 & 손님 주문 창구 -->
+    <section class="street-zone" id="street-zone">
+      <div class="street-top-info">
+        <span class="region-pill" id="region-pill">📍 역전 3번 출구 (기본 단가 1.0x)</span>
+        <span class="goal-pill" id="next-goal-pill">🎯 목표: 6구 회전틀 & 정식 영업허가 취득!</span>
+      </div>
+
+      <div class="crackdown-banner" id="crackdown-banner">
+        <span id="crackdown-msg">🚨 구청 가로정비팀 단속반 출동! [정식 영업허가]를 취득하세요!</span>
+      </div>
+
+      <div class="customers-row" id="customers-row"></div>
+    </section>
+
+    <!-- 3. 중단: 🛍️ 보온 쇼케이스 무제한 적재함 -->
+    <section class="warmer-bar">
+      <div class="warmer-header">
+        <span id="warmer-title">🛍️ 보온 쇼케이스 적재함 (꺼내는 대로 무제한 적재!)</span>
+        <span id="alba-status-txt" style="color:#a7f3d0;font-size:11px;">손님 카드 터치 시 즉시 포장 판매!</span>
+      </div>
+      <div class="warmer-slots" id="warmer-slots"></div>
+    </section>
+
+    <!-- 4. 메인 중앙: 주물 붕어빵 기계 캔버스 -->
+    <main class="mold-stage">
+      <canvas id="mold-canvas"></canvas>
+    </main>
+
+    <!-- 5. 하단: 속재료 선택 도크 -->
+    <footer class="bottom-dock">
+      <div class="dock-top-hint">
+        <span id="mold-spec-txt">🔥 장착 틀: 할머니의 3구 단판틀 (1칸씩 붓기)</span>
+        <span style="color:#fde047;">①빈틀 붓기 ➔ ②뒤집기 ➔ ③완성 수거</span>
+      </div>
+      <div class="filling-grid" id="filling-grid"></div>
+    </footer>
+  </div>
+
+  <!-- 장비·점포·빌딩 상점 모달 -->
+  <div class="modal-backdrop" id="shop-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>🏪 주물틀 장비 &amp; 정식허가 &amp; 강남 빌딩 증축</h2>
+        <button type="button" class="close-btn" id="btn-close-shop">닫기 ✕</button>
+      </div>
+      <div class="modal-body" id="shop-body"></div>
+    </div>
+  </div>
+
+  <!-- 전국 6대 지역 푸드트럭 출장 모달 -->
+  <div class="modal-backdrop" id="map-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>🚚 전국 6대 핫플레이스 푸드트럭 출장 지도</h2>
+        <button type="button" class="close-btn" id="btn-close-map">닫기 ✕</button>
+      </div>
+      <div class="modal-body" id="map-body"></div>
+    </div>
+  </div>
+
+  <!-- 스토리 컷신 모달 -->
+  <div class="modal-backdrop" id="story-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="cutscene-title">🎬 프롤로그: 100번째 불합격 문자</h2>
+        <button type="button" class="close-btn" id="btn-skip-story">건너뛰기 ⏭</button>
+      </div>
+      <div class="modal-body">
+        <div class="cutscene-img-wrap">
+          <img id="cutscene-img" src="./assets/story_bungeo/bungeo_ep1_prologue_cart.jpg" alt="스토리 삽화" />
+        </div>
+        <div class="cutscene-dialogue-box">
+          <span class="speaker-tag" id="cutscene-speaker">박청춘 (27세, 주인공)</span>
+          <p class="dialogue-text" id="cutscene-text"></p>
+          <div class="cutscene-controls">
+            <span id="cutscene-page" style="font-size:12px;color:#94a3b8;">1 / 5</span>
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="hud-btn" id="btn-story-list">📚 에피소드 목록</button>
+              <button type="button" class="buy-btn" id="btn-next-dialogue">다음 대사 ▶</button>
+            </div>
+          </div>
+        </div>
+        <div id="story-episode-list" style="display:none;flex-direction:column;gap:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. 스토리 대본 & 7장 컷신 데이터 (05_bungeo_youth_story_script.md 연동)
+    // =========================================================================
+    const STORY_EPISODES = {
+      ep1_prologue: {
+        id: "ep1_prologue",
+        title: "❄️ 프롤로그: 100번째 불합격 문자와 할머니의 3구 무쇠틀",
+        img: "./assets/story_bungeo/bungeo_ep1_prologue_cart.jpg",
+        lines: [
+          { speaker: "문자 알림음", text: "[안내] 박청춘 님, 귀하의 뛰어난 역량에도 불구하고 이번 채용에서는 모시지 못하게 되었습니다…" },
+          { speaker: "박청춘 (27세)", text: "이걸로 딱 100번째 탈락 문자네. 12월 칼바람은 부는데 내 통장 잔고는 3만 2,400원… 나 진짜 이대로 끝인 걸까." },
+          { speaker: "박청춘 (27세)", text: "(옥탑방 창고 구석에서 할머니가 남기신 묵직한 3구 무쇠 붕어빵 틀과 레시피 노트를 발견한다)" },
+          { speaker: "할머니의 기억", text: "‘청춘아, 붕어빵은 꼬리 끝까지 팥이 꽉 차 있어야 손님 마음이 안 시리단다. 세상이 널 안 뽑아주면 네 손으로 따뜻한 걸 구워내렴.’" },
+          { speaker: "박청춘 (27세)", text: "그래, 남이 날 뽑아주길 기다리지 말자! 지하철 3번 출구 앞에서 내 손으로 대한민국에서 제일 따뜻한 겨울을 구워보는 거야!" }
+        ]
+      },
+      ep1_5_crackdown: {
+        id: "ep1_5_crackdown",
+        title: "🚨 제1막 위기: 구청 단속반의 급습과 단골들의 탄원",
+        img: "./assets/story_bungeo/bungeo_ep1_5_crackdown_crisis.jpg",
+        lines: [
+          { speaker: "강원칙 주무관 (구청 단속반)", text: "지하철역 3번 출구 앞 도로점용 미허가 영업 민원이 접수됐습니다. 금일부로 자진 철거 계고장 발부합니다." },
+          { speaker: "박청춘 (27세)", text: "주무관님… 제발 한 번만 봐주십시오! 할머니가 물려주신 이 무쇠틀마저 끌려가면 전 정말 갈 곳이 없습니다…!" },
+          { speaker: "공시생 단골 이지은", text: "잠깐만요 단속반 아저씨! 이 사장님 매일 새벽마다 보도블록까지 물청소하고 장사하시는 분이에요! 우리 동네 유일한 온기인데 정식으로 장사할 방법 좀 알려주세요!" },
+          { speaker: "강원칙 주무관 (구청 단속반)", text: "(손수레 밑바닥까지 기름때 하나 없이 닦인 걸 내려다보더니 품에서 공고문을 꺼내며) …6구 회전틀과 소화기·위생 설비를 갖추고 구청 ‘청년 명품 거리가게 정식 허가 심사’에 도전해 보시오!" }
+        ]
+      },
+      ep1_8_permit: {
+        id: "ep1_8_permit",
+        title: "🏅 제1막 반전: 위생 100점 통과 & 인생 첫 합격증(정식 영업허가 제1호)!",
+        img: "./assets/story_bungeo/bungeo_ep1_8_official_permit.jpg",
+        lines: [
+          { speaker: "강원칙 주무관 (구청 단속반)", text: "스테인리스 조리대 소독 100점, 분말 소화기 및 가스 차단기 100점, 국산 팥 원산지 표시·보건증 완비… 내 구청 생활 15년 만에 이런 노점은 처음 보는군!" },
+          { speaker: "강원칙 주무관 (구청 단속반)", text: "축하하네 박 대표. 오늘부로 구청 공인 ‘청년 명품 거리가게 & 푸드트럭 정식 영업허가 제1호’다!" },
+          { speaker: "박청춘 (27세)", text: "(금빛 영업허가증 액자를 두 손으로 받아 들고 눈시울을 붉히며) 100번 떨어지고 처음으로 받아보는 ‘합격증’입니다…! 이제 단속 걱정 없이 당당하게 구워내겠습니다!" },
+          { speaker: "시스템 해금", text: "✨ [정식 영업허가 제1호] 효과 발동! 앞으로 구청 단속이 영구 해제되며, 안심 맛집 인증으로 모든 붕어빵 판매 단가가 +20% 상승합니다!" }
+        ]
+      },
+      ep2_5_mold_craft: {
+        id: "ep2_5_mold_craft",
+        title: "🔥 장비 진화: 양면 개폐·회전식 다연장 붕어빵 기계 장착!",
+        img: "./assets/story_bungeo/bungeo_ep2_5_mold_craft_upgrade.jpg",
+        lines: [
+          { speaker: "박청춘 (27세)", text: "위아래 붕어 비늘 음각 뚜껑이 1:1로 딱 맞물리고 앞쪽 검은 봉 손잡이로 철컥! 뒤집는 정통 양면 회전식 주물 기계!" },
+          { speaker: "박청춘 (27세)", text: "주둥이 긴 양은 주전자로 반죽을 붓고 통단팥·슈크림·피자치즈를 듬뿍 올려 구워내니 속도와 바삭함이 차원이 다르다!" }
+        ]
+      },
+      ep2_gangnam: {
+        id: "ep2_gangnam",
+        title: "🚚 제2막: 나를 떨어뜨렸던 강남 대기업 앞, 통쾌한 법인카드 싹쓸이!",
+        img: "./assets/story_bungeo/bungeo_ep2_foodtruck_gangnam.jpg",
+        lines: [
+          { speaker: "박청춘 (27세)", text: "직접 페인트칠한 민트색 『청춘 붕어빵 푸드트럭』 첫 출장지! 작년 겨울 최종 면접에서 떨어지고 눈물 삼키며 걸어 나왔던 강남 대기업 빌딩 앞이다." },
+          { speaker: "최상무 (대기업 인사팀 임원)", text: "허어… 줄을 40분이나 서서 겨우 차례가 왔군! 여기 야근 간식으로 쓸 거니까 단팥·슈크림·피자치즈 골고루 15봉지 법인카드로 결제해 주게! 그나저나 자네, 어디서 본 얼굴인데…?" },
+          { speaker: "박청춘 (27세)", text: "작년 면접장에서 ‘간절함이 안 보인다’고 떨어뜨리셨던 지원자 408번 박청춘입니다, 상무님! 이제 그 빌딩 문턱 넘는 대신, 바로 옆에 제 빌딩을 세우러 갑니다!" }
+        ]
+      },
+      ep3_nationwide: {
+        id: "ep3_nationwide",
+        title: "🗺️ 제2막 하이라이트: 전국 6대 핫플 유랑 & 팔도 특산 붕어빵 제패!",
+        img: "./assets/story_bungeo/bungeo_ep3_nationwide_tour.jpg",
+        lines: [
+          { speaker: "유튜버 먹짱 (구독자 180만)", text: "여러분! 지금 강원도 평창 스키장, 부산 해운대 밤바다, 제주 애월 해안도로까지 줄 세운 전설의 청춘 붕어빵 트럭 현장에 나와 있습니다!" },
+          { speaker: "박청춘 (27세)", text: "강원도 초당옥수수 치즈, 부산 씨앗호떡 흑당, 제주 한라봉 커스터드까지! 전국 팔도의 맛을 품고 이제 꿈의 강남 사옥 빌딩을 올리러 간다!" }
+        ]
+      },
+      ep4_ending: {
+        id: "ep4_ending",
+        title: "🏢 최종 엔딩: 강남 5층 『청춘 황금 붕어 타워』 완공 & 청년 건물주 등극!",
+        img: "./assets/story_bungeo/bungeo_ep4_building_ending.jpg",
+        lines: [
+          { speaker: "김민지 본점 매니저", text: "대표님! 드디어 5층 루프탑 옥상에 초대형 황금 붕어빵 조형물 점등식이 끝났습니다! 강남대로 전체가 우리 빌딩을 보고 박수치고 있어요!" },
+          { speaker: "합격한 단골 이지은", text: "사장님, 아니 이제 회장님이시네요! 저도 공무원 시험 최종 합격해서 첫 월급으로 축하드리러 달려왔어요!" },
+          { speaker: "박청춘 (청년 CEO & 건물주)", text: "100번째 불합격 문자에 울던 겨울밤, 할머니의 3구 무쇠틀 하나로 시작해 마침내 강남 5층 빌딩 건물주가 되었습니다!" },
+          { speaker: "박청춘 (청년 CEO & 건물주)", text: "이제 이 빌딩 3층 가맹본부에서, 옛날의 저처럼 추운 겨울을 버티는 청년 100명에게 푸드트럭과 황동 9구 틀을 무상으로 지원합니다! 대한민국 모든 청춘들, 화이팅!" }
+        ]
+      }
+    };
+
+    // =========================================================================
+    // 2. 속재료 6종, 주물틀 6종, 지역 6곳, 강남 빌딩 1F~5F 데이터
+    // =========================================================================
+    const FILLINGS = [
+      { id: "redbean", name: "통단팥", price: 2000, color: "#b91c1c", inner: "#f87171", unlockRegion: null },
+      { id: "cream", name: "슈크림", price: 2500, color: "#eab308", inner: "#fef08a", unlockRegion: null },
+      { id: "pizza", name: "피자치즈", price: 3500, color: "#ea580c", inner: "#fde047", unlockRegion: "hongdae", cost: 15000 },
+      { id: "sweetpotato", name: "꿀고구마", price: 3200, color: "#9333ea", inner: "#facc15", unlockRegion: "gangwon", cost: 12000 },
+      { id: "seed_hotteok", name: "씨앗흑당", price: 3800, color: "#78350f", inner: "#fbbf24", unlockRegion: "busan", cost: 22000 },
+      { id: "hallabong", name: "한라봉크림", price: 4500, color: "#f97316", inner: "#fed7aa", unlockRegion: "jeju", cost: 30000 }
+    ];
+
+    const MOLDS = [
+      { id: "mold_3", name: "할머니의 3구 무쇠 단판틀", slots: 3, cols: 3, rows: 1, speed: 1.0, burnTime: 6.0, yieldBonus: 1, priceMult: 1.0, cost: 0, desc: "할머니께 물려받은 시작용 3구(3×1) 무쇠틀" },
+      { id: "mold_6", name: "포장마차 6구 양면 회전틀", slots: 6, cols: 3, rows: 2, speed: 1.25, burnTime: 7.0, yieldBonus: 1, priceMult: 1.0, cost: 15000, desc: "위아래 3칸씩 맞물리는 6구(3×2) 양면 회전틀 (굽기 속도 1.25배)" },
+      { id: "mold_9", name: "정통 9구(3×3) 고화력 주물틀", slots: 9, cols: 3, rows: 3, speed: 1.5, burnTime: 8.0, yieldBonus: 1, priceMult: 1.0, cost: 45000, desc: "원작 붕어빵 타이쿤 1~9번 규격 9구(3×3) 주물틀 (굽기 속도 1.5배)" },
+      { id: "mold_brass9", name: "테플론 코팅 황동 9구 명품틀", slots: 9, cols: 3, rows: 3, speed: 1.85, burnTime: 15.0, yieldBonus: 1, priceMult: 1.15, cost: 110000, desc: "열전도율 최고급 황동 9구 틀! 거의 타지 않으며 단가 +15%" },
+      { id: "mold_double9", name: "황금 잉어빵 2배 대량생산틀", slots: 9, cols: 3, rows: 3, speed: 2.1, burnTime: 14.0, yieldBonus: 2, priceMult: 1.15, cost: 220000, desc: "한 칸에서 꺼낼 때 보온 적재함에 2마리씩(+2) 쌓이는 대량 생산 특화틀!" },
+      { id: "mold_croiffle9", name: "크로아상 붕어빵(크로붕) 프레스틀", slots: 9, cols: 3, rows: 3, speed: 2.2, burnTime: 16.0, yieldBonus: 2, priceMult: 1.6, cost: 380000, desc: "겹겹이 바삭한 페이스트리 크로붕! 2배 적재 + 모든 판매 단가 +60%!" }
+    ];
+
+    const REGIONS = [
+      { id: "station", name: "📍 역전 3번 출구 포차거리", priceMult: 1.0, speedMult: 1.0, patienceMult: 1.0, reqTruck: false, desc: "공시생과 퇴근길 직장인들이 오가는 정겨운 첫 영업지", quotes: ["오늘 모의고사 망쳤는데 단팥 꽉 찬 붕어빵 보니까 힘나요!", "퇴근길에 냄새 참기 힘들죠! 따뜻하게 포장해 주세요!", "사장님 어제보다 손놀림이 훨씬 빨라지셨네요!"] },
+      { id: "gangnam", name: "🏙️ 서울 강남·여의도 오피스", priceMult: 1.4, speedMult: 1.0, patienceMult: 0.85, reqTruck: true, desc: "나를 떨어뜨렸던 대기업 거리! 법인카드 단체 묶음 주문 & 팁 +40%", quotes: ["야근 간식 법인카드 결제요! 넉넉하게 담아주세요!", "최상무님이 이 집 붕어빵 아니면 안 먹는대요!", "점심시간 끝나기 전에 빨리 부탁드려요 사장님!"] },
+      { id: "hongdae", name: "🎸 서울 홍대·성수 팝업거리", priceMult: 1.5, speedMult: 1.05, patienceMult: 1.0, reqTruck: true, desc: "트렌디한 대학가! [피자치즈 붕어빵] 해금 & 판매 단가 +50%", quotes: ["인스타 스토리에 올릴 거니까 치즈 쭉 늘어나게 해주세요!", "먹짱 유튜브 보고 성수동에서 찾아왔어요!", "버스킹 끝나고 먹는 붕어빵이 진짜 최고예요!"] },
+      { id: "gangwon", name: "⛷️ 강원 평창·속초 설원 스키장", priceMult: 1.75, speedMult: 0.9, patienceMult: 1.1, reqTruck: true, desc: "영하 15도 한파 특수! [꿀고구마 붕어빵] 해금 & 모든 가격 +75%!", quotes: ["보드 타다 손 얼었는데 붕어빵 보니까 살 것 같아요!", "추운 스키장에선 역시 따끈한 꿀고구마 붕어빵이죠!", "패트롤 대원들 간식으로 든든하게 사 갑니다!"] },
+      { id: "busan", name: "🎆 부산 해운대 밤바다 야시장", priceMult: 1.85, speedMult: 1.05, patienceMult: 1.25, reqTruck: true, desc: "넉넉한 인심과 밤바다! [씨앗흑당 붕어빵] 해금 & 인내심 +25%", quotes: ["억수로 고소하네예! 해운대 명물 씨앗호떡 맛 붕어빵이라니!", "밤바다 불꽃놀이 보면서 먹을 거라 골고루 담아주이소!", "자갈치 이모들도 소문 듣고 줄 섰심더!"] },
+      { id: "jeju", name: "🌴 제주 애월 노을 해안도로", priceMult: 2.2, speedMult: 1.1, patienceMult: 1.35, reqTruck: true, desc: "최고급 휴양지 코스! [한라봉크림 붕어빵] 해금 & 모든 단가 2.2배!", quotes: ["애월 바다 보면서 먹는 한라봉 붕어빵이라니 완벽해요!", "사장님, 저 공무원 합격해서 제주도로 여행 왔어요! (이지은)", "물질 끝나고 먹는 달달한 한라봉 붕어빵이 최고수다!"] }
+    ];
+
+    const BUILDING_FLOORS = [
+      { floor: 1, name: "🏢 1층: 강남 황금 붕어빵 플래그십 본점 착공", cost: 250000, desc: "면접 떨어졌던 강남대로 1층에 내 매장 오픈! (전 메뉴 판매 단가 +30%)", bonusText: "단가 +30%" },
+      { floor: 2, name: "🏢 2층: 수제 통단팥·특제 반죽 연구소 증축", cost: 450000, desc: "할머니의 비법을 과학화! (모든 주물틀 굽기 속도 +30% 영구 가속)", bonusText: "속도 +30%" },
+      { floor: 3, name: "🏢 3층: 전국 청년 가맹사업 본부 증축", cost: 750000, desc: "전국 6대 지역 가맹점 오픈! (3초마다 가맹 로열티 +12,000원 자동 입금!)", bonusText: "자동 로열티" },
+      { floor: 4, name: "🏢 4층: VIP 스카이 디저트 라운지 증축", cost: 1200000, desc: "해외 바이어와 대기업 임원 전용 라운지! (모든 판매 수익 +50% 추가 증폭)", bonusText: "수익 +50%" },
+      { floor: 5, name: "👑 5층: 루프탑 황금 붕어 동상 완공 (최종 엔딩!)", cost: 2000000, desc: "강남 5층 사옥 완공 & 건물주 등기권리증 수여! (대망의 청년 성공 엔딩!)", bonusText: "🎉 건물주 엔딩" }
+    ];
+
+    // =========================================================================
+    // 3. 게임 상태 & 세이브/로드
+    // =========================================================================
+    const state = {
+      gold: 32400,
+      totalBaked: 0,
+      burntCountToday: 0,
+      licensed: false,          // 구청 정식 영업허가증 제1호 여부
+      hasHygieneKit: false,     // 위생·소화기 설비 구비 여부
+      hasFoodTruck: false,      // 청춘 네온 푸드트럭 보유 여부
+      rowPourUpgrade: false,    // 3구 연발 반죽 주전자
+      rowFlipUpgrade: false,    // 줄 단위 연동 뒤집기 손잡이
+      autoAlba: false,          // 포장 전담 알바생
+      buildingFloor: 0,         // 0 ~ 5층
+      currentMoldIdx: 0,
+      ownedMolds: ["mold_3"],
+      currentRegionId: "station",
+      unlockedFillings: ["redbean", "cream"],
+      selectedFillingId: "redbean",
+      stock: { redbean: 2, cream: 1, pizza: 0, sweetpotato: 0, seed_hotteok: 0, hallabong: 0 },
+      slots: [],
+      customers: [null, null, null],
+      fireBoostTimer: 0,
+      crackdownTimer: 0,
+      seenEpisodes: {},
+      floatingTexts: []
+    };
+
+    function saveState() {
+      try {
+        localStorage.setItem("bungeo_tycoon_kr_v1", JSON.stringify({
+          gold: state.gold,
+          totalBaked: state.totalBaked,
+          licensed: state.licensed,
+          hasHygieneKit: state.hasHygieneKit,
+          hasFoodTruck: state.hasFoodTruck,
+          rowPourUpgrade: state.rowPourUpgrade,
+          rowFlipUpgrade: state.rowFlipUpgrade,
+          autoAlba: state.autoAlba,
+          buildingFloor: state.buildingFloor,
+          currentMoldIdx: state.currentMoldIdx,
+          ownedMolds: state.ownedMolds,
+          currentRegionId: state.currentRegionId,
+          unlockedFillings: state.unlockedFillings,
+          stock: state.stock,
+          seenEpisodes: state.seenEpisodes
+        }));
+      } catch (e) {}
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem("bungeo_tycoon_kr_v1");
+        if (!raw) return false;
+        const d = JSON.parse(raw);
+        Object.assign(state, d);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // =========================================================================
+    // 4. WebAudio 효과음 합성기 (외부 파일 로딩 대기 제로!)
+    // =========================================================================
+    let audioCtx = null;
+    function playTone(freq, dur = 0.08, type = "sine", vol = 0.12) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (e) {}
+    }
+    function sfxPour() { playTone(320, 0.09, "triangle", 0.14); setTimeout(() => playTone(420, 0.07, "sine", 0.1), 40); }
+    function sfxFlip() { playTone(190, 0.06, "square", 0.15); setTimeout(() => playTone(520, 0.08, "triangle", 0.14), 35); }
+    function sfxHarvest() { playTone(660, 0.08, "sine", 0.14); setTimeout(() => playTone(880, 0.12, "sine", 0.14), 50); }
+    function sfxCash() { playTone(784, 0.08, "triangle", 0.16); setTimeout(() => playTone(1046, 0.16, "triangle", 0.18), 65); }
+    function sfxBurn() { playTone(130, 0.18, "sawtooth", 0.15); }
+
+    // =========================================================================
+    // 5. 주물틀 슬롯 초기화 & 렌더링 (Canvas)
+    // =========================================================================
+    const canvas = document.getElementById("mold-canvas");
+    const ctx = canvas.getContext("2d");
+    let pumpRect = { x: 8, y: 20, w: 30, h: 180 };
+
+    function getCurrentMold() {
+      return MOLDS[state.currentMoldIdx] || MOLDS[0];
+    }
+
+    function getCurrentRegion() {
+      return REGIONS.find(r => r.id === state.currentRegionId) || REGIONS[0];
+    }
+
+    function syncMoldSlots() {
+      const mold = getCurrentMold();
+      while (state.slots.length < mold.slots) {
+        state.slots.push({
+          state: "IDLE", // IDLE, FRONT, FLIP_READY, BACK, READY, BURNT
+          fillingId: "redbean",
+          progress: 0,
+          burnElapsed: 0,
+          rect: { x: 0, y: 0, w: 0, h: 0 }
+        });
+      }
+      if (state.slots.length > mold.slots) {
+        state.slots.length = mold.slots;
+      }
+    }
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(300, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(200, Math.floor(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    function drawFishShape(cx, cy, rx, ry, bodyCol, rimCol, mode, fillingId, tick) {
+      ctx.save();
+      // 꼬리 지느러미 (우측)
+      ctx.beginPath();
+      ctx.moveTo(cx + rx * 0.42, cy);
+      ctx.lineTo(cx + rx * 1.04, cy - ry * 0.76);
+      ctx.lineTo(cx + rx * 0.90, cy);
+      ctx.lineTo(cx + rx * 1.04, cy + ry * 0.76);
+      ctx.closePath();
+      ctx.fillStyle = bodyCol;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = rimCol;
+      ctx.stroke();
+
+      // 등·배 지느러미
+      ctx.beginPath();
+      ctx.moveTo(cx - rx * 0.16, cy - ry * 0.68);
+      ctx.lineTo(cx + rx * 0.08, cy - ry * 1.04);
+      ctx.lineTo(cx + rx * 0.28, cy - ry * 0.64);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(cx - rx * 0.10, cy + ry * 0.68);
+      ctx.lineTo(cx + rx * 0.12, cy + ry * 1.02);
+      ctx.lineTo(cx + rx * 0.28, cy + ry * 0.64);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 몸통 타원
+      ctx.beginPath();
+      ctx.ellipse(cx - rx * 0.18, cy, rx * 0.76, ry * 0.78, 0, 0, Math.PI * 2);
+      ctx.fillStyle = bodyCol;
+      ctx.fill();
+      ctx.lineWidth = mode === "READY" ? 3 : 2;
+      ctx.strokeStyle = rimCol;
+      ctx.stroke();
+
+      if (mode === "FRONT" || mode === "FLIP_READY") {
+        // 하얀 생반죽 + 속재료 토핑
+        const fObj = FILLINGS.find(f => f.id === fillingId) || FILLINGS[0];
+        ctx.beginPath();
+        ctx.ellipse(cx - rx * 0.16, cy, rx * 0.34, ry * 0.38, 0, 0, Math.PI * 2);
+        ctx.fillStyle = fObj.color;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx - rx * 0.20, cy - 2, rx * 0.18, ry * 0.20, 0, 0, Math.PI * 2);
+        ctx.fillStyle = fObj.inner;
+        ctx.fill();
+      } else if (mode === "BACK" || mode === "READY" || mode === "BURNT") {
+        // 눈 & 비늘 결
+        const eyeX = cx - rx * 0.56;
+        const eyeY = cy - ry * 0.15;
+        if (mode === "BURNT") {
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(eyeX - 4, eyeY - 4); ctx.lineTo(eyeX + 4, eyeY + 4);
+          ctx.moveTo(eyeX + 4, eyeY - 4); ctx.lineTo(eyeX - 4, eyeY + 4);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = "#27170c";
+          ctx.beginPath();
+          ctx.arc(eyeX, eyeY, Math.max(3, ry * 0.16), 0, Math.PI * 2);
+          ctx.fill();
+          // 비늘 3줄
+          ctx.strokeStyle = rimCol;
+          ctx.lineWidth = 1.8;
+          for (let s = 0; s < 3; s++) {
+            ctx.beginPath();
+            ctx.arc(cx - rx * 0.18 + s * (rx * 0.18), cy, ry * 0.28, -0.9, 0.9);
+            ctx.stroke();
+          }
+        }
+      }
+
+      if (mode === "READY") {
+        // 사방 반짝이 별 (✨)
+        const pulse = 5 + Math.abs(Math.sin(tick * 7)) * 3;
+        const stars = [
+          [cx - rx * 0.78, cy - ry * 0.68],
+          [cx + rx * 0.85, cy - ry * 0.64],
+          [cx - rx * 0.72, cy + ry * 0.68],
+          [cx + rx * 0.82, cy + ry * 0.66]
+        ];
+        ctx.fillStyle = "#fef08a";
+        for (const [sx, sy] of stars) {
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - pulse);
+          ctx.lineTo(sx + 2, sy - 2);
+          ctx.lineTo(sx + pulse, sy);
+          ctx.lineTo(sx + 2, sy + 2);
+          ctx.lineTo(sx, sy + pulse);
+          ctx.lineTo(sx - 2, sy + 2);
+          ctx.lineTo(sx - pulse, sy);
+          ctx.lineTo(sx - 2, sy - 2);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    function renderMoldCanvas(tick) {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const mold = getCurrentMold();
+      const isBrass = mold.id === "mold_brass9" || mold.id === "mold_double9" || mold.id === "mold_croiffle9";
+
+      // 외곽 주물 기계 본체
+      ctx.fillStyle = isBrass ? "#5c4822" : "#3a3f4d";
+      ctx.strokeStyle = isBrass ? "#facc15" : "#94a3b8";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(2, 2, w - 4, h - 4, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // 좌측 원작 감성 빨간 화력 펌프
+      const pumpW = 36;
+      pumpRect = { x: 8, y: 12, w: pumpW, h: h - 24 };
+      ctx.fillStyle = "#1e2433";
+      ctx.beginPath();
+      ctx.roundRect(pumpRect.x, pumpRect.y, pumpRect.w, pumpRect.h, 8);
+      ctx.fill();
+
+      const bounce = state.fireBoostTimer > 0 ? Math.sin(tick * 16) * 5 : 0;
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(pumpRect.x + pumpW / 2, pumpRect.y + 12 + bounce);
+      ctx.lineTo(pumpRect.x + pumpW / 2, pumpRect.y + 38);
+      ctx.stroke();
+      ctx.fillStyle = "#f59e0b";
+      ctx.fillRect(pumpRect.x + 6, pumpRect.y + 8 + bounce, pumpW - 12, 7);
+
+      // 빨간 실린더
+      ctx.fillStyle = state.fireBoostTimer > 0 ? "#ef4444" : "#b91c1c";
+      ctx.beginPath();
+      ctx.roundRect(pumpRect.x + 7, pumpRect.y + 36, pumpW - 14, pumpRect.h - 74, 5);
+      ctx.fill();
+      ctx.fillStyle = "#fde047";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("🔥화력", pumpRect.x + pumpW / 2, pumpRect.y + pumpRect.h / 2);
+      ctx.fillText(state.fireBoostTimer > 0 ? "2배!" : "터치", pumpRect.x + pumpW / 2, pumpRect.y + pumpRect.h / 2 + 13);
+
+      // 하단 압력 게이지 원
+      const gx = pumpRect.x + pumpW / 2;
+      const gy = pumpRect.y + pumpRect.h - 18;
+      ctx.fillStyle = "#f8fafc";
+      ctx.beginPath();
+      ctx.arc(gx, gy, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#dc2626";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(gx, gy);
+      const ang = state.fireBoostTimer > 0 ? 0.6 : -1.2;
+      ctx.lineTo(gx + Math.cos(ang) * 9, gy + Math.sin(ang) * 9);
+      ctx.stroke();
+
+      // 우측 주물틀 슬롯 격자 (3x1, 3x2, 3x3)
+      const gridLeft = pumpRect.x + pumpRect.w + 8;
+      const gridW = w - gridLeft - 8;
+      const gridH = h - 16;
+      const cols = mold.cols;
+      const rows = mold.rows;
+      const pad = 6;
+      const cellW = (gridW - pad * (cols - 1)) / cols;
+      const cellH = (gridH - pad * (rows - 1)) / rows;
+
+      const selFilling = FILLINGS.find(f => f.id === state.selectedFillingId) || FILLINGS[0];
+
+      for (let i = 0; i < mold.slots; i++) {
+        const sl = state.slots[i];
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        const sx = gridLeft + c * (cellW + pad);
+        const sy = 8 + r * (cellH + pad);
+        sl.rect = { x: sx, y: sy, w: cellW, h: cellH };
+
+        // 칸 배경 & 상태별 보더
+        let plateBg = isBrass ? "#423318" : "#272b36";
+        let borderCol = isBrass ? "#ca8a04" : "#525b70";
+        let bw = 2;
+
+        if (sl.state === "FLIP_READY") {
+          borderCol = Math.sin(tick * 12) > 0 ? "#22d3ee" : "#f59e0b";
+          bw = 3;
+        } else if (sl.state === "READY") {
+          plateBg = "#3b3519";
+          borderCol = "#facc15";
+          bw = 3;
+        } else if (sl.state === "BURNT") {
+          plateBg = "#2d1a1e";
+          borderCol = "#f43f5e";
+          bw = 2.5;
+        }
+
+        ctx.fillStyle = plateBg;
+        ctx.strokeStyle = borderCol;
+        ctx.lineWidth = bw;
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, cellW, cellH, 9);
+        ctx.fill();
+        ctx.stroke();
+
+        const cx = sx + cellW * 0.5;
+        const cy = sy + cellH * 0.45;
+        const rx = Math.min(cellW * 0.36, 48);
+        const ry = Math.min(cellH * 0.27, 28);
+
+        if (sl.state === "IDLE") {
+          drawFishShape(cx, cy, rx, ry, "#1b1e26", "#475569", "IDLE", null, tick);
+          ctx.fillStyle = "rgba(255,255,255,0.65)";
+          ctx.font = "bold 16px sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText(String(i + 1), cx - 4, cy + 5);
+
+          ctx.fillStyle = "#cbd5e1";
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillText(`🥣 [${selFilling.name}] 붓기`, sx + cellW / 2, sy + cellH - 7);
+        } else {
+          const fObj = FILLINGS.find(f => f.id === sl.fillingId) || FILLINGS[0];
+          if (sl.state === "FRONT") {
+            drawFishShape(cx, cy, rx, ry, "#fef3c7", "#d97706", "FRONT", sl.fillingId, tick);
+            const pct = Math.min(100, Math.floor((sl.progress / 0.5) * 100));
+            ctx.fillStyle = "#fde047";
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(`🥣 앞면 ${pct}%`, sx + cellW / 2, sy + cellH - 7);
+          } else if (sl.state === "FLIP_READY") {
+            drawFishShape(cx, cy, rx, ry, "#fde68a", "#ea580c", "FLIP_READY", sl.fillingId, tick);
+            ctx.fillStyle = "#0891b2";
+            ctx.beginPath();
+            ctx.roundRect(sx + 5, sy + cellH - 21, cellW - 10, 17, 5);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("🔄 터치: 뒤집기!", sx + cellW / 2, sy + cellH - 8);
+          } else if (sl.state === "BACK") {
+            drawFishShape(cx, cy, rx, ry, "#ea580c", "#7c2d12", "BACK", sl.fillingId, tick);
+            const pct = Math.min(100, Math.floor(((sl.progress - 0.5) / 0.5) * 100));
+            ctx.fillStyle = "#fdba74";
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(`♨ 뒷면 ${pct}%`, sx + cellW / 2, sy + cellH - 7);
+          } else if (sl.state === "READY") {
+            drawFishShape(cx, cy, rx, ry, "#facc15", "#b45309", "READY", sl.fillingId, tick);
+            ctx.fillStyle = "#15803d";
+            ctx.beginPath();
+            ctx.roundRect(sx + 5, sy + cellH - 21, cellW - 10, 17, 5);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText(`★ 완성! (+${mold.yieldBonus} 적재)`, sx + cellW / 2, sy + cellH - 8);
+          } else if (sl.state === "BURNT") {
+            drawFishShape(cx, cy, rx, ry, "#334155", "#0f172a", "BURNT", sl.fillingId, tick);
+            ctx.fillStyle = "#be123c";
+            ctx.beginPath();
+            ctx.roundRect(sx + 5, sy + cellH - 21, cellW - 10, 17, 5);
+            ctx.fill();
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 11px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("💀 숯검댕이 버리기", sx + cellW / 2, sy + cellH - 8);
+          }
+
+          // 좌측 상단 속재료 이름 태그
+          ctx.fillStyle = "rgba(15,23,42,0.85)";
+          ctx.beginPath();
+          ctx.roundRect(sx + 5, sy + 4, 48, 16, 4);
+          ctx.fill();
+          ctx.fillStyle = "#fde68a";
+          ctx.font = "bold 10px sans-serif";
+          ctx.textAlign = "left";
+          ctx.fillText(`${i + 1}.${fObj.name}`, sx + 8, sy + 15);
+        }
+      }
+
+      // 플로팅 텍스트 이펙트
+      for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = state.floatingTexts[i];
+        ctx.fillStyle = ft.color;
+        ctx.font = "bold 13px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(ft.text, ft.x, ft.y);
+      }
+    }
+
+    function spawnFloating(text, x, y, color = "#fde047") {
+      state.floatingTexts.push({ text, x, y, color, life: 1.0 });
+    }
+
+    // =========================================================================
+    // 6. 주물틀 터치/클릭 조작 (3단계 손맛 + 3구 연발 주전자 / 연동 손잡이)
+    // =========================================================================
+    function handleCanvasTap(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      // 1) 좌측 빨간 화력 펌프 터치 확인
+      if (x >= pumpRect.x && x <= pumpRect.x + pumpRect.w && y >= pumpRect.y && y <= pumpRect.y + pumpRect.h) {
+        state.fireBoostTimer = 8.0;
+        sfxFlip();
+        spawnFloating("🔥 고압 화력 2배 가동!", pumpRect.x + 60, pumpRect.y + 30, "#fb923c");
+        return;
+      }
+
+      const mold = getCurrentMold();
+      for (let i = 0; i < mold.slots; i++) {
+        const sl = state.slots[i];
+        const r = sl.rect;
+        if (x < r.x || x > r.x + r.w || y < r.y || y > r.y + r.h) continue;
+
+        const rowStart = Math.floor(i / mold.cols) * mold.cols;
+
+        if (sl.state === "IDLE") {
+          // ① 반죽 + 속재료 붓기 (3구 연발 주전자 보유 시 같은 줄 빈 칸 동시 붓기!)
+          const indices = state.rowPourUpgrade
+            ? [rowStart, rowStart + 1, rowStart + 2].filter(k => k < mold.slots && state.slots[k].state === "IDLE")
+            : [i];
+          for (const idx of indices) {
+            state.slots[idx].state = "FRONT";
+            state.slots[idx].fillingId = state.selectedFillingId;
+            state.slots[idx].progress = 0;
+            state.slots[idx].burnElapsed = 0;
+          }
+          sfxPour();
+          spawnFloating(
+            state.rowPourUpgrade && indices.length > 1 ? `🥣 3구 연발 붓기!` : `🥣 반죽+속 투입!`,
+            r.x + r.w / 2,
+            r.y + 16,
+            "#bae6fd"
+          );
+          return;
+        }
+
+        if (sl.state === "FLIP_READY") {
+          // ② 철컥! 뒤집기 (연동 손잡이 보유 시 같은 줄 뒤집기 가능 칸 동시 뒤집기!)
+          const indices = state.rowFlipUpgrade
+            ? [rowStart, rowStart + 1, rowStart + 2].filter(k => k < mold.slots && state.slots[k].state === "FLIP_READY")
+            : [i];
+          for (const idx of indices) {
+            state.slots[idx].state = "BACK";
+            state.slots[idx].burnElapsed = 0;
+          }
+          sfxFlip();
+          spawnFloating(
+            state.rowFlipUpgrade && indices.length > 1 ? "🔄 3구 동시 철컥 뒤집기!" : "🔄 철컥! 뒤집기!",
+            r.x + r.w / 2,
+            r.y + 16,
+            "#22d3ee"
+          );
+          return;
+        }
+
+        if (sl.state === "READY") {
+          // ③ 황금 완성 수거 -> 보온 쇼케이스 무제한 적재함으로 즉시 적재!
+          const fid = sl.fillingId;
+          const addCnt = mold.yieldBonus || 1;
+          state.stock[fid] = (state.stock[fid] || 0) + addCnt;
+          state.totalBaked += addCnt;
+          sl.state = "IDLE";
+          sl.progress = 0;
+          sl.burnElapsed = 0;
+          sfxHarvest();
+          const fObj = FILLINGS.find(f => f.id === fid) || FILLINGS[0];
+          spawnFloating(`🛍️ ${fObj.name} +${addCnt}개 보온함 적재!`, r.x + r.w / 2, r.y + 16, "#4ade80");
+          updateWarmerUI();
+          updateCustomersUI();
+          checkStoryTriggers();
+          saveState();
+          return;
+        }
+
+        if (sl.state === "BURNT") {
+          sl.state = "IDLE";
+          sl.progress = 0;
+          sl.burnElapsed = 0;
+          sfxBurn();
+          spawnFloating("🗑️ 숯검댕이 폐기", r.x + r.w / 2, r.y + 16, "#f43f5e");
+          return;
+        }
+
+        if (sl.state === "FRONT") {
+          spawnFloating("아직 앞면이 덜 익었어요!", r.x + r.w / 2, r.y + 16, "#fde047");
+          return;
+        }
+      }
+    }
+
+    canvas.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      handleCanvasTap(e.clientX, e.clientY);
+    });
+
+    // =========================================================================
+    // 7. 손님 스폰 & 보온 적재함 묶음 판매 시스템
+    // =========================================================================
+    const CUSTOMER_AVATARS = ["👩‍🎓", "👨‍💼", "👩‍💼", "🧑‍🎨", "🧔", "👵", "⛷️", "📸"];
+    const CUSTOMER_NAMES = ["공시생 이지은", "김대리", "최상무(법카)", "유튜버 먹짱", "퇴근길 박과장", "단골 여대생", "미식가 손님"];
+
+    function spawnCustomer(slotIdx) {
+      const reg = getCurrentRegion();
+      const availFillings = FILLINGS.filter(f => state.unlockedFillings.includes(f.id));
+      const orderMap = {};
+      const itemTypes = Math.min(availFillings.length, Math.random() < 0.45 ? 2 : 1);
+      const isBulk = state.currentRegionId === "gangnam" && Math.random() < 0.35;
+
+      for (let t = 0; t < itemTypes; t++) {
+        const pick = availFillings[Math.floor(Math.random() * availFillings.length)];
+        const qty = isBulk ? (3 + Math.floor(Math.random() * 3)) : (1 + Math.floor(Math.random() * 3));
+        orderMap[pick.id] = (orderMap[pick.id] || 0) + qty;
+      }
+
+      const quote = reg.quotes[Math.floor(Math.random() * reg.quotes.length)];
+      const maxPatience = 28 * reg.patienceMult * (state.licensed ? 1.15 : 1.0);
+
+      state.customers[slotIdx] = {
+        name: isBulk ? "💼 대기업 법카주문" : CUSTOMER_NAMES[Math.floor(Math.random() * CUSTOMER_NAMES.length)],
+        avatar: isBulk ? "🕴️" : CUSTOMER_AVATARS[Math.floor(Math.random() * CUSTOMER_AVATARS.length)],
+        quote,
+        orders: orderMap,
+        patience: maxPatience,
+        maxPatience
+      };
+      updateCustomersUI();
+    }
+
+    function canFulfillCustomer(cust) {
+      if (!cust) return false;
+      for (const [fid, qty] of Object.entries(cust.orders)) {
+        if ((state.stock[fid] || 0) < qty) return false;
+      }
+      return true;
+    }
+
+    function getUnitPrice(fid) {
+      const fObj = FILLINGS.find(f => f.id === fid) || FILLINGS[0];
+      const mold = getCurrentMold();
+      const reg = getCurrentRegion();
+      let mult = mold.priceMult * reg.priceMult;
+      if (state.licensed) mult *= 1.2;
+      if (state.buildingFloor >= 1) mult *= 1.3;
+      if (state.buildingFloor >= 4) mult *= 1.5;
+      return Math.round(fObj.price * mult);
+    }
+
+    function serveCustomer(slotIdx) {
+      const cust = state.customers[slotIdx];
+      if (!cust || !canFulfillCustomer(cust)) return false;
+
+      let totalEarned = 0;
+      let totalCount = 0;
+      for (const [fid, qty] of Object.entries(cust.orders)) {
+        state.stock[fid] -= qty;
+        totalCount += qty;
+        totalEarned += getUnitPrice(fid) * qty;
+      }
+      // 묶음 팁 보너스
+      if (totalCount >= 3) {
+        totalEarned = Math.round(totalEarned * 1.15);
+      }
+
+      state.gold += totalEarned;
+      state.customers[slotIdx] = null;
+      sfxCash();
+      updateHUD();
+      updateWarmerUI();
+      updateCustomersUI();
+      saveState();
+      return true;
+    }
+
+    // =========================================================================
+    // 8. UI 업데이트 (HUD, 보온 쇼케이스, 손님 카드, 하단 속재료, 상점/지도 모달)
+    // =========================================================================
+    function updateHUD() {
+      document.getElementById("gold-txt").textContent = state.gold.toLocaleString();
+
+      let stageTitle = "⛺ 제1막: 역전 앞 손수레 포차";
+      if (state.buildingFloor >= 5) {
+        stageTitle = "👑 완공: 강남 5층 황금 붕어 타워 (건물주)";
+      } else if (state.buildingFloor >= 1) {
+        stageTitle = `🏢 제3막: 강남 본사 빌딩 (${state.buildingFloor}F / 5F)`;
+      } else if (state.hasFoodTruck) {
+        stageTitle = "🚚 제2막: 전국 유랑 청춘 푸드트럭";
+      }
+      document.getElementById("stage-badge-txt").textContent = stageTitle;
+
+      const permitEl = document.getElementById("permit-pill");
+      if (state.licensed) {
+        permitEl.textContent = "🏅 구청 정식허가 제1호";
+        permitEl.classList.add("licensed");
+      } else {
+        permitEl.textContent = "🚨 무허가 노점 (단속주의)";
+        permitEl.classList.remove("licensed");
+      }
+
+      const reg = getCurrentRegion();
+      document.getElementById("region-pill").textContent = `${reg.name} (단가 ${reg.priceMult}x)`;
+
+      // 다음 목표 안내
+      const goalEl = document.getElementById("next-goal-pill");
+      if (!state.licensed) {
+        goalEl.textContent = "🎯 목표: [🏪장비·빌딩]에서 6구 틀 + 정식 영업허가 취득!";
+      } else if (!state.hasFoodTruck) {
+        goalEl.textContent = "🎯 목표: 100,000원 모아 [🚚 청춘 푸드트럭] 출고!";
+      } else if (state.buildingFloor < 5) {
+        const nextF = BUILDING_FLOORS[state.buildingFloor];
+        goalEl.textContent = `🏗️ 목표: ${nextF.floor}층 증축 (${nextF.cost.toLocaleString()}원)`;
+      } else {
+        goalEl.textContent = "👑 강남 5층 빌딩 건물주 달성! (무한 영업 중)";
+      }
+
+      const mold = getCurrentMold();
+      document.getElementById("mold-spec-txt").textContent =
+        `🔥 ${mold.name} (${state.rowPourUpgrade ? "3구 연발 붓기" : "1칸씩 붓기"})`;
+
+      document.getElementById("alba-status-txt").textContent =
+        state.autoAlba ? "👩‍🍳 김민지 매니저 자동 포장 판매 중!" : "손님 카드 터치 시 즉시 포장 판매!";
+    }
+
+    function updateWarmerUI() {
+      const container = document.getElementById("warmer-slots");
+      container.innerHTML = "";
+      for (const f of FILLINGS) {
+        const unlocked = state.unlockedFillings.includes(f.id);
+        const cnt = state.stock[f.id] || 0;
+        const div = document.createElement("div");
+        div.className = `warmer-slot ${cnt > 0 ? "has-stock" : ""} ${!unlocked ? "locked" : ""}`;
+        div.innerHTML = `
+          <span class="warmer-name">${f.name}</span>
+          <span class="warmer-count">${unlocked ? `x${cnt}` : "🔒"}</span>
+        `;
+        container.appendChild(div);
+      }
+    }
+
+    function updateFillingDockUI() {
+      const grid = document.getElementById("filling-grid");
+      grid.innerHTML = "";
+      for (const f of FILLINGS) {
+        const unlocked = state.unlockedFillings.includes(f.id);
+        const isSel = state.selectedFillingId === f.id;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `filling-btn ${isSel ? "selected" : ""} ${!unlocked ? "locked" : ""}`;
+        const uPrice = getUnitPrice(f.id);
+        btn.innerHTML = `
+          <span>${isSel ? "✔ " : ""}${f.name}</span>
+          <span class="filling-price">${unlocked ? `${uPrice.toLocaleString()}원` : "🔒출장해금"}</span>
+        `;
+        btn.onclick = () => {
+          if (!unlocked) {
+            openMapModal();
+            return;
+          }
+          state.selectedFillingId = f.id;
+          sfxPour();
+          updateFillingDockUI();
+        };
+        grid.appendChild(btn);
+      }
+    }
+
+    function updateCustomersUI() {
+      const row = document.getElementById("customers-row");
+      row.innerHTML = "";
+      for (let i = 0; i < 3; i++) {
+        const cust = state.customers[i];
+        const card = document.createElement("div");
+        if (!cust) {
+          card.className = "customer-card";
+          card.style.opacity = "0.45";
+          card.innerHTML = `<div style="margin:auto;font-size:11px;color:#94a3b8;">손님 오는 중...</div>`;
+          row.appendChild(card);
+          continue;
+        }
+        const ready = canFulfillCustomer(cust);
+        card.className = `customer-card ${ready ? "ready-to-serve" : ""}`;
+        const tagsHtml = Object.entries(cust.orders).map(([fid, qty]) => {
+          const fObj = FILLINGS.find(f => f.id === fid) || FILLINGS[0];
+          const ok = (state.stock[fid] || 0) >= qty;
+          return `<span class="order-tag ${ok ? "fulfilled" : ""}">${fObj.name} x${qty}</span>`;
+        }).join("");
+
+        const patRatio = Math.max(0, Math.min(100, (cust.patience / cust.maxPatience) * 100));
+        card.innerHTML = `
+          <div class="cust-header">
+            <span><span class="cust-avatar">${cust.avatar}</span> ${cust.name}</span>
+          </div>
+          <div class="cust-quote">"${cust.quote}"</div>
+          <div class="cust-orders">${tagsHtml}</div>
+          <div class="serve-cta">🛍️ 터치: 즉시 포장 판매!</div>
+          <div class="patience-bar"><div class="patience-fill" style="width:${patRatio}%;background:${patRatio > 40 ? "#22c55e" : "#ef4444"};"></div></div>
+        `;
+        card.onclick = () => {
+          if (ready) {
+            serveCustomer(i);
+          }
+        };
+        row.appendChild(card);
+      }
+    }
+
+    // =========================================================================
+    // 9. 상점(장비·허가·빌딩 증축) & 전국 출장 지도 & 스토리 모달
+    // =========================================================================
+    function renderShopModal() {
+      const body = document.getElementById("shop-body");
+      body.innerHTML = "";
+
+      // A. 구청 정식 영업허가 & 푸드트럭 승급 섹션
+      const hasMold6 = state.ownedMolds.includes("mold_6") || state.currentMoldIdx >= 1;
+      const permitItem = document.createElement("div");
+      permitItem.className = `shop-item ${state.licensed ? "owned" : ""}`;
+      permitItem.innerHTML = `
+        <div class="shop-info">
+          <h3>🏅 구청 정식 영업허가증 제1호 (위생·소방 완비)</h3>
+          <p>조건: 6구 회전틀 보유 + 위생·소화기 설비비(20,000원). 취득 시 단속 영구 면역 &amp; 안심 맛집 단가 +20%!</p>
+        </div>
+      `;
+      const pBtn = document.createElement("button");
+      pBtn.className = "buy-btn";
+      if (state.licensed) {
+        pBtn.textContent = "✔ 허가 완료";
+        pBtn.disabled = true;
+      } else {
+        pBtn.textContent = hasMold6 ? "20,000원 심사통과" : "6구틀 필요";
+        pBtn.disabled = !hasMold6 || state.gold < 20000;
+        pBtn.onclick = () => {
+          state.gold -= 20000;
+          state.licensed = true;
+          state.crackdownTimer = 0;
+          document.getElementById("crackdown-banner").style.display = "none";
+          sfxCash();
+          saveState();
+          updateHUD();
+          updateFillingDockUI();
+          renderShopModal();
+          openStoryEpisode("ep1_8_permit");
+        };
+      }
+      permitItem.appendChild(pBtn);
+      body.appendChild(permitItem);
+
+      // 청춘 네온 푸드트럭 출고
+      const truckItem = document.createElement("div");
+      truckItem.className = `shop-item ${state.hasFoodTruck ? "owned" : ""}`;
+      truckItem.innerHTML = `
+        <div class="shop-info">
+          <h3>🚚 청춘 네온 푸드트럭 출고 (제2막 오픈!)</h3>
+          <p>조건: 구청 정식 영업허가 보유. 출고 시 전국 6대 핫플레이스 출장 영업 &amp; 지역 특산 속재료 해금!</p>
+        </div>
+      `;
+      const tBtn = document.createElement("button");
+      tBtn.className = "buy-btn";
+      if (state.hasFoodTruck) {
+        tBtn.textContent = "✔ 출고 완료";
+        tBtn.disabled = true;
+      } else {
+        tBtn.textContent = state.licensed ? "100,000원 출고" : "정식허가 필요";
+        tBtn.disabled = !state.licensed || state.gold < 100000;
+        tBtn.onclick = () => {
+          state.gold -= 100000;
+          state.hasFoodTruck = true;
+          state.currentRegionId = "gangnam";
+          sfxCash();
+          saveState();
+          updateHUD();
+          updateFillingDockUI();
+          renderShopModal();
+          openStoryEpisode("ep2_gangnam");
+        };
+      }
+      truckItem.appendChild(tBtn);
+      body.appendChild(truckItem);
+
+      // B. 강남 5층 『청춘 황금 붕어 타워』 층별 건설 (금액 표시!)
+      for (const bf of BUILDING_FLOORS) {
+        const isBuilt = state.buildingFloor >= bf.floor;
+        const isNext = state.buildingFloor === bf.floor - 1;
+        const bDiv = document.createElement("div");
+        bDiv.className = `shop-item ${isBuilt ? "owned" : ""}`;
+        bDiv.innerHTML = `
+          <div class="shop-info">
+            <h3>${bf.name}</h3>
+            <p>${bf.desc}</p>
+          </div>
+        `;
+        const bBtn = document.createElement("button");
+        bBtn.className = "buy-btn";
+        if (isBuilt) {
+          bBtn.textContent = `✔ ${bf.floor}층 완공`;
+          bBtn.disabled = true;
+        } else if (!state.hasFoodTruck) {
+          bBtn.textContent = "푸드트럭 필요";
+          bBtn.disabled = true;
+        } else if (!isNext) {
+          bBtn.textContent = `${bf.floor - 1}층 먼저 완공`;
+          bBtn.disabled = true;
+        } else {
+          bBtn.textContent = `${bf.cost.toLocaleString()}원 증축`;
+          bBtn.disabled = state.gold < bf.cost;
+          bBtn.onclick = () => {
+            state.gold -= bf.cost;
+            state.buildingFloor = bf.floor;
+            sfxCash();
+            saveState();
+            updateHUD();
+            updateFillingDockUI();
+            renderShopModal();
+            if (bf.floor === 5) {
+              openStoryEpisode("ep4_ending");
+            }
+          };
+        }
+        bDiv.appendChild(bBtn);
+        body.appendChild(bDiv);
+      }
+
+      // C. 붕어빵 주물틀 도감 & 구매
+      for (let idx = 0; idx < MOLDS.length; idx++) {
+        const m = MOLDS[idx];
+        const owned = state.ownedMolds.includes(m.id);
+        const equipped = state.currentMoldIdx === idx;
+        const item = document.createElement("div");
+        item.className = `shop-item ${owned ? "owned" : ""}`;
+        item.innerHTML = `
+          <div class="shop-info">
+            <h3>🔥 ${m.name} (${m.slots}구)</h3>
+            <p>${m.desc}</p>
+          </div>
+        `;
+        const btn = document.createElement("button");
+        btn.className = "buy-btn";
+        if (equipped) {
+          btn.textContent = "✔ 장착 중";
+          btn.disabled = true;
+        } else if (owned) {
+          btn.textContent = "장착하기";
+          btn.onclick = () => {
+            state.currentMoldIdx = idx;
+            syncMoldSlots();
+            updateHUD();
+            renderShopModal();
+            saveState();
+          };
+        } else {
+          btn.textContent = `${m.cost.toLocaleString()}원 구매`;
+          btn.disabled = state.gold < m.cost;
+          btn.onclick = () => {
+            state.gold -= m.cost;
+            state.ownedMolds.push(m.id);
+            state.currentMoldIdx = idx;
+            syncMoldSlots();
+            sfxCash();
+            saveState();
+            updateHUD();
+            renderShopModal();
+            if (idx === 1 && !state.seenEpisodes["ep2_5_mold_craft"]) {
+              state.seenEpisodes["ep2_5_mold_craft"] = true;
+              openStoryEpisode("ep2_5_mold_craft");
+            }
+          };
+        }
+        item.appendChild(btn);
+        body.appendChild(item);
+      }
+
+      // D. 편의성 보조 장비 3종 (3구 연발 주전자 / 연동 손잡이 / 자동 포장 알바)
+      const helpers = [
+        { key: "rowPourUpgrade", name: "🥣 3구 연발 반죽 주전자", cost: 35000, desc: "빈 틀을 한 번만 터치해도 가로 한 줄(3칸)에 반죽+속재료를 동시에 붓습니다!" },
+        { key: "rowFlipUpgrade", name: "🔄 줄 단위 연동 뒤집기 손잡이", cost: 40000, desc: "터치 한 번으로 가로 한 줄의 익은 붕어빵을 동시에 철컥! 뒤집습니다!" },
+        { key: "autoAlba", name: "👩‍🍳 김민지 포장 전담 매니저 고용", cost: 75000, desc: "보온 적재함에 붕어빵만 쌓아두면 손님 주문에 맞춰 자동으로 포장·판매합니다!" }
+      ];
+      for (const h of helpers) {
+        const owned = Boolean(state[h.key]);
+        const item = document.createElement("div");
+        item.className = `shop-item ${owned ? "owned" : ""}`;
+        item.innerHTML = `
+          <div class="shop-info">
+            <h3>${h.name}</h3>
+            <p>${h.desc}</p>
+          </div>
+        `;
+        const btn = document.createElement("button");
+        btn.className = "buy-btn";
+        if (owned) {
+          btn.textContent = "✔ 보유 중";
+          btn.disabled = true;
+        } else {
+          btn.textContent = `${h.cost.toLocaleString()}원 구매`;
+          btn.disabled = state.gold < h.cost;
+          btn.onclick = () => {
+            state.gold -= h.cost;
+            state[h.key] = true;
+            sfxCash();
+            saveState();
+            updateHUD();
+            renderShopModal();
+          };
+        }
+        item.appendChild(btn);
+        body.appendChild(item);
+      }
+    }
+
+    function openMapModal() {
+      const body = document.getElementById("map-body");
+      body.innerHTML = "";
+      for (const reg of REGIONS) {
+        const isCurrent = state.currentRegionId === reg.id;
+        const spFilling = FILLINGS.find(f => f.unlockRegion === reg.id);
+        const item = document.createElement("div");
+        item.className = `shop-item ${isCurrent ? "owned" : ""}`;
+        item.innerHTML = `
+          <div class="shop-info">
+            <h3>${reg.name} (단가 ${reg.priceMult}배)</h3>
+            <p>${reg.desc}</p>
+          </div>
+        `;
+        const btn = document.createElement("button");
+        btn.className = "buy-btn";
+        if (reg.reqTruck && !state.hasFoodTruck) {
+          btn.textContent = "🚚 푸드트럭 필요";
+          btn.disabled = true;
+        } else if (spFilling && !state.unlockedFillings.includes(spFilling.id)) {
+          btn.textContent = `${spFilling.cost.toLocaleString()}원 개척`;
+          btn.disabled = state.gold < spFilling.cost;
+          btn.onclick = () => {
+            state.gold -= spFilling.cost;
+            state.unlockedFillings.push(spFilling.id);
+            state.currentRegionId = reg.id;
+            sfxCash();
+            saveState();
+            updateHUD();
+            updateWarmerUI();
+            updateFillingDockUI();
+            openMapModal();
+            if (reg.id === "gangwon" && !state.seenEpisodes["ep3_nationwide"]) {
+              state.seenEpisodes["ep3_nationwide"] = true;
+              openStoryEpisode("ep3_nationwide");
+            }
+          };
+        } else if (isCurrent) {
+          btn.textContent = "✔ 현재 영업지";
+          btn.disabled = true;
+        } else {
+          btn.textContent = "출장 이동하기";
+          btn.onclick = () => {
+            state.currentRegionId = reg.id;
+            sfxFlip();
+            saveState();
+            updateHUD();
+            updateFillingDockUI();
+            openMapModal();
+          };
+        }
+        item.appendChild(btn);
+        body.appendChild(item);
+      }
+      document.getElementById("map-modal").classList.add("open");
+    }
+
+    // 스토리 컷신 재생기
+    let activeEpisode = null;
+    let activeLineIdx = 0;
+
+    function openStoryEpisode(epKey) {
+      const ep = STORY_EPISODES[epKey] || STORY_EPISODES.ep1_prologue;
+      activeEpisode = ep;
+      activeLineIdx = 0;
+      state.seenEpisodes[epKey] = true;
+      document.getElementById("story-episode-list").style.display = "none";
+      renderStoryLine();
+      document.getElementById("story-modal").classList.add("open");
+    }
+
+    function renderStoryLine() {
+      if (!activeEpisode) return;
+      const line = activeEpisode.lines[activeLineIdx] || activeEpisode.lines[0];
+      document.getElementById("cutscene-title").textContent = activeEpisode.title;
+      document.getElementById("cutscene-img").src = activeEpisode.img;
+      document.getElementById("cutscene-speaker").textContent = line.speaker;
+      document.getElementById("cutscene-text").textContent = line.text;
+      document.getElementById("cutscene-page").textContent = `${activeLineIdx + 1} / ${activeEpisode.lines.length}`;
+      document.getElementById("btn-next-dialogue").textContent =
+        activeLineIdx + 1 >= activeEpisode.lines.length ? "영업 계속하기 ▶" : "다음 대사 ▶";
+    }
+
+    function checkStoryTriggers() {
+      if (!state.licensed && state.totalBaked >= 10 && !state.seenEpisodes["ep1_5_crackdown"]) {
+        state.seenEpisodes["ep1_5_crackdown"] = true;
+        document.getElementById("crackdown-banner").style.display = "flex";
+        openStoryEpisode("ep1_5_crackdown");
+      }
+    }
+
+    // 모달 버튼 이벤트 바인딩
+    document.getElementById("btn-open-shop").onclick = () => {
+      renderShopModal();
+      document.getElementById("shop-modal").classList.add("open");
+    };
+    document.getElementById("btn-close-shop").onclick = () => {
+      document.getElementById("shop-modal").classList.remove("open");
+    };
+    document.getElementById("btn-open-map").onclick = () => openMapModal();
+    document.getElementById("btn-close-map").onclick = () => {
+      document.getElementById("map-modal").classList.remove("open");
+    };
+    document.getElementById("next-goal-pill").onclick = () => {
+      renderShopModal();
+      document.getElementById("shop-modal").classList.add("open");
+    };
+
+    document.getElementById("btn-open-story").onclick = () => {
+      openStoryEpisode("ep1_prologue");
+    };
+    document.getElementById("btn-skip-story").onclick = () => {
+      document.getElementById("story-modal").classList.remove("open");
+    };
+    document.getElementById("btn-next-dialogue").onclick = () => {
+      if (!activeEpisode) return;
+      if (activeLineIdx + 1 < activeEpisode.lines.length) {
+        activeLineIdx++;
+        sfxPour();
+        renderStoryLine();
+      } else {
+        document.getElementById("story-modal").classList.remove("open");
+      }
+    };
+    document.getElementById("btn-story-list").onclick = () => {
+      const listEl = document.getElementById("story-episode-list");
+      listEl.style.display = listEl.style.display === "none" ? "flex" : "none";
+      listEl.innerHTML = "";
+      for (const ep of Object.values(STORY_EPISODES)) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "hud-btn";
+        b.style.justifyContent = "space-between";
+        b.innerHTML = `<span>${ep.title}</span><span>▶ 보기</span>`;
+        b.onclick = () => openStoryEpisode(ep.id);
+        listEl.appendChild(b);
+      }
+    };
+
+    // =========================================================================
+    // 10. 메인 게임 루프 (굽기 타이머, 손님 인내심, 알바 자동 판매, 3층 가맹 로열티)
+    // =========================================================================
+    let lastTime = performance.now();
+    let spawnAccumulator = 0;
+    let albaAccumulator = 0;
+    let royaltyAccumulator = 0;
+
+    function gameLoop(now) {
+      const dt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+      const tick = now / 1000;
+
+      if (state.fireBoostTimer > 0) {
+        state.fireBoostTimer = Math.max(0, state.fireBoostTimer - dt);
+      }
+
+      const mold = getCurrentMold();
+      const reg = getCurrentRegion();
+      let cookSpeed = (1 / 4.2) * mold.speed * reg.speedMult;
+      if (state.buildingFloor >= 2) cookSpeed *= 1.3;
+      if (state.fireBoostTimer > 0) cookSpeed *= 2.0;
+
+      // 1) 주물틀 슬롯 업데이트
+      for (const sl of state.slots) {
+        if (sl.state === "FRONT") {
+          sl.progress += cookSpeed * dt;
+          if (sl.progress >= 0.5) {
+            sl.progress = 0.5;
+            sl.state = "FLIP_READY";
+            sl.burnElapsed = 0;
+          }
+        } else if (sl.state === "FLIP_READY") {
+          sl.burnElapsed += dt;
+          if (sl.burnElapsed >= mold.burnTime) {
+            sl.state = "BURNT";
+            sfxBurn();
+          }
+        } else if (sl.state === "BACK") {
+          sl.progress += cookSpeed * dt;
+          if (sl.progress >= 1.0) {
+            sl.progress = 1.0;
+            sl.state = "READY";
+            sl.burnElapsed = 0;
+          }
+        } else if (sl.state === "READY") {
+          sl.burnElapsed += dt;
+          if (sl.burnElapsed >= mold.burnTime) {
+            sl.state = "BURNT";
+            sfxBurn();
+          }
+        }
+      }
+
+      // 2) 손님 스폰 & 인내심 감소
+      spawnAccumulator += dt;
+      if (spawnAccumulator >= 2.2) {
+        spawnAccumulator = 0;
+        const emptyIdx = state.customers.findIndex(c => c === null);
+        if (emptyIdx !== -1) spawnCustomer(emptyIdx);
+      }
+
+      let customerChanged = false;
+      for (let i = 0; i < 3; i++) {
+        const c = state.customers[i];
+        if (!c) continue;
+        c.patience -= dt;
+        if (c.patience <= 0) {
+          state.customers[i] = null;
+          customerChanged = true;
+        }
+      }
+      if (customerChanged || Math.floor(tick * 4) !== Math.floor((tick - dt) * 4)) {
+        updateCustomersUI();
+      }
+
+      // 3) 김민지 포장 매니저(자동 알바) 보유 시 자동 포장 판매
+      if (state.autoAlba) {
+        albaAccumulator += dt;
+        if (albaAccumulator >= 0.75) {
+          albaAccumulator = 0;
+          for (let i = 0; i < 3; i++) {
+            if (state.customers[i] && canFulfillCustomer(state.customers[i])) {
+              serveCustomer(i);
+              break;
+            }
+          }
+        }
+      }
+
+      // 4) 빌딩 3층(전국 청년 가맹본부) 완공 시 3초마다 자동 로열티 수익
+      if (state.buildingFloor >= 3) {
+        royaltyAccumulator += dt;
+        if (royaltyAccumulator >= 3.0) {
+          royaltyAccumulator = 0;
+          state.gold += 12000;
+          updateHUD();
+        }
+      }
+
+      // 5) 플로팅 텍스트 업데이트
+      for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+        state.floatingTexts[i].y -= 22 * dt;
+        state.floatingTexts[i].life -= dt;
+        if (state.floatingTexts[i].life <= 0) state.floatingTexts.splice(i, 1);
+      }
+
+      renderMoldCanvas(tick);
+      requestAnimationFrame(gameLoop);
+    }
+
+    // 초기 실행
+    const hadSave = loadState();
+    syncMoldSlots();
+    resizeCanvas();
+    updateHUD();
+    updateWarmerUI();
+    updateFillingDockUI();
+    spawnCustomer(0);
+    spawnCustomer(1);
+    if (!hadSave) {
+      openStoryEpisode("ep1_prologue");
+    }
+    requestAnimationFrame(gameLoop);
+  </script>
+</body>
+</html>
