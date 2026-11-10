@@ -1,5 +1,5 @@
 // Service Worker for Unified Standalone Home Screen WebApp (PWA)
-const CACHE_NAME = 'game-launcher-pwa-v5';
+const CACHE_NAME = 'game-launcher-pwa-v6';
 const CORE_SHELL_ASSETS = [
   './',
   './index.html',
