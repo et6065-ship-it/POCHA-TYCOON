@@ -8,11 +8,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="블록블라스트" />
   <meta name="theme-color" content="#131829" />
-  <link rel="manifest" href="./manifest-blockblast.json" />
+  <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon-blockblast.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-blockblast-192.png" />
   <title>💎 블록 블라스트 : 클래식 마스터 [HD PIXEL]</title>
   <link rel="stylesheet" href="./src/css/style.css" />
+  <script src="./src/js/launcher_common.js"></script>
   <style>
     body.blockblast-body {
       min-height: 100dvh;
@@ -483,7 +484,7 @@
     </div>
 
     <div class="header-actions">
-      <a href="./arcade.html" class="btn" style="text-decoration:none;" title="통합 게임 런처로 돌아가기">🎮 런처</a>
+      <a href="./" class="btn" data-launcher-return="true" aria-label="통합 게임 런처로 이동" style="text-decoration:none;" title="통합 게임 런처로 돌아가기">🎮 런처</a>
       <button type="button" class="btn btn-gold" id="btn-bb-guide" title="게임 규칙 및 상세 전술 기록 보기">📘 가이드</button>
       <button type="button" class="btn" id="btn-bb-sound" title="사운드 켜기/끄기">🔊 사운드</button>
       <button type="button" class="btn btn-emerald" id="btn-bb-restart" title="새 게임 시작">🔄 새게임</button>
@@ -581,21 +582,6 @@
         <button type="button" class="btn btn-crimson" id="btn-close-guide" style="padding:4px 10px;font-size:12px;">✖ 닫기</button>
       </div>
       <div class="bb-modal-body">
-        <div style="background:#06281f;border:2px solid #10b981;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
-          <div style="font-size:12.5px;color:#ecfdf5;line-height:1.45;">
-            <strong style="color:#fde047;">📲 폰 바탕화면에 [블록 블라스트 전용 페이지] 만들기</strong><br />
-            크롬/삼성인터넷으로 열어서 설치하면 <strong>네이버 하단바·상단 주소창이 아예 없는 100% 전체화면 전용 앱</strong>으로 바탕화면에 생성됩니다.
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button type="button" class="btn btn-emerald" id="btn-bb-pwa-install" style="flex:1;padding:8px 10px;font-size:12px;">
-              📲 바탕화면 전용 앱 설치
-            </button>
-            <button type="button" class="btn btn-gold" id="btn-bb-open-chrome" style="flex:1;padding:8px 10px;font-size:12px;">
-              🚀 크롬 전용창으로 열기
-            </button>
-          </div>
-        </div>
-
         <div>
           <div class="panel-title">
             <span>📊 현재 판 전술 통계</span>
@@ -1328,13 +1314,6 @@
       var LOGICAL_W = 500;
       var LOGICAL_H = 648;
 
-      var FIT_STORAGE_KEY = 'BLOCK_BLAST_FIT_MODE_V1';
-      var fitMode = 0; // 0: 최대화면(기본 14px 여유), 1: 하단바 여유(64px 여유), 2: 축소(108px 여유)
-      try {
-        var savedFit = localStorage.getItem(FIT_STORAGE_KEY);
-        if (savedFit !== null) fitMode = parseInt(savedFit, 10) || 0;
-      } catch (e) {}
-
       function fitBoardToViewport() {
         var wrap = document.querySelector('.bb-canvas-wrap');
         if (!wrap) return;
@@ -1352,9 +1331,9 @@
         var bannerH = bannerEl ? bannerEl.offsetHeight : 44;
         var tacticalH = tacticalEl ? tacticalEl.offsetHeight : 42;
 
-        var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        var reserveTable = [16, 64, 108];
-        var bottomReserve = isFs ? 10 : reserveTable[fitMode % 3];
+        var bottomReserve = window.LauncherCommon
+          ? window.LauncherCommon.getBottomReservePx()
+          : 12;
 
         var availH = Math.max(260, vh - headerH - bannerH - tacticalH - 22 - bottomReserve);
         var maxByHeight = Math.floor(availH * (LOGICAL_W / LOGICAL_H));
@@ -2000,22 +1979,6 @@
         addLogEntry('💣 이어하기 부활 사용', 'REVIVE');
       });
 
-      var btnFit = document.getElementById('btn-bb-fit');
-      function updateFitBtnLabel() {
-        if (!btnFit) return;
-        var names = ['📐 최대', '📐 보통', '📐 축소'];
-        btnFit.textContent = names[fitMode % 3];
-      }
-      updateFitBtnLabel();
-      if (btnFit) {
-        btnFit.addEventListener('click', function () {
-          fitMode = (fitMode + 1) % 3;
-          try { localStorage.setItem(FIT_STORAGE_KEY, String(fitMode)); } catch (e) {}
-          updateFitBtnLabel();
-          fitBoardToViewport();
-        });
-      }
-
       // 가이드 모달 열기/닫기
       var guideModal = document.getElementById('bb-guide-modal');
       var btnGuide = document.getElementById('btn-bb-guide');
@@ -2033,29 +1996,6 @@
       if (guideModal) {
         guideModal.addEventListener('click', function (e) {
           if (e.target === guideModal) guideModal.classList.remove('open');
-        });
-      }
-
-      // 전체화면 토글
-      var btnFs = document.getElementById('btn-bb-fullscreen');
-      if (btnFs) {
-        btnFs.addEventListener('click', function () {
-          var docEl = document.documentElement;
-          var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-          if (!isFs) {
-            if (docEl.requestFullscreen) {
-              docEl.requestFullscreen().catch(function () {});
-            } else if (docEl.webkitRequestFullscreen) {
-              docEl.webkitRequestFullscreen();
-            }
-          } else {
-            if (document.exitFullscreen) {
-              document.exitFullscreen().catch(function () {});
-            } else if (document.webkitExitFullscreen) {
-              document.webkitExitFullscreen();
-            }
-          }
-          setTimeout(fitBoardToViewport, 120);
         });
       }
 
@@ -2104,43 +2044,6 @@
         saveState();
         addLogEntry('💣 중앙 4×4 폭탄 사용', 'BLAST');
       });
-
-      // PWA 전용 앱 설치 & 크롬 전용창 전환
-      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-        navigator.serviceWorker.register('./sw.js').catch(function () {});
-      }
-      var bbDeferredPrompt = null;
-      window.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        bbDeferredPrompt = e;
-      });
-      var btnBbPwa = document.getElementById('btn-bb-pwa-install');
-      var btnBbChrome = document.getElementById('btn-bb-open-chrome');
-      function openBbInChrome() {
-        var absUrl = location.href;
-        if (/Android/i.test(navigator.userAgent || '')) {
-          var noScheme = absUrl.replace(/^https?:\/\//i, '');
-          var scheme = absUrl.indexOf('https://') === 0 ? 'https' : 'http';
-          location.href = 'intent://' + noScheme + '#Intent;scheme=' + scheme + ';package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(absUrl) + ';end';
-        } else {
-          window.open(absUrl, '_blank');
-        }
-      }
-      if (btnBbPwa) {
-        btnBbPwa.addEventListener('click', function () {
-          if (bbDeferredPrompt) {
-            bbDeferredPrompt.prompt();
-            bbDeferredPrompt.userChoice.then(function () { bbDeferredPrompt = null; });
-          } else if (/NAVER|KAKAOTALK|Instagram|FBAN|FBAV|Line/i.test(navigator.userAgent || '') && /Android/i.test(navigator.userAgent || '')) {
-            openBbInChrome();
-          } else {
-            alert('우측 상단 브라우저 메뉴(⋮) 또는 하단 공유(↑)에서 [홈 화면에 추가 / 앱 설치]를 선택하시면 바탕화면에 전용 앱이 생성됩니다!');
-          }
-        });
-      }
-      if (btnBbChrome) {
-        btnBbChrome.addEventListener('click', openBbInChrome);
-      }
 
       // 초기화
       if (!loadState() || state.tray.every(function (p) { return p === null; })) {

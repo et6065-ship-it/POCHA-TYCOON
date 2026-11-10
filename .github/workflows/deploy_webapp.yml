@@ -1,4 +1,4 @@
-name: Deploy Unified Game Launcher (Janggi & Chess WebApp)
+name: Deploy Unified Game Launcher (Janggi, Chess, Block Blast & Pocha Tycoon)
 
 on:
   push:
@@ -22,38 +22,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Bundle Unified Game Launcher & Medieval Battle Janggi / Chess / Block Blast
+      - name: Bundle Unified Game Launcher (Single Root Copy + Subpath Redirect Stubs)
         run: |
           rm -rf build/web
-          mkdir -p build/web build/web/janggi build/web/chess build/web/arcade build/web/blockblast build/web/pocha
+          mkdir -p build/web build/web/arcade build/web/janggi build/web/chess build/web/blockblast build/web/pocha
 
-          # 1. 메인 루트(/): 장기·체스·블록블라스트·통합런처 에셋 복사
-          cp -f index.html janggi.html chess.html arcade.html blockblast.html pocha.html manifest.json manifest-blockblast.json sw.js build/web/
+          # 1. 루트(/) 단일 에셋 및 정본 HTML 배치 (6중 에셋 복사 제거)
+          cp -f index.html arcade.html janggi.html chess.html blockblast.html pocha.html manifest.json sw.js build/web/
           cp -r src assets build/web/
 
-          # 2. /janggi/ 서브경로: 중세 배틀 장기
-          cp -f index.html janggi.html chess.html arcade.html blockblast.html pocha.html manifest.json manifest-blockblast.json sw.js build/web/janggi/
-          cp -r src assets build/web/janggi/
+          # 2. 하위 호환 서브경로용 경량 리다이렉트 스텁 생성 함수
+          write_stub() {
+            local dir="$1"
+            local target="$2"
+            cat > "build/web/${dir}/index.html" <<EOF
+          <!DOCTYPE html>
+          <html lang="ko">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <meta http-equiv="refresh" content="0; url=${target}" />
+            <title>이동 중...</title>
+            <script>
+              window.location.replace('${target}' + window.location.search + window.location.hash);
+            </script>
+          </head>
+          <body style="background:#090c15;color:#f8fafc;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+            <a href="${target}" style="color:#fde047;">페이지로 이동</a>
+          </body>
+          </html>
+          EOF
+          }
 
-          # 3. /chess/ 서브경로: 중세 배틀 체스
-          cp -f index.html janggi.html chess.html arcade.html blockblast.html pocha.html manifest.json manifest-blockblast.json sw.js build/web/chess/
-          cp -r src assets build/web/chess/
-          cp -f chess.html build/web/chess/index.html
-
-          # 4. /arcade/ 서브경로: 통합 게임 런처 (janggi.html & chess.html & blockblast.html 정상 연결 보장)
-          cp -f index.html janggi.html chess.html arcade.html blockblast.html pocha.html manifest.json manifest-blockblast.json sw.js build/web/arcade/
-          cp -r src assets build/web/arcade/
-          cp -f arcade.html build/web/arcade/index.html
-
-          # 5. /blockblast/ 서브경로: 무광고 블록 블라스트 클래식 마스터
-          cp -f index.html janggi.html chess.html arcade.html blockblast.html pocha.html manifest.json manifest-blockblast.json sw.js build/web/blockblast/
-          cp -r src assets build/web/blockblast/
-          cp -f blockblast.html build/web/blockblast/index.html
-
-          # 6. /pocha/ 서브경로: 전설의 붕어빵 타이쿤 (포차에서 빌딩까지)
-          cp -f index.html janggi.html chess.html arcade.html blockblast.html pocha.html manifest.json manifest-blockblast.json sw.js build/web/pocha/
-          cp -r src assets build/web/pocha/
-          cp -f pocha.html build/web/pocha/index.html
+          write_stub "arcade" "../"
+          write_stub "janggi" "../janggi.html"
+          write_stub "chess" "../chess.html"
+          write_stub "blockblast" "../blockblast.html"
+          write_stub "pocha" "../pocha.html"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

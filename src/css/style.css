@@ -30,6 +30,29 @@
   --text-muted: #cbd5e1;
   --font-pixel-kr: 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', 'DungGeunMo', sans-serif;
   --font-pixel-en: 'Silkscreen', 'DungGeunMo', 'Pretendard', monospace;
+  --app-fit-bottom-reserve: 12px;
+  --board-fit-vw: 94vw;
+  --board-fit-dvh: 62dvh;
+}
+
+html[data-fit-mode="0"] {
+  --board-fit-vw: 94vw;
+  --board-fit-dvh: 62dvh;
+}
+
+html[data-fit-mode="1"] {
+  --board-fit-vw: 86vw;
+  --board-fit-dvh: 54dvh;
+}
+
+html[data-fit-mode="2"] {
+  --board-fit-vw: 78vw;
+  --board-fit-dvh: 46dvh;
+}
+
+html[data-embedded="true"] #btn-quick-fullscreen,
+html[data-embedded="true"] #btn-modal-fullscreen {
+  display: none !important;
 }
 
 * {
@@ -1249,7 +1272,7 @@ body.crt-off::after {
     flex-direction: column;
     align-items: center;
     gap: 5px;
-    padding: 5px 6px calc(105px + env(safe-area-inset-bottom, 0px));
+    padding: 5px 6px calc(var(--app-fit-bottom-reserve, 12px) + env(safe-area-inset-bottom, 0px));
     zoom: 1 !important;
     touch-action: pan-y pinch-zoom;
   }
@@ -1347,9 +1370,9 @@ body.crt-off::after {
     touch-action: pan-y pinch-zoom;
   }
 
-  /* 핵심 수정: 네이버 앱/인앱 브라우저 하단 컨트롤바에 가리지 않도록 48dvh 제한 & 상하 스크롤 100% 작동 */
+  /* 런처 공통 화면 크기 조절(최대 / 보통 / 축소) 연동 */
   #janggi-board-canvas {
-    width: min(92vw, 48dvh) !important;
+    width: min(var(--board-fit-vw, 94vw), calc(var(--board-fit-dvh, 62dvh) * 780 / 860)) !important;
     height: auto;
     touch-action: pan-y pinch-zoom !important;
   }
@@ -1405,7 +1428,7 @@ body.crt-off::after {
     background: #0f1424;
     border-top: 4px solid var(--pixel-gold);
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.9);
-    padding: 12px 12px calc(105px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 12px calc(var(--app-fit-bottom-reserve, 12px) + env(safe-area-inset-bottom, 0px));
     transform: translateY(105%);
     transition: transform 0.22s ease-out;
   }
@@ -1527,8 +1550,8 @@ body.crt-off::after {
   }
 
   #janggi-board-canvas {
-    width: 95vw !important;
-    max-width: 95vw !important;
+    width: min(var(--board-fit-vw, 94vw), calc(var(--board-fit-dvh, 62dvh) * 780 / 860)) !important;
+    max-width: var(--board-fit-vw, 94vw) !important;
     height: auto !important;
     touch-action: pan-y pinch-zoom !important;
   }
@@ -1561,7 +1584,7 @@ body.crt-off::after {
   }
 
   #janggi-board-canvas {
-    width: min(86vw, 62dvh) !important;
+    width: min(86vw, calc(var(--board-fit-dvh, 62dvh) * 780 / 860)) !important;
     touch-action: pan-y pinch-zoom !important;
   }
 }

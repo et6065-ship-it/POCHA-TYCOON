@@ -8,8 +8,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#131829" />
   <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-launcher-192.png" />
   <title>중세 배틀 체스 (Medieval Battle Chess) : 16-BIT PIXEL ART EDITION</title>
   <link rel="stylesheet" href="./src/css/style.css" />
+  <script src="./src/js/launcher_common.js"></script>
   <script>
     window.INITIAL_GAME_TYPE = 'CHESS';
   </script>
@@ -40,7 +43,7 @@
     </div>
 
     <div class="header-actions">
-      <a href="./arcade.html" class="btn" id="btn-go-launcher" style="text-decoration:none;" title="통합 게임 런처 홈으로 이동">🎮 런처</a>
+      <a href="./" class="btn" id="btn-go-launcher" data-launcher-return="true" aria-label="통합 게임 런처로 이동" style="text-decoration:none;" title="통합 게임 런처 홈으로 이동">🎮 런처</a>
       <button type="button" class="btn btn-gold" id="btn-open-codex">📘 가이드·도감</button>
       <button type="button" class="btn btn-crimson" id="btn-open-showcase">🎬 쇼케이스</button>
       <button type="button" class="btn btn-gold" id="btn-open-settings">⚙️ 환경설정</button>
